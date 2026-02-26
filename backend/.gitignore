@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build
+dist/
+
+# Prisma
+prisma/migrations/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Debug scripts (contain hardcoded credentials)
+check-*.ts
+reset-password.ts
+view-qrs.html

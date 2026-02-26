@@ -1,0 +1,202 @@
+# 📋 ERS — Sistema de Reservas: Pachanga y Pochola
+
+**Versión:** 1.0  
+**Fecha:** 24 de Febrero, 2026  
+**Autor:** Antigravity Core (Arquitecto de Software)  
+**Estado:** Borrador — Pendiente de Aprobación del Scrum Master
+
+---
+
+## 1. Resumen Ejecutivo
+
+**¿Qué es?**  
+Un sistema de reservas online para el bar de salsa **Pachanga y Pochola** (Bogotá). Permite a los clientes solicitar una mesa a través de la web, y al dueño del bar aprobar o rechazar cada solicitud desde un panel administrativo.
+
+**¿Qué problema resuelve?**  
+Actualmente, las reservas se gestionan por llamada o WhatsApp, lo que genera:
+- Pérdida de solicitudes en horas pico.
+- Falta de trazabilidad (no hay historial de quién reservó, cuándo y para cuántos).
+- El dueño no tiene visibilidad en tiempo real de la ocupación del local.
+
+**¿Cuál es el resultado esperado?**  
+Un flujo digitalizado donde el cliente reserva en 30 segundos y el dueño aprueba en un clic, con datos centralizados y notificaciones automáticas.
+
+---
+
+## 2. Roles de Usuario (Actores)
+
+| Rol | Descripción | Acceso |
+|---|---|---|
+| **Cliente** | Persona que visita la web para hacer una reserva. No requiere cuenta ni login. | Página pública de reservas |
+| **Administrador (Dueño)** | Propietario del bar. Aprueba/rechaza reservas y ve estadísticas del negocio. | Panel Admin (`/admin`) protegido con login |
+| **Staff** *(futuro)* | Mesero o encargado que consulta las reservas del día. Solo lectura. | Panel Admin con permisos limitados |
+
+---
+
+## 3. Requisitos Funcionales (Casos de Uso)
+
+### 3.1 — Flujo del Cliente (Página Pública)
+
+| ID | Caso de Uso | Descripción |
+|---|---|---|
+| **RF-01** | Ver calendario de disponibilidad | El cliente ve un calendario interactivo. Los días pasados están deshabilitados. Los horarios del bar son visibles (ej. Jue-Sáb, 7pm-2am). |
+| **RF-02** | Seleccionar fecha y hora | El cliente elige una fecha válida y una franja horaria disponible. |
+| **RF-03** | Elegir una mesa | El cliente ve un mapa visual del local con las mesas disponibles para esa fecha/hora. Las mesas ocupadas o reservadas se muestran deshabilitadas. Cada mesa indica su capacidad (ej. "Mesa 5 — hasta 6 personas"). |
+| **RF-04** | Indicar número de personas | El cliente ingresa cuántas personas asistirán. El sistema valida que no exceda la capacidad de la mesa elegida. |
+| **RF-05** | Completar datos de contacto | El cliente llena: Nombre completo, Número de celular (WhatsApp), Mensaje/nota opcional (ej. "Es un cumpleaños"). |
+| **RF-06** | Enviar solicitud de reserva | Al enviar, el sistema muestra un mensaje de confirmación: *"Tu solicitud fue recibida. Te avisaremos por WhatsApp cuando sea aprobada."* El estado inicial de la reserva es `pendiente`. |
+| **RF-07** | Cancelar reserva *(futuro)* | El cliente podría cancelar su reserva usando un enlace único enviado por WhatsApp. |
+
+### 3.2 — Flujo del Administrador (Panel Admin)
+
+| ID | Caso de Uso | Descripción |
+|---|---|---|
+| **RF-08** | Iniciar sesión | El dueño accede con email y contraseña al panel `/admin/login`. |
+| **RF-09** | Ver dashboard con resumen | El dashboard muestra: total de reservas del día, reservas pendientes de aprobación, reservas confirmadas, y reservas canceladas. |
+| **RF-10** | Listar todas las reservas | Vista de tabla con filtros por: fecha, estado (`pendiente`, `confirmada`, `cancelada`, `completada`), y búsqueda por nombre/celular. |
+| **RF-11** | Aprobar una reserva | El admin cambia el estado de `pendiente` → `confirmada`. El sistema envía notificación automática al cliente. |
+| **RF-12** | Rechazar una reserva | El admin cambia el estado a `cancelada` con motivo opcional. Se notifica al cliente. |
+| **RF-13** | Asignar/cambiar mesa | El admin puede reasignar la mesa si es necesario (ej. mesa más grande disponible). |
+| **RF-14** | Marcar como completada | Tras la visita, el admin marca la reserva como `completada` para historial. |
+| **RF-15** | Recibir notificación de nueva reserva | Cuando un cliente envía una solicitud, el admin recibe una notificación (ver sección de notificaciones). |
+
+### 3.3 — Sistema de Notificaciones
+
+| ID | Canal | Flujo |
+|---|---|---|
+| **RF-16** | **Notificación al Admin** | Cuando llega una nueva reserva → notificación en el panel admin (badge/sonido) + opcionalmente email o WhatsApp. |
+| **RF-17** | **Notificación al Cliente** | Cuando su reserva es aprobada o rechazada → mensaje por WhatsApp (vía API de WhatsApp Business o integración con servicio de mensajería). |
+
+### 3.4 — Gestión de Mesas (Backend/Admin)
+
+| ID | Caso de Uso | Descripción |
+|---|---|---|
+| **RF-18** | CRUD de mesas | El admin puede crear, editar y eliminar mesas. Cada mesa tiene: número/nombre, capacidad máxima, ubicación (zona VIP, terraza, barra, pista), y estado (activa/inactiva). |
+| **RF-19** | Disponibilidad automática | El sistema calcula automáticamente qué mesas están libres para una fecha/hora basándose en reservas confirmadas existentes. |
+
+---
+
+## 4. Requisitos No Funcionales
+
+| Categoría | Requisito | Explicación sencilla |
+|---|---|---|
+| **Rendimiento** | La página de reservas debe cargar en menos de 2 segundos. | Un cliente desde el celular no espera más de eso; si tarda, se va. |
+| **Concurrencia** | El sistema debe soportar al menos 50 solicitudes de reserva simultáneas. | En noche de evento, muchos clientes pueden intentar reservar al mismo tiempo. |
+| **Seguridad** | Validación estricta de todos los inputs (Zod). Protección contra inyección SQL y XSS. | Nadie puede escribir código malicioso en el campo "nombre" y hackear el sistema. |
+| **Seguridad** | Autenticación JWT con tokens de expiración. Secretos en variables de entorno. | La contraseña del admin viaja cifrada y los tokens expiran por seguridad. |
+| **Seguridad** | Rate-limiting en el endpoint público de reservas (máx. 10/min por IP). | Evita que un bot envíe 1,000 reservas falsas en un minuto. |
+| **Disponibilidad** | Uptime de 99.5% (se espera 0 downtime en horarios del bar). | El sistema no se puede caer un viernes a la medianoche. |
+| **Responsividad** | La interfaz debe funcionar perfectamente en móvil (80%+ del tráfico esperado). | La mayoría de clientes reservarán desde Instagram → Web → Celular. |
+| **Accesibilidad** | Contraste adecuado, navegación por teclado, etiquetas ARIA. | Cualquier persona, incluyendo con discapacidad visual, puede usarlo. |
+
+---
+
+## 5. Stack Tecnológico
+
+### Lo que ya existe (Frontend)
+
+| Capa | Tecnología | Estado |
+|---|---|---|
+| Framework | React 19 + TypeScript | ✅ Existente |
+| Build Tool | Vite 7 | ✅ Existente |
+| Styling | TailwindCSS 3.4 + shadcn/ui | ✅ Existente |
+| State/Data | React Query (TanStack) + Axios | ✅ Existente |
+| Routing | React Router DOM v7 | ✅ Existente |
+| Validación (client) | Zod v4 | ✅ Instalado, sin implementar |
+| Animaciones | Framer Motion | ✅ Existente |
+
+### Lo que falta construir (Backend + Infraestructura)
+
+| Capa | Tecnología Sugerida | Justificación |
+|---|---|---|
+| **Backend / API** | **Node.js + Express.ts** (o Fastify) | Mismo lenguaje que el frontend (TypeScript puro). Ecosistema maduro, fácil de deployar. |
+| **Base de Datos** | **PostgreSQL** (via Supabase o Railway) | Relacional, ideal para reservas con relaciones mesa ↔ reserva ↔ usuario. Supabase agrega auth y realtime gratis. |
+| **ORM** | **Prisma** | Tipado perfecto con TypeScript, migraciones automáticas, prevención de SQL injection. |
+| **Autenticación** | **JWT** (jsonwebtoken + bcrypt) | Ya diseñado en el frontend. Solo falta el backend que emita los tokens. |
+| **Notificaciones** | **WhatsApp Business API** (o Twilio) | Canal principal de comunicación del bar con sus clientes. |
+| **Notificaciones (push)** | **WebSocket** (socket.io o Supabase Realtime) | Para notificaciones en tiempo real dentro del panel admin. |
+| **Deploy** | **Vercel** (frontend) + **Railway/Render** (backend) | Gratis en tier básico, escalable cuando el bar crezca. |
+| **Validación** | **Zod** (compartido frontend + backend) | Mismos esquemas de validación en ambos lados. |
+
+---
+
+## 6. Modelo de Datos (Vista Previa)
+
+```mermaid
+erDiagram
+    USER ||--o{ RESERVATION : "manages"
+    TABLE ||--o{ RESERVATION : "assigned_to"
+    
+    USER {
+        uuid id PK
+        string email UK
+        string name
+        string password_hash
+        enum role "admin | staff"
+        timestamp created_at
+        timestamp updated_at
+    }
+    
+    TABLE {
+        uuid id PK
+        string name "Mesa 1, VIP 3..."
+        int capacity
+        enum zone "salon | terraza | vip | barra | pista"
+        boolean is_active
+        timestamp created_at
+    }
+    
+    RESERVATION {
+        uuid id PK
+        string customer_name
+        string customer_phone
+        date reservation_date
+        time reservation_time
+        int party_size
+        string message "nullable"
+        enum status "pending | confirmed | cancelled | completed"
+        uuid table_id FK "nullable until confirmed"
+        timestamp created_at
+        timestamp updated_at
+    }
+```
+
+---
+
+## 7. Alcance de la Versión 1.0 (MVP)
+
+> [!IMPORTANT]
+> Lo que entra en el MVP y lo que queda para después. Esto define los límites del Sprint 1 y Sprint 2.
+
+### ✅ Dentro del MVP
+- Formulario público de reservas con selección de fecha, hora, mesa y número de personas.
+- Panel admin para listar, aprobar, rechazar y filtrar reservas.
+- Dashboard con estadísticas del día.
+- CRUD de mesas (admin).
+- Backend API REST completo (Node.js/Express + Prisma + PostgreSQL).
+- Validación con Zod en frontend y backend.
+- Autenticación JWT para el admin.
+- Notificación en panel admin (badge + sonido) vía WebSocket.
+
+### 🔜 Fuera del MVP (Versiones posteriores)
+- Integración con WhatsApp Business API para notificaciones al cliente.
+- Vista de mapa interactivo del local con drag & drop.
+- Rol "Staff" con permisos limitados.
+- Cancelación de reserva por parte del cliente (enlace único).
+- Historial y analíticas avanzadas (ocupación por día de semana, mesas más populares, etc.).
+- Integración con Google Calendar del dueño.
+
+---
+
+## 8. Próximos Pasos
+
+Una vez aprobado este ERS, el flujo será:
+
+1. **Sprint 0 — Setup:** Inicializar el backend (Node.js + Prisma + PostgreSQL), definir el schema de BD y crear las migraciones.
+2. **Sprint 1 — Core API:** Construir los endpoints REST de reservas y mesas. Conectar el frontend existente.
+3. **Sprint 2 — Notificaciones + Polish:** Implementar WebSocket para notificaciones en el admin, mejorar la UX del calendario/mesas y testing end-to-end.
+
+---
+
+> [!NOTE]
+> Este documento es una **especificación viva**. Se actualizará conforme el Scrum Master dé feedback y se definan prioridades. Nada se construye sin tu aprobación.

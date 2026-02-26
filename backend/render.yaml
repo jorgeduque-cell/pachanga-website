@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: pachanga-api
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build && npx prisma generate && npx prisma migrate deploy
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false  # Configurar en el dashboard de Render
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: https://pachanga-frontend.vercel.app  # Actualizar con tu dominio de Vercel
+      # Variables opcionales para WhatsApp
+      - key: WHATSAPP_ACCESS_TOKEN
+        sync: false
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: WHATSAPP_WEBHOOK_VERIFY_TOKEN
+        sync: false
+      - key: WHATSAPP_WEBHOOK_SECRET
+        sync: false
+    healthCheckPath: /api/health
+    autoDeploy: true

@@ -1,0 +1,9 @@
+export { HomePage } from './HomePage';
+export { HistoriaPage } from './HistoriaPage';
+export { GaleriaPage } from './GaleriaPage';
+export { EventosPage } from './EventosPage';
+export { MenuPage } from './MenuPage';
+export { ContactoPage } from './ContactoPage';
+export { AdminLogin } from './AdminLogin';
+export { AdminDashboard } from './AdminDashboard';
+export { AdminReservations } from './AdminReservations';

@@ -1,0 +1,252 @@
+# Sprint 8 — Integración End-to-End + Hardening
+
+## 📊 Diagnóstico: ¿Dónde estamos?
+
+| Capa | Estado | Detalle |
+|---|:---:|---|
+| **Página Web (Frontend)** | ✅ | 12 páginas: Home, Reservas, Menú, Galería, Historia, Contacto, Eventos, QR Capture, Admin (Login, Dashboard, Customers, Reservations) |
+| **Backend API** | ✅ | 6 módulos: auth, tables, reservations, crm, whatsapp, analytics |
+| **Automatización WhatsApp** | ✅ | Bienvenida + cumpleaños (cron 11AM) + webhook incoming |
+| **Auditoría DevSecOps** | ✅ | Score 9.0/10 — APROBADO con 2 observaciones MEDIO |
+| **Integración FE ↔ BE** | ⚠️ | Frontend usa mock creds (H-01), no consume API real en auth |
+| **Deuda Técnica** | ⚠️ | Race condition reservas (ALTO-1 Sprint1), `as any` residuales |
+
+> [!IMPORTANT]
+> **El siguiente paso natural es: cerrar la brecha frontend ↔ backend.** Tenemos un backend robusto y un frontend con páginas, pero la "costura" entre ambos tiene deuda técnica y mocks que impiden un flujo real de producción.
+
+---
+
+## Épica: **Integración Producción + Cierre de Deuda Técnica**
+
+> Conectar el frontend al backend real, remediar todos los hallazgos de auditoría pendientes, y dejar el sistema listo para deploy a producción.
+
+---
+
+## Historias de Usuario
+
+### TSK-41: Remediación de Deuda Técnica Backend
+- **ID:** TSK-41
+- **Asignación:** 🤖 Antigravity Core (Backend)
+- **Prioridad:** 🔴 Bloqueante
+- **Estimación:** 0.5 día
+
+**Criterios de Aceptación:**
+
+```
+Given el módulo de reservas tiene race condition TOCTOU (ALTO-1)
+When se envuelve create() y update() en prisma.$transaction con Serializable isolation
+Then dos reservas simultáneas a la misma mesa devuelven 409 (una sola gana)
+And NO hay overbooking posible bajo carga concurrente
+
+Given la ruta /api/auth/refresh no tiene rate limiting (MEDIO-7)
+When se agrega authLimiter al endpoint
+Then un atacante que envía >10 requests/min recibe 429
+
+Given cleanupExpiredTokens() nunca se invoca (MEDIO-8)
+When se programa setInterval cada hora en server.ts
+Then las tablas refresh_tokens y token_blacklist no crecen indefinidamente
+
+Given table.service.ts tiene `const where: any` (MEDIO-1)
+When se reemplaza por Prisma.TableWhereInput tipado
+Then `npx tsc --noEmit` pasa sin errores y sin `any`
+
+Given reservation.controller.ts tiene `status as any` (MEDIO-2)
+When se reemplaza por ReservationStatus | undefined
+Then el tipo es correcto sin cast inseguro
+
+Given los params :id en routes no validan UUID (MEDIO-3)
+When se usa validateParams() en vez de validateQuery()
+Then un request con :id="../../etc/passwd" recibe 400
+```
+
+**Archivos a modificar:**
+- `modules/reservations/reservation.service.ts` — transacciones
+- `modules/auth/auth.routes.ts` — rate limit /refresh
+- `server.ts` — setInterval cleanup
+- `modules/tables/table.service.ts` — tipar where
+- `modules/reservations/reservation.controller.ts` — quitar `as any`
+- `modules/tables/table.routes.ts` + `reservation.routes.ts` — validateParams
+
+---
+
+### TSK-42: Integración Auth Real Frontend → Backend
+- **ID:** TSK-42
+- **Asignación:** 🤖 Antigravity Core (Backend/Tipos) + 🎨 Kimi Code (UI ajustes)
+- **Prioridad:** 🔴 Bloqueante
+- **Estimación:** 0.5 día
+- **Depende de:** TSK-41
+
+**Criterios de Aceptación:**
+
+```
+Given el frontend tiene mock credentials hardcoded en auth.service.ts (H-01)
+When se reemplaza por llamada real a POST /api/auth/login
+Then el login usa el backend real y devuelve JWT válido
+And las credenciales mock son eliminadas por completo
+
+Given getStoredUser() usa JSON.parse sin try/catch (H-02)
+When localStorage contiene datos corruptos
+Then la app no crashea, limpia el localStorage y retorna null
+
+Given el frontend tiene extractData() duplicado en 2 archivos (H-04)
+When se extrae a lib/api.ts
+Then ambos servicios importan desde una sola fuente
+```
+
+**Archivos a modificar:**
+- [app/src/services/auth.service.ts](file:///c:/Users/LENOVO%20CORP/Proyecto%20Pachanga/app/src/services/auth.service.ts) — eliminar mocks, conectar API real
+- [app/src/lib/api.ts](file:///c:/Users/LENOVO%20CORP/Proyecto%20Pachanga/app/src/lib/api.ts) — agregar `extractData` compartido
+- [app/src/services/reservation.service.ts](file:///c:/Users/LENOVO%20CORP/Proyecto%20Pachanga/app/src/services/reservation.service.ts) — importar extractData
+- [app/src/services/table.service.ts](file:///c:/Users/LENOVO%20CORP/Proyecto%20Pachanga/app/src/services/table.service.ts) — importar extractData
+
+---
+
+### TSK-43: Dashboard Admin CRM (Frontend)
+- **ID:** TSK-43
+- **Asignación:** 🎨 Kimi Code (Frontend UI)
+- **Prioridad:** 🟠 Alta
+- **Estimación:** 2 días
+- **Depende de:** TSK-41, TSK-42
+
+**Criterios de Aceptación:**
+
+```
+Given el admin navega a /admin/crm autenticado
+When la página carga
+Then ve KPIs glassmorphism: total clientes, nuevos este mes, tasa opt-in, cumpleaños hoy
+And ve tabla de clientes con búsqueda, filtros, paginación (max 50/página)
+And ve 3 gráficos: clientes/mes (barras), rating distribución (pie), mensajes por estado (pie)
+And ve log de mensajes WhatsApp con status y filtros por tipo
+
+Given el admin busca "Carlos" en la tabla de clientes
+When escribe en el campo de búsqueda
+Then la tabla filtra en tiempo real mostrando solo coincidencias
+
+Given el admin hace click en "Desactivar" en un cliente
+When confirma la acción
+Then el cliente se marca como isActive: false via PATCH /api/crm/customers/:id
+And desaparece de la lista principal (filtro activos)
+```
+
+**Endpoints que consume:**
+| Método | Ruta | Datos |
+|---|---|---|
+| `GET` | `/api/crm/customers?page=1&limit=50&search=X` | Tabla de clientes |
+| `PATCH` | `/api/crm/customers/:id` | Editar/desactivar |
+| `GET` | `/api/crm/stats` | KPIs principales |
+| `GET` | `/api/analytics/charts/new-customers` | Gráfico barras |
+| `GET` | `/api/analytics/charts/rating-distribution` | Gráfico pie |
+| `GET` | `/api/analytics/charts/messages-by-status` | Gráfico pie |
+| `GET` | `/api/crm/messages?type=WELCOME&page=1` | Log mensajes |
+
+---
+
+### TSK-44: Formulario QR Mobile (Frontend Público)
+- **ID:** TSK-44
+- **Asignación:** 🎨 Kimi Code (Frontend UI)
+- **Prioridad:** 🟠 Alta
+- **Estimación:** 1 día
+- **Depende de:** TSK-41
+
+**Criterios de Aceptación:**
+
+```
+Given el mesero entrega la cuenta con QR impreso
+When el cliente escanea el QR con su cámara
+Then abre /feedback?qr=MESA_P1 en su navegador móvil (sin app, sin login)
+And ve formulario dark theme glassmorphism ultra corto:
+  1. "¿Cómo la pasaste?" → 5 estrellas tocables (obligatorio)
+  2. "Tu nombre" → input text (obligatorio)
+  3. "Tu WhatsApp" → input tel con código país (obligatorio)
+  4. "¿Cuándo cumples?" → date picker (obligatorio)
+  5. ☑ "Acepto recibir mensajes por WhatsApp" (obligatorio, opt-in)
+
+Given el cliente llena el formulario y envía
+When POST /api/crm/capture responde 201
+Then ve animación de check + "¡Tu shot de cortesía está listo!"
+And recibe mensaje WhatsApp de bienvenida en <10 segundos
+
+Given el cliente envía el formulario con teléfono ya registrado
+When POST /api/crm/capture responde 409
+Then ve mensaje amigable: "¡Ya te conocemos! Bienvenido de vuelta 🎶"
+And se actualizan totalVisits y lastVisitAt
+```
+
+**Endpoint que consume:**
+| Método | Ruta | Auth |
+|---|---|---|
+| `POST` | `/api/crm/capture` | Público (rate limit 5/min/IP) |
+
+> [!NOTE]
+> La página [QrCapturePage.tsx](file:///c:/Users/LENOVO%20CORP/Proyecto%20Pachanga/app/src/pages/QrCapturePage.tsx) ya existe en el frontend. TSK-44 es **refinarla** para que cumpla con la especificación completa del ERS (opt-in, validación, animaciones, manejo de errores).
+
+---
+
+### TSK-45: Preparación Deploy + Smoke Test E2E
+- **ID:** TSK-45
+- **Asignación:** 🤖 Antigravity Core + 👤 Scrum Master (manual)
+- **Prioridad:** 🟡 Media
+- **Estimación:** 0.5 día
+- **Depende de:** TSK-41, TSK-42, TSK-43, TSK-44
+
+**Criterios de Aceptación:**
+
+```
+Given todo el código de Sprint 8 está integrado
+When se ejecuta `npx tsc --noEmit` en backend/
+Then compila sin errores
+
+When se ejecuta `npm run build` en app/
+Then genera bundle sin errores ni warnings críticos
+
+Given el sistema corre localmente (backend + frontend)
+When el Scrum Master ejecuta el flujo completo:
+  1. Login admin → Dashboard → ver KPIs
+  2. Escanear QR → Formulario → enviar → ver cliente en dashboard
+  3. Crear reserva → ver en panel admin
+Then todos los flujos funcionan end-to-end sin errores
+
+Given las variables de entorno de WhatsApp están configuradas
+When se envía un formulario QR real
+Then llega el mensaje de bienvenida al WhatsApp del cliente
+```
+
+---
+
+## Mapa de Dependencias
+
+```mermaid
+graph TD
+    TSK41["🤖 TSK-41: Remediación Deuda Técnica<br/>⏱️ 0.5d"] --> TSK42["🤖+🎨 TSK-42: Auth Real FE↔BE<br/>⏱️ 0.5d"]
+    TSK41 --> TSK44["🎨 TSK-44: Formulario QR Mobile<br/>⏱️ 1d"]
+    TSK42 --> TSK43["🎨 TSK-43: Dashboard CRM<br/>⏱️ 2d"]
+    TSK41 --> TSK43
+    TSK41 --> TSK45["🤖+👤 TSK-45: Deploy + Smoke Test<br/>⏱️ 0.5d"]
+    TSK42 --> TSK45
+    TSK43 --> TSK45
+    TSK44 --> TSK45
+```
+
+## Orden de Ejecución
+
+| Paso | TSK | Agente | Descripción | Est. |
+|:---:|:---:|:---:|---|:---:|
+| 1 | **41** | 🤖 Antigravity | Fix race condition, rate limits, tipado, validateParams | 0.5d |
+| 2 | **42** | 🤖 Antigravity | Eliminar mocks auth, conectar API real, extractData() | 0.5d |
+| 3a | **43** | 🎨 Kimi | Dashboard CRM con gráficos y tabla clientes | 2d |
+| 3b | **44** | 🎨 Kimi | Refinar formulario QR mobile (opt-in, animaciones) | 1d |
+| 4 | **45** | 🤖 + 👤 | Build check + smoke test manual E2E | 0.5d |
+
+**Duración total estimada:** 3-4 días (tareas 3a y 3b son paralelas)
+
+---
+
+## Resumen para Scrum Master
+
+> **Sprint 8 = cerrar la brecha.** Tienes un backend excelente (9.0/10) y un frontend con todas las páginas. Lo que falta es:
+> 1. Arreglar las últimas vulnerabilidades del backend (race condition, rate limits)
+> 2. Conectar el frontend al backend real (eliminar mocks)
+> 3. Pulir las 2 interfaces que el usuario final toca directamente: el Dashboard CRM y el Formulario QR
+> 4. Validar que todo funciona end-to-end antes de deploy
+>
+> Después de Sprint 8, el proyecto está listo para **producción** y para iniciar **Fase 2 del CRM** (reactivación, campañas masivas, segmentación).

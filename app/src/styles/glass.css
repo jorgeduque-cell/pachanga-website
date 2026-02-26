@@ -1,0 +1,327 @@
+/**
+ * Glassmorphism Utilities - Pachanga y Pochola
+ * Sprint 4: Rediseño Premium
+ */
+
+@layer components {
+  /* ========================================
+     BASE GLASS COMPONENTS
+     ======================================== */
+  
+  /**
+   * Glass Card - Base glassmorphism card
+   * Usage: <div class="glass-card">...</div>
+   */
+  .glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    transition: all var(--duration-normal) var(--ease-out);
+  }
+  
+  .glass-card:hover {
+    background: var(--glass-bg-hover);
+    border-color: var(--glass-border-strong);
+    box-shadow: var(--shadow-elevated);
+  }
+  
+  .glass-card:active {
+    background: var(--glass-bg-active);
+  }
+
+  /**
+   * Glass Card Heavy - Stronger blur for modals/overlays
+   */
+  .glass-card-heavy {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur-heavy));
+    -webkit-backdrop-filter: blur(var(--glass-blur-heavy));
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-2xl);
+  }
+
+  /**
+   * Glass Nav - For header/navigation
+   */
+  .glass-nav {
+    background: rgba(5, 5, 5, 0.8);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-bottom: 1px solid var(--glass-border);
+  }
+
+  /**
+   * Glass Modal - For fullscreen modals
+   */
+  .glass-modal {
+    background: rgba(10, 10, 10, 0.95);
+    backdrop-filter: blur(var(--glass-blur-heavy));
+    -webkit-backdrop-filter: blur(var(--glass-blur-heavy));
+  }
+
+  /**
+   * Glass Tooltip - For tooltips and popovers
+   */
+  .glass-tooltip {
+    background: rgba(26, 26, 26, 0.95);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+  }
+
+  /**
+   * Glass Input - For form inputs
+   */
+  .glass-input {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    transition: all var(--duration-fast) var(--ease-out);
+  }
+  
+  .glass-input:hover {
+    background: var(--glass-bg-hover);
+    border-color: var(--glass-border-strong);
+  }
+  
+  .glass-input:focus {
+    background: var(--glass-bg-active);
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 0 3px var(--accent-gold-glow);
+    outline: none;
+  }
+  
+  .glass-input::placeholder {
+    color: var(--text-muted);
+  }
+
+  /**
+   * Glass Button - For buttons with glass effect
+   */
+  .glass-btn {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    transition: all var(--duration-fast) var(--ease-out);
+  }
+  
+  .glass-btn:hover {
+    background: var(--glass-bg-hover);
+    border-color: var(--accent-gold);
+    box-shadow: var(--shadow-glow-gold);
+  }
+
+  /* ========================================
+     GLOW EFFECTS
+     ======================================== */
+  
+  .glow-gold {
+    box-shadow: var(--shadow-glow-gold);
+  }
+  
+  .glow-red {
+    box-shadow: var(--shadow-glow-red);
+  }
+  
+  .glow-fire {
+    box-shadow: var(--shadow-glow-fire);
+  }
+  
+  .glow-text-gold {
+    text-shadow: 0 0 10px var(--accent-gold-glow),
+                 0 0 20px var(--accent-gold-glow),
+                 0 0 40px var(--accent-gold-glow);
+  }
+  
+  .glow-text-red {
+    text-shadow: 0 0 10px var(--accent-red-glow),
+                 0 0 20px var(--accent-red-glow),
+                 0 0 40px var(--accent-red-glow);
+  }
+
+  /* ========================================
+     PULSE ANIMATIONS
+     ======================================== */
+  
+  .pulse-gold {
+    animation: pulseGold 2s ease-in-out infinite;
+  }
+  
+  .pulse-red {
+    animation: pulseRed 2s ease-in-out infinite;
+  }
+  
+  .pulse-ring {
+    position: relative;
+  }
+  
+  .pulse-ring::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: inherit;
+    border: 2px solid var(--accent-gold);
+    animation: pulseRing 2s ease-out infinite;
+    opacity: 0;
+  }
+
+  /* ========================================
+     GRADIENT TEXT
+     ======================================== */
+  
+  .text-gradient-gold {
+    background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-light) 50%, var(--accent-gold) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .text-gradient-fire {
+    background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-fire) 50%, var(--accent-red) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ========================================
+     BACKGROUND GRADIENTS
+     ======================================== */
+  
+  .bg-gradient-radial {
+    background: radial-gradient(ellipse at center, var(--bg-surface) 0%, var(--bg-base) 70%, var(--bg-void) 100%);
+  }
+  
+  .bg-gradient-dark {
+    background: linear-gradient(180deg, var(--bg-void) 0%, var(--bg-base) 50%, var(--bg-surface) 100%);
+  }
+
+  /* ========================================
+     INTERACTIVE STATES
+     ======================================== */
+  
+  .hover-lift {
+    transition: transform var(--duration-normal) var(--ease-out);
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-4px);
+  }
+  
+  .hover-glow:hover {
+    box-shadow: var(--shadow-glow-gold);
+  }
+  
+  .active-scale:active {
+    transform: scale(0.98);
+  }
+
+  /* ========================================
+     SCROLLBAR STYLING
+     ======================================== */
+  
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--glass-border) transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: var(--glass-border);
+    border-radius: var(--radius-full);
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: var(--glass-border-strong);
+  }
+}
+
+/* ========================================
+   KEYFRAME ANIMATIONS
+   ======================================== */
+
+@keyframes pulseGold {
+  0%, 100% {
+    box-shadow: 0 0 5px var(--accent-gold-glow),
+                0 0 10px var(--accent-gold-glow);
+  }
+  50% {
+    box-shadow: 0 0 15px var(--accent-gold-glow),
+                0 0 30px var(--accent-gold-glow);
+  }
+}
+
+@keyframes pulseRed {
+  0%, 100% {
+    box-shadow: 0 0 5px var(--accent-red-glow),
+                0 0 10px var(--accent-red-glow);
+  }
+  50% {
+    box-shadow: 0 0 15px var(--accent-red-glow),
+                0 0 30px var(--accent-red-glow);
+  }
+}
+
+@keyframes pulseRing {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+@layer utilities {
+  .animate-shimmer {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.05) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+  
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .touch-target {
+    min-height: 48px;
+    min-width: 48px;
+  }
+  
+  .tap-highlight-transparent {
+    -webkit-tap-highlight-color: transparent;
+  }
+}

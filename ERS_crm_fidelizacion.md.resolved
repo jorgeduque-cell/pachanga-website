@@ -1,0 +1,449 @@
+# ERS — Sistema CRM y Fidelización: Automatización WhatsApp
+**Versión:** 1.0 · **Fecha:** 25 Feb 2026 · **Proyecto:** Pachanga y Pochola
+
+---
+
+## 1. Resumen Ejecutivo
+
+**¿Qué es?** Sistema integrado de CRM (Customer Relationship Management) dentro de la plataforma Pachanga que captura datos de clientes via QR en mesas, los almacena en PostgreSQL (mismo que ya usamos), automatiza mensajería WhatsApp (bienvenida + cumpleaños) y ofrece un dashboard de control al admin con reportes y métricas.
+
+**¿Qué reemplaza?**
+- ❌ Google Sheets / Airtable → PostgreSQL propio (ya existente)
+- ❌ Tally.so / Typeform → Formulario propio mobile-first estilo Pachanga
+- ❌ Webhooks externos → Rutas internas del backend Express
+- ❌ Automatizaciones externas → Cron jobs internos con `node-cron`
+
+**¿Por qué integrado?** Un solo codebase = un solo deploy, cero costos de SaaS intermediarios, datos unificados (reservas + CRM), dashboard centralizado en `/admin`.
+
+---
+
+## 2. Arquitectura de Alto Nivel
+
+```mermaid
+graph LR
+    subgraph Cliente["🧑 Cliente en el Bar"]
+        QR["📱 Escanea QR"] --> Form["Formulario Mobile"]
+    end
+
+    subgraph Backend["⚙️ Backend Express"]
+        Form -->|POST /api/crm/capture| CRM["CRM Service"]
+        CRM -->|Guarda| DB[(PostgreSQL)]
+        CRM -->|Envía| WA["WhatsApp Service"]
+        WA -->|API Call| Meta["WhatsApp Cloud API"]
+        Meta -->|Webhook| WH["Webhook Handler"]
+        WH --> DB
+
+        Cron["⏰ Cron Jobs"] -->|11:00 AM| BDAY["Birthday Engine"]
+        BDAY --> DB
+        BDAY --> WA
+    end
+
+    subgraph Admin["🖥️ Dashboard Admin"]
+        Dash["Analytics"] --> DB
+    end
+```
+
+---
+
+## 3. Modelos de Datos (Prisma)
+
+### 3.1 Nuevos modelos a agregar al [schema.prisma](file:///c:/Users/LENOVO%20CORP/Proyecto%20Pachanga/backend/prisma/schema.prisma)
+
+```prisma
+enum CustomerSource {
+  QR_SCAN       // Escaneó QR en el bar
+  RESERVATION   // Hizo reserva online
+  MANUAL        // Admin lo registró manual
+}
+
+enum MessageStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum MessageType {
+  WELCOME
+  BIRTHDAY
+  PROMO
+  REACTIVATION
+}
+
+model Customer {
+  id            String          @id @default(uuid())
+  name          String
+  phone         String          @unique  // +573219992719 (E.164 format)
+  birthDate     DateTime?       @map("birth_date") @db.Date
+  rating        Int?            // 1-5 estrellas del servicio
+  source        CustomerSource  @default(QR_SCAN)
+  totalVisits   Int             @default(1) @map("total_visits")
+  lastVisitAt   DateTime        @default(now()) @map("last_visit_at")
+  optIn         Boolean         @default(true) @map("opt_in")
+  notes         String?
+  isActive      Boolean         @default(true) @map("is_active")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  messages      WhatsAppMessage[]
+  interactions  Interaction[]
+
+  @@index([phone])
+  @@index([birthDate])
+  @@index([lastVisitAt])
+  @@map("customers")
+}
+
+model Interaction {
+  id          String   @id @default(uuid())
+  customerId  String   @map("customer_id")
+  customer    Customer @relation(fields: [customerId], references: [id])
+  type        String   // "visit", "qr_scan", "reservation", "birthday_redeemed"
+  metadata    Json?    // { tableId, formData, etc. }
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([customerId])
+  @@index([createdAt])
+  @@map("interactions")
+}
+
+model WhatsAppMessage {
+  id          String        @id @default(uuid())
+  customerId  String        @map("customer_id")
+  customer    Customer      @relation(fields: [customerId], references: [id])
+  type        MessageType
+  templateName String       @map("template_name")
+  status      MessageStatus @default(QUEUED)
+  waMessageId String?       @map("wa_message_id") // ID devuelto por Meta
+  sentAt      DateTime?     @map("sent_at")
+  deliveredAt DateTime?     @map("delivered_at")
+  readAt      DateTime?     @map("read_at")
+  errorCode   String?       @map("error_code")
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  @@index([customerId])
+  @@index([type, status])
+  @@index([sentAt])
+  @@map("whatsapp_messages")
+}
+
+model CrmConfig {
+  id        String   @id @default(uuid())
+  key       String   @unique  // "birthday_min_group", "welcome_template", etc.
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("crm_config")
+}
+```
+
+### 3.2 Relación con modelos existentes
+
+| Modelo existente | Relación | Notas |
+|---|---|---|
+| `Reservation.customerPhone` | → `Customer.phone` | Se puede vincular automáticamente al crear reserva |
+| [User](file:///c:/Users/LENOVO%20CORP/Proyecto%20Pachanga/backend/src/types/express.d.ts#5-11) (admin) | opera el dashboard CRM | Sin relación directa, usa JWT existente |
+
+> [!IMPORTANT]
+> No se agrega FK directa de [Reservation](file:///c:/Users/LENOVO%20CORP/Proyecto%20Pachanga/app/src/types/reservation.types.ts#5-19) → `Customer` para mantener backward compatibility. La vinculación es lógica por `phone`.
+
+---
+
+## 4. Requisitos Funcionales
+
+### RF-01: Formulario QR Mobile — Captura de Datos
+
+```
+Given el mesero entrega la cuenta con QR impreso
+When el cliente escanea el QR con su cámara
+Then abre en su navegador /feedback?qr=MESA_P1 (sin app, sin login)
+And ve un formulario ultra corto estilo Pachanga (dark theme, glass):
+  1. "¿Cómo la pasaste?" → 5 estrellas tocables (obligatorio)
+  2. "Tu nombre" → input text (obligatorio)
+  3. "Tu WhatsApp" → input tel con picker de código país (obligatorio)
+  4. "¿Cuándo cumples?" → date picker (obligatorio)
+And al enviar, ve animación de check + "¡Tu shot de cortesía está listo!"
+And NO requiere registrarse ni crear cuenta
+```
+
+**Ruta:** `GET /feedback?qr={tableName}` — Página pública, zero auth
+
+**Asignación:**
+- 🤖 Antigravity: endpoint `POST /api/crm/capture`, validación Zod, servicio CRM
+- 🎨 Kimi Code: formulario mobile-first dark theme con glass components
+
+---
+
+### RF-02: Flujo Bienvenida — WhatsApp Automático
+
+```
+Given un cliente envía el formulario exitosamente
+When el backend guarda el perfil en Customer
+Then envía mensaje WhatsApp template "bienvenida_pachanga":
+  "¡Hola {nombre}! 🎶 Gracias por visitarnos en Pachanga y Pochola.
+  Tu shot de cortesía te espera en la barra. Muéstrale este mensaje al bartender. 🥃
+  ¡Nos vemos pronto! 🔥"
+And registra el mensaje en WhatsAppMessage con status QUEUED → SENT
+And crea una Interaction tipo "qr_scan" con metadata { tableName }
+```
+
+**WhatsApp Template requerido (pre-aprobar en Meta):**
+
+| Campo | Valor |
+|---|---|
+| Nombre | `bienvenida_pachanga` |
+| Categoría | `UTILITY` (confirmación de servicio) |
+| Idioma | [es](file:///c:/Users/LENOVO%20CORP/Proyecto%20Pachanga/backend/src/modules/auth/auth.controller.ts#38-53) |
+| Header | Ninguno |
+| Body | `¡Hola {{1}}! 🎶 Gracias por visitarnos en Pachanga y Pochola. Tu regalo de cortesía te espera. Muéstrale este mensaje al bartender. 🥃 ¡Nos vemos pronto! 🔥` |
+| Variables | `{{1}}` = customerName |
+
+---
+
+### RF-03: Motor de Cumpleaños — Cron Diario
+
+```
+Given es un día cualquiera a las 11:00 AM
+When el cron job se ejecuta
+Then consulta SELECT * FROM customers
+     WHERE EXTRACT(MONTH FROM birth_date) = EXTRACT(MONTH FROM CURRENT_DATE)
+     AND EXTRACT(DAY FROM birth_date) = EXTRACT(DAY FROM CURRENT_DATE)
+     AND opt_in = true AND is_active = true
+And para cada cumpleañero, envía mensaje WhatsApp template "cumpleanos_pachanga":
+  "¡Feliz cumpleaños {nombre}! 🎂🎉
+  Hoy Pachanga y Pochola te regala una BOTELLA
+  si vienes con 4+ amigos esta noche.
+  Reserva ahora: {link_reservas}
+  ¡La rumba te espera! 🔥"
+And registra cada mensaje y crea Interaction tipo "birthday_greeting"
+```
+
+**Template requerido:**
+
+| Campo | Valor |
+|---|---|
+| Nombre | `cumpleanos_pachanga` |
+| Categoría | `MARKETING` |
+| Body | `¡Feliz cumpleaños {{1}}! 🎂🎉 Hoy Pachanga y Pochola te regala una BOTELLA si vienes con 4+ amigos esta noche. Reserva: {{2}} ¡La rumba te espera! 🔥` |
+| Variables | `{{1}}` = name, `{{2}}` = reservas URL |
+
+---
+
+### RF-04: Dashboard Admin — CRM Control Panel
+
+```
+Given el admin navega a /admin/crm (autenticado)
+When la página carga
+Then ve un dashboard con:
+  1. KPIs principales (cards glassmorphism):
+     - Total clientes
+     - Clientes nuevos este mes
+     - Tasa de opt-in (%)
+     - Cumpleaños hoy/esta semana
+     - Mensajes enviados este mes
+  2. Tabla de clientes (búsqueda, filtros, paginación):
+     - Nombre, Teléfono, Rating, Fecha cumple, Visitas, Último contacto
+     - Acciones: Ver detalle, Desactivar, Enviar mensaje manual
+  3. Gráficos (Chart.js o Recharts):
+     - Clientes nuevos por mes (barras)
+     - Rating promedio semanal (línea)
+     - Mensajes por estado (pie)
+  4. Log de mensajes WhatsApp:
+     - Listado con status (ENVIADO/ENTREGADO/LEÍDO/FALLIDO)
+     - Filtros por tipo (WELCOME/BIRTHDAY/PROMO)
+  5. Configuración:
+     - Mínimo de acompañantes para cumpleaños (default: 4)
+     - Texto del incentivo QR
+     - Activar/desactivar cron de cumpleaños
+```
+
+**Asignación:**
+- 🤖 Antigravity: endpoints API protegidos con JWT/ADMIN
+- 🎨 Kimi Code: dashboard dark theme con gráficos
+
+---
+
+### RF-05: Webhook Incoming — Respuestas de Clientes
+
+```
+Given un cliente responde al mensaje de WhatsApp
+When Meta envía POST al webhook /api/whatsapp/webhook
+Then el sistema:
+  1. Valida la firma del webhook (HMAC SHA256)
+  2. Actualiza status del mensaje (delivered → read)
+  3. Registra la respuesta como Interaction
+  4. NO responde automáticamente (atención humana)
+  5. Opcional: notifica al admin via WebSocket o email
+```
+
+---
+
+### RF-06: Vinculación Automática Reserva → Customer
+
+```
+Given un cliente hace una reserva con teléfono "3219992719"
+When el backend procesa la reserva
+Then busca Customer con phone LIKE "%3219992719"
+If existe → incrementa totalVisits, actualiza lastVisitAt
+If NO existe → crea Customer con source: RESERVATION
+And crea Interaction tipo "reservation" linkeado al customer
+```
+
+---
+
+## 5. Requisitos No Funcionales
+
+| Categoría | Requisito |
+|---|---|
+| **Seguridad** | Webhook verificado con `x-hub-signature-256` (HMAC SHA256) |
+| **Seguridad** | Variables de entorno: `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID`, `WHATSAPP_VERIFY_TOKEN` |
+| **Seguridad** | Rate limiting en `/api/crm/capture`: 5 req/min por IP |
+| **Seguridad** | Teléfono normalizado a E.164 (+573XXX) con validación Zod regex |
+| **Rendimiento** | Envío WhatsApp asíncrono (no bloquea respuesta HTTP) |
+| **Rendimiento** | Dashboard paginado (max 50 registros por página) |
+| **Escalabilidad** | Cron job idempotente (marca cumpleañeros procesados para evitar duplicados) |
+| **Compliance** | Opt-in explícito: checkbox "Acepto recibir mensajes por WhatsApp" |
+| **Compliance** | Botón "Dejar de recibir mensajes" en dashboard admin |
+
+---
+
+## 6. Stack Tecnológico
+
+| Capa | Tecnología | ¿Ya existe? |
+|---|---|:---:|
+| Base de datos | PostgreSQL + Prisma | ✅ |
+| Backend | Express + TypeScript | ✅ |
+| Autenticación | JWT (auth module existente) | ✅ |
+| Validación | Zod | ✅ |
+| WhatsApp | **WhatsApp Cloud API** (Meta) | 🆕 |
+| HTTP Client | Axios (ya en deps frontend) | 🆕 Backend |
+| Cron Jobs | **`node-cron`** | 🆕 |
+| Dashboard charts | **Recharts** (React) | 🆕 |
+| QR Generator | **`qrcode`** npm package | 🆕 |
+
+---
+
+## 7. Módulos Backend (Nuevos)
+
+### 7.1 Módulo CRM (`modules/crm/`)
+
+| Archivo | Responsabilidad |
+|---|---|
+| `crm.service.ts` | CRUD Customers, captura formulario, vinculación con reservas |
+| `crm.controller.ts` | Endpoints: capture, getAll, getById, update, deactivate |
+| `crm.routes.ts` | `POST /capture` (público), `GET /` y `PATCH /:id` (admin) |
+| `crm.schemas.ts` | Validaciones Zod: captureSchema, updateCustomerSchema |
+
+### 7.2 Módulo WhatsApp (`modules/whatsapp/`)
+
+| Archivo | Responsabilidad |
+|---|---|
+| `whatsapp.service.ts` | Envío de templates via Cloud API, formateo E.164 |
+| `whatsapp.controller.ts` | Webhook verification + incoming message handler |
+| `whatsapp.routes.ts` | `GET /webhook` (verify), `POST /webhook` (incoming) |
+| `whatsapp.templates.ts` | Configuración de templates: nombre, variables, category |
+
+### 7.3 Módulo Analytics (`modules/analytics/`)
+
+| Archivo | Responsabilidad |
+|---|---|
+| `analytics.service.ts` | KPIs, gráficos, reportes agregados |
+| `analytics.controller.ts` | Endpoints: dashboard, charts, export |
+| `analytics.routes.ts` | `GET /dashboard`, `GET /charts/:type`, `GET /export` |
+
+### 7.4 Cron Jobs (`lib/cron/`)
+
+| Archivo | Responsabilidad |
+|---|---|
+| `birthday-engine.ts` | Cron 11:00 AM: buscar cumpleañeros, enviar WhatsApp |
+| `reactivation-engine.ts` | (Fase 2) Cron semanal: clientes sin visitar > 30 días |
+
+---
+
+## 8. Endpoints API
+
+### Públicos (sin auth)
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| `POST` | `/api/crm/capture` | Recibe formulario QR, guarda customer, envía bienvenida |
+| `GET` | `/api/whatsapp/webhook` | Verificación de webhook Meta |
+| `POST` | `/api/whatsapp/webhook` | Recibe eventos de WhatsApp |
+
+### Admin (JWT + ADMIN role)
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| `GET` | `/api/crm/customers` | Lista paginada + filtros + búsqueda |
+| `GET` | `/api/crm/customers/:id` | Detalle con historial |
+| `PATCH` | `/api/crm/customers/:id` | Editar opt-in, notas, desactivar |
+| `GET` | `/api/analytics/dashboard` | KPIs principales |
+| `GET` | `/api/analytics/charts/:type` | Datos para gráficos |
+| `POST` | `/api/crm/send-message` | Enviar mensaje manual a un cliente |
+| `GET` | `/api/crm/messages` | Log de mensajes con filtros |
+| `GET/PATCH` | `/api/crm/config` | Configuración del CRM |
+
+---
+
+## 9. Variables de Entorno Nuevas
+
+```env
+# WhatsApp Cloud API
+WHATSAPP_TOKEN=EAAxxxxxxxxx          # System User Token (permanente)
+WHATSAPP_PHONE_ID=123456789012345    # Phone Number ID de Meta
+WHATSAPP_BUSINESS_ID=987654321       # Business Account ID
+WHATSAPP_VERIFY_TOKEN=pachanga_2026  # Token para webhook verification
+WHATSAPP_API_VERSION=v21.0           # Versión API Meta
+
+# CRM Config
+CRM_BIRTHDAY_MIN_GROUP=4             # Mínimo acompañantes para botella gratis
+CRM_QR_BASE_URL=https://pachanga.com/feedback
+```
+
+---
+
+## 10. Fases de Implementación
+
+### Fase 1 — MVP (Este Sprint)
+- [x] Modelo Customer + Interaction + WhatsAppMessage + CrmConfig
+- [ ] Servicio CRM (captura, CRUD)
+- [ ] Servicio WhatsApp (envío templates)
+- [ ] Endpoint captura QR (`POST /api/crm/capture`)
+- [ ] Cron cumpleaños (`node-cron`)
+- [ ] Dashboard Admin: KPIs + tabla clientes + log mensajes
+- [ ] Formulario QR mobile (frontend público)
+
+### Fase 2 — Evolución
+- [ ] Motor de reactivación (clientes > 30 días sin visitar)
+- [ ] Campañas promocionales masivas
+- [ ] Segmentación por rating, frecuencia
+- [ ] Generador de QR dinámico por mesa desde admin
+- [ ] Integración con Google Calendar (cumpleaños)
+
+---
+
+## 11. Estimación de Costos WhatsApp
+
+| Concepto | Costo (Jul 2025+) |
+|---|---|
+| Mensaje Utility (bienvenida) | ~$0.005 USD / msg |
+| Mensaje Marketing (cumpleaños) | ~$0.03 USD / msg |
+| 100 clientes/mes × bienvenida | ~$0.50 USD |
+| 8 cumpleaños/mes × felicitación | ~$0.24 USD |
+| **Total mensual estimado** | **< $1 USD** |
+
+> [!TIP]
+> Con volumen bajo (<1000 mensajes/mes), WhatsApp Cloud API es prácticamente gratis. Los primeros 1000 mensajes de servicio/mes son gratis con Meta.
+
+---
+
+## 12. Criterios de Aceptación
+
+- [ ] Escanear QR → formulario carga en < 2s en 4G
+- [ ] Enviar formulario → mensaje WhatsApp llega en < 10s
+- [ ] Dashboard admin muestra KPIs en tiempo real
+- [ ] Cron cumpleaños envía a las 11:00 AM sin duplicados
+- [ ] Webhook recibe status updates de Meta
+- [ ] Rate limiting en captura: 429 tras 5 intentos/min
+- [ ] Teléfono normalizado a E.164 en todos los casos

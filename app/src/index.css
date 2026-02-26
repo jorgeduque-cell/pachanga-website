@@ -1,0 +1,360 @@
+/**
+ * Main Stylesheet - Pachanga y Pochola
+ * Sprint 4: Rediseño Premium
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Montserrat:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* Design System Tokens */
+@import './styles/design-tokens.css';
+
+/* Glassmorphism Utilities */
+@import './styles/glass.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Shadcn/ui Theme Tokens */
+    --background: 0 0% 4%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 0 85% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 45 80% 55%;
+    --secondary-foreground: 0 0% 5%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 45 100% 50%;
+    --accent-foreground: 0 0% 5%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 20%;
+    --input: 0 0% 15%;
+    --ring: 45 100% 50%;
+    --radius: 0.5rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--font-body);
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+    line-height: var(--leading-tight);
+  }
+
+  /* Selection styling */
+  ::selection {
+    background-color: var(--accent-gold);
+    color: var(--text-on-gold);
+  }
+
+  /* Focus visible styling */
+  :focus-visible {
+    outline: 2px solid var(--accent-gold);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* ========================================
+     TYPOGRAPHY
+     ======================================== */
+  
+  .font-heading {
+    font-family: var(--font-heading);
+  }
+
+  .font-body {
+    font-family: var(--font-body);
+  }
+
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+
+  /* ========================================
+     TEXT COLORS
+     ======================================== */
+  
+  .text-primary {
+    color: var(--text-primary);
+  }
+
+  .text-secondary {
+    color: var(--text-secondary);
+  }
+
+  .text-muted {
+    color: var(--text-muted);
+  }
+
+  /* ========================================
+     ACCENT COLORS
+     ======================================== */
+  
+  .text-gold {
+    color: var(--accent-gold);
+  }
+
+  .text-red-passion {
+    color: var(--accent-red);
+  }
+
+  .bg-gold {
+    background-color: var(--accent-gold);
+  }
+
+  .bg-red-passion {
+    background-color: var(--accent-red);
+  }
+
+  /* ========================================
+     BACKGROUNDS
+     ======================================== */
+  
+  .bg-void {
+    background-color: var(--bg-void);
+  }
+
+  .bg-base {
+    background-color: var(--bg-base);
+  }
+
+  .bg-surface {
+    background-color: var(--bg-surface);
+  }
+
+  .bg-elevated {
+    background-color: var(--bg-elevated);
+  }
+
+  /* ========================================
+     BUTTONS
+     ======================================== */
+  
+  .btn-primary {
+    @apply px-8 py-4 font-heading text-lg uppercase tracking-wider
+           bg-[var(--accent-red)] text-white
+           transition-all duration-300
+           hover:bg-[var(--accent-red-light)]
+           hover:shadow-[0_0_30px_rgba(227,27,35,0.4)]
+           active:scale-[0.98];
+  }
+
+  .btn-gold {
+    @apply px-8 py-4 font-heading text-lg uppercase tracking-wider
+           bg-[var(--accent-gold)] text-black
+           transition-all duration-300
+           hover:bg-[var(--accent-gold-light)]
+           hover:shadow-[0_0_30px_rgba(255,215,0,0.4)]
+           active:scale-[0.98];
+  }
+
+  .btn-outline-red {
+    @apply px-8 py-4 font-heading text-lg uppercase tracking-wider
+           border-2 border-[var(--accent-red)] text-[var(--accent-red)]
+           transition-all duration-300
+           hover:bg-[var(--accent-red)] hover:text-white
+           active:scale-[0.98];
+  }
+
+  .btn-outline-gold {
+    @apply px-8 py-4 font-heading text-lg uppercase tracking-wider
+           border-2 border-[var(--accent-gold)] text-[var(--accent-gold)]
+           transition-all duration-300
+           hover:bg-[var(--accent-gold)] hover:text-black
+           active:scale-[0.98];
+  }
+
+  /* ========================================
+     SECTIONS
+     ======================================== */
+  
+  .section-title {
+    @apply text-5xl md:text-6xl lg:text-7xl font-heading text-white text-center;
+  }
+
+  .section-subtitle {
+    @apply text-lg md:text-xl text-[var(--accent-gold)] text-center max-w-2xl mx-auto font-body;
+  }
+
+  /* ========================================
+     GRADIENTS
+     ======================================== */
+  
+  .gradient-text {
+    background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-fire) 50%, var(--accent-red) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .gradient-text-gold {
+    background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-light) 50%, var(--accent-gold) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .bg-gradient-dark {
+    background: linear-gradient(180deg, var(--bg-void) 0%, var(--bg-base) 50%, var(--bg-surface) 100%);
+  }
+
+  .bg-gradient-radial {
+    background: radial-gradient(ellipse at center, var(--bg-surface) 0%, var(--bg-base) 70%, var(--bg-void) 100%);
+  }
+
+  /* ========================================
+     UTILITIES
+     ======================================== */
+  
+  .container-premium {
+    @apply max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .tap-highlight-transparent {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer utilities {
+  /* ========================================
+     ANIMATIONS
+     ======================================== */
+  
+  .animate-fade-in {
+    animation: fadeIn 0.8s var(--ease-out-expo) forwards;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.8s var(--ease-out-expo) forwards;
+  }
+
+  .animate-pulse-slow {
+    animation: pulseSlow 3s ease-in-out infinite;
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  /* Text balance for better typography */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Safe area insets for mobile */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* ========================================
+   KEYFRAME ANIMATIONS
+   ======================================== */
+
+@keyframes fadeIn {
+  from { 
+    opacity: 0; 
+  }
+  to { 
+    opacity: 1; 
+  }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0; 
+    transform: translateY(30px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes pulseSlow {
+  0%, 100% { 
+    opacity: 1; 
+  }
+  50% { 
+    opacity: 0.7; 
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* ========================================
+   SCROLLBAR STYLING
+   ======================================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--glass-border-strong);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--glass-border) var(--bg-surface);
+}
+
+/* ========================================
+   REDUCED MOTION
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
