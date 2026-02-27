@@ -1,12 +1,6 @@
 import { env } from './env.js';
 
 // ─── CORS Origins (single source of truth) ───────────────────
-const parseOrigins = (originString: string | undefined): string[] => {
-  if (!originString || originString === '*') return ['*'];
-  // Soporta múltiples orígenes separados por comas
-  return originString.split(',').map(o => o.trim());
-};
-
 const CORS_ORIGINS: Record<string, string[]> = {
     development: ['http://localhost:3000', 'http://localhost:5173'],
     production: ['https://pachanga-website.vercel.app', 'https://pachanga.com', env.FRONTEND_URL],
