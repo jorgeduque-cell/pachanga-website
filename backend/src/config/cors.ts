@@ -9,9 +9,7 @@ const parseOrigins = (originString: string | undefined): string[] => {
 
 const CORS_ORIGINS: Record<string, string[]> = {
     development: ['http://localhost:3000', 'http://localhost:5173'],
-    production: env.CORS_ORIGIN && env.CORS_ORIGIN !== '*' 
-      ? parseOrigins(env.CORS_ORIGIN) 
-      : [env.FRONTEND_URL, 'https://pachanga-website.vercel.app'],
+    production: ['https://pachanga-website.vercel.app', 'https://pachanga.com', env.FRONTEND_URL],
     test: ['http://localhost:3000'],
 };
 
