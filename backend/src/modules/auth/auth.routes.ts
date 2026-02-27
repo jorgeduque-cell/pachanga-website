@@ -58,9 +58,13 @@ router.get('/setup', async (_req, res) => {
       email: admin.email,
       password: adminPassword
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error en setup:', error);
-    res.status(500).json({ error: 'Error al crear usuario admin' });
+    res.status(500).json({ 
+      error: 'Error al crear usuario admin',
+      details: error.message,
+      code: error.code 
+    });
   }
 });
 
