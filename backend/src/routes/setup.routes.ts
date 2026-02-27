@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { PrismaClient, UserRole } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { exec } from 'child_process';
@@ -9,7 +9,7 @@ const router = Router();
 const prisma = new PrismaClient();
 
 // Endpoint para inicializar la base de datos y crear admin
-router.get('/init-db', async (req, res) => {
+router.get('/init-db', async (_req: Request, res: Response) => {
   try {
     // Ejecutar db push para crear todas las tablas
     console.log('🔄 Sincronizando base de datos...');
@@ -83,6 +83,7 @@ router.get('/init-db', async (req, res) => {
         password: staffPassword
       }
     });
+    return;
 
   } catch (error: any) {
     console.error('❌ Error:', error);
@@ -92,6 +93,7 @@ router.get('/init-db', async (req, res) => {
       details: error.message,
       code: error.code 
     });
+    return;
   }
 });
 
