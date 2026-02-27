@@ -24,7 +24,7 @@ router.get('/me', authenticate, authController.me);
 
 // Endpoint temporal para inicializar usuario admin
 // Solo funciona si no hay usuarios admin en la base de datos
-router.post('/setup', async (_req, res) => {
+router.get('/setup', async (_req, res) => {
   try {
     // Verificar si ya existe un admin
     const existingAdmin = await prisma.user.findFirst({
