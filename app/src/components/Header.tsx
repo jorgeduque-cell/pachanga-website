@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Phone } from 'lucide-react';
+import { Phone, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
 
 const navLinks = [
   { path: '/', label: 'Inicio' },
@@ -30,6 +31,10 @@ export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { isAuthenticated, hasRole } = useAuth();
+  
+  // Verificar si el usuario es admin o staff
+  const isAdmin = isAuthenticated && (hasRole('ADMIN') || hasRole('STAFF'));
 
   useEffect(() => {
     const handleScroll = () => {
@@ -134,6 +139,19 @@ export function Header() {
                 <Phone size={18} />
                 <span className="font-heading text-sm">+57 321 999 2719</span>
               </a>
+
+              {/* Dashboard Admin - Solo visible para admins */}
+              {isAdmin && (
+                <Link to="/admin/dashboard">
+                  <Button 
+                    variant="ghost"
+                    className="text-[var(--accent-gold)] hover:text-[var(--accent-gold)] hover:bg-[var(--accent-gold)]/10"
+                  >
+                    <LayoutDashboard size={18} className="mr-2" />
+                    Admin
+                  </Button>
+                </Link>
+              )}
 
               {/* RESERVAR AHORA con pulse glow permanente */}
               <Link to="/reservas" className="relative">
@@ -243,6 +261,28 @@ export function Header() {
               </div>
 
               <div className="mt-8 pt-8 border-t border-[var(--glass-border)]">
+                {/* Dashboard Admin en móvil */}
+                {isAdmin && (
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: navLinks.length * 0.08 }}
+                    className="mb-4"
+                  >
+                    <Link
+                      to="/admin/dashboard"
+                      className={`flex items-center gap-3 py-3 px-4 font-heading text-lg uppercase tracking-wider transition-all rounded-lg ${
+                        location.pathname.startsWith('/admin')
+                          ? 'bg-[var(--accent-gold)]/20 text-[var(--accent-gold)] border-l-4 border-[var(--accent-gold)]'
+                          : 'text-[var(--accent-gold)] hover:bg-[var(--accent-gold)]/10'
+                      }`}
+                    >
+                      <LayoutDashboard size={20} />
+                      Dashboard Admin
+                    </Link>
+                  </motion.div>
+                )}
+                
                 <a 
                   href="tel:+573219992719" 
                   className="flex items-center gap-3 text-white/80 hover:text-[var(--accent-gold)] transition-colors mb-4"
