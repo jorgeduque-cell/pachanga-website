@@ -206,11 +206,10 @@ router.get('/init-tables', async (_req: Request, res: Response) => {
   try {
     console.log('🔄 Creando mesas...');
     
-    let created = 0;
-    let updated = 0;
+    let count = 0;
     
     for (const tableData of tablesData) {
-      const table = await prisma.table.upsert({
+      await prisma.table.upsert({
         where: { name: tableData.name },
         update: {
           capacity: tableData.capacity,
@@ -221,22 +220,14 @@ router.get('/init-tables', async (_req: Request, res: Response) => {
         },
         create: tableData,
       });
-      
-      // Verificar si fue creado o actualizado
-      const existing = await prisma.table.findUnique({ where: { name: tableData.name } });
-      if (existing && existing.createdAt.getTime() === existing.updatedAt.getTime()) {
-        created++;
-      } else {
-        updated++;
-      }
+      count++;
     }
     
     res.json({
       status: 'success',
       message: 'Mesas creadas/actualizadas',
       total: tablesData.length,
-      created,
-      updated
+      count
     });
     return;
     
