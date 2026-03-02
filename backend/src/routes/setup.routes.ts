@@ -160,11 +160,12 @@ router.get('/init-db', async (_req: Request, res: Response) => {
     });
 
     if (existingAdmin) {
-      return res.json({ 
+      res.json({ 
         status: 'success',
         message: 'Base de datos inicializada',
         admin: { exists: true, email: existingAdmin.email }
       });
+      return;
     }
 
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@pachanga.com';
@@ -199,6 +200,7 @@ router.get('/init-db', async (_req: Request, res: Response) => {
       admin: { exists: true, email: admin.email, password: adminPassword },
       staff: { exists: true, email: staff.email, password: staffPassword }
     });
+    return;
 
   } catch (error: any) {
     console.error('❌ Error:', error);
@@ -207,6 +209,7 @@ router.get('/init-db', async (_req: Request, res: Response) => {
       message: 'Error al inicializar base de datos',
       details: error.message
     });
+    return;
   }
 });
 
@@ -238,6 +241,7 @@ router.get('/init-tables', async (_req: Request, res: Response) => {
       total: tablesData.length,
       count
     });
+    return;
     
   } catch (error: any) {
     console.error('❌ Error:', error);
@@ -246,6 +250,7 @@ router.get('/init-tables', async (_req: Request, res: Response) => {
       message: 'Error al crear mesas',
       details: error.message
     });
+    return;
   }
 });
 
