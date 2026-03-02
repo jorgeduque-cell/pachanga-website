@@ -126,22 +126,22 @@ const tablesData = [
   // Mesas R1-R2
   { name: 'R1', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 22, posY: 15 },
   { name: 'R2', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 22, posY: 30 },
-  // ═══ Mesas Premium P10-P21 en forma de U ═══
-  // Brazo izquierdo (vertical descendente)
-  { name: 'P10', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 28, posY: 20 },
-  { name: 'P11', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 28, posY: 40 },
-  { name: 'P12', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 28, posY: 60 },
-  // Base horizontal del U (P13-P19)
-  { name: 'P13', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 28, posY: 85 },
-  { name: 'P14', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 36, posY: 85 },
-  { name: 'P15', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 44, posY: 85 },
-  { name: 'P16', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 52, posY: 85 },
-  { name: 'P17', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 60, posY: 85 },
-  { name: 'P18', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 68, posY: 85 },
-  { name: 'P19', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 76, posY: 85 },
-  // Brazo derecho (vertical ascendente)
-  { name: 'P20', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 76, posY: 60 },
-  { name: 'P21', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 76, posY: 40 },
+  // ═══ Mesas Premium P10-P21 (DISTRIBUCIÓN EXACTA COMO LA IMAGEN) ═══
+  // Columna izquierda (debajo de R2)
+  { name: 'P10', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 36, posY: 35 },
+  { name: 'P11', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 36, posY: 50 },
+  { name: 'P12', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 36, posY: 65 },
+  { name: 'P13', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 36, posY: 80 },
+  { name: 'P14', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 36, posY: 95 },
+  // Columna derecha (junto a tarima)
+  { name: 'P15', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 74, posY: 20 },
+  { name: 'P16', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 74, posY: 35 },
+  { name: 'P17', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 74, posY: 50 },
+  // Columna derecha-abajo (debajo de P17)
+  { name: 'P18', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 74, posY: 65 },
+  { name: 'P19', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 74, posY: 80 },
+  { name: 'P20', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 74, posY: 95 },
+  { name: 'P21', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 74, posY: 110 },
   // Mesas V31-V35
   { name: 'V31', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 90, posY: 12 },
   { name: 'V32', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 90, posY: 26 },
@@ -381,10 +381,10 @@ router.get('/fix-bar-tables', async (_req: Request, res: Response) => {
   }
 });
 
-// Endpoint para arreglar el piso 2: mesas P en forma de U y eliminar barra
+// Endpoint para arreglar el piso 2: distribución EXACTA como la imagen
 router.get('/fix-floor2', async (_req: Request, res: Response) => {
   try {
-    console.log('🔧 Arreglando piso 2...\n');
+    console.log('🔧 Arreglando piso 2 (distribución exacta)...\n');
 
     // 1. Eliminar barra del piso 2 (mesas W, X, Y, Z del piso 2)
     const deletedBar = await prisma.table.deleteMany({
@@ -395,23 +395,24 @@ router.get('/fix-floor2', async (_req: Request, res: Response) => {
     });
     console.log(`✅ Barra eliminada del piso 2: ${deletedBar.count} mesas`);
 
-    // 2. Reposicionar mesas P10-P21 en forma de U
+    // 2. Reposicionar mesas P10-P21 EXACTAMENTE como en la imagen
+    // Columna izquierda: P10-P14, Columna derecha: P15-P21
     const pTables = [
-      // Brazo izquierdo (vertical descendente)
-      { name: 'P10', posX: 28, posY: 20 },
-      { name: 'P11', posX: 28, posY: 40 },
-      { name: 'P12', posX: 28, posY: 60 },
-      // Base horizontal (P13-P19)
-      { name: 'P13', posX: 28, posY: 85 },
-      { name: 'P14', posX: 36, posY: 85 },
-      { name: 'P15', posX: 44, posY: 85 },
-      { name: 'P16', posX: 52, posY: 85 },
-      { name: 'P17', posX: 60, posY: 85 },
-      { name: 'P18', posX: 68, posY: 85 },
-      { name: 'P19', posX: 76, posY: 85 },
-      // Brazo derecho (vertical ascendente)
-      { name: 'P20', posX: 76, posY: 60 },
-      { name: 'P21', posX: 76, posY: 40 },
+      // Columna izquierda (debajo de R2)
+      { name: 'P10', posX: 36, posY: 35 },
+      { name: 'P11', posX: 36, posY: 50 },
+      { name: 'P12', posX: 36, posY: 65 },
+      { name: 'P13', posX: 36, posY: 80 },
+      { name: 'P14', posX: 36, posY: 95 },
+      // Columna derecha (junto a tarima)
+      { name: 'P15', posX: 74, posY: 20 },
+      { name: 'P16', posX: 74, posY: 35 },
+      { name: 'P17', posX: 74, posY: 50 },
+      // Columna derecha-abajo (debajo de P17)
+      { name: 'P18', posX: 74, posY: 65 },
+      { name: 'P19', posX: 74, posY: 80 },
+      { name: 'P20', posX: 74, posY: 95 },
+      { name: 'P21', posX: 74, posY: 110 },
     ];
 
     let updatedCount = 0;
