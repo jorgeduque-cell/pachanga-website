@@ -11,112 +11,92 @@ const prisma = new PrismaClient();
 // Datos de mesas basados en el mapa real del local
 const tablesData = [
   // ═══════════════════════════════════════════════════════════
-  // PRIMER PISO - Layout exacto según imagen de referencia
+  // PRIMER PISO - MAPEO EXACTO (0-100%)
   // ═══════════════════════════════════════════════════════════
-  // ═══════════════════════════════════════════════════════════
-  // PRIMER PISO - Distribución EXACTA según mapa real
-  // ═══════════════════════════════════════════════════════════
-  // Contenedor: 750px de alto, coordenadas 0-100
-  // Estructura visual exacta del mapa:
+
+  // ─── BARRA COCTÉLES (Izquierda Superior) ───
+  // Forman una línea vertical pegada a la izquierda
+  { name: 'A', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 4, posY: 18 },
+  { name: 'B', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 4, posY: 22 },
+  { name: 'C', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 4, posY: 26 },
+  { name: 'D', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 4, posY: 30 },
+  { name: 'E', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 4, posY: 34 },
+  { name: 'F', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 4, posY: 38 },
+  { name: 'G', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 4, posY: 42 },
+  { name: 'H', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 4, posY: 46 },
+  // I y J hacen la curva ("L") hacia adentro
+  { name: 'I', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 6, posY: 50 },
+  { name: 'J', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 9, posY: 51 },
+
+  // ─── COLUMNA LATERAL IZQUIERDA (V1-V6) ───
+  // Siguen la línea de la barra, en la parte inferior izquierda
+  { name: 'V1', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 5, posY: 58 },
+  { name: 'V2', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 5, posY: 65 },
+  { name: 'V3', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 5, posY: 72 },
+  { name: 'V4', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 5, posY: 79 },
+  { name: 'V5', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 5, posY: 86 },
+  { name: 'V6', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 5, posY: 93 },
+
+  // ─── BLOQUE MESAS GRANDES IZQUIERDA (P1-P5) ───
+  // Columna sólida al lado de la barra
+  { name: 'P1', capacity: 10, zone: TableZone.VIP, floor: 1, posX: 20, posY: 25 },
+  { name: 'P2', capacity: 10, zone: TableZone.VIP, floor: 1, posX: 20, posY: 40 },
+  { name: 'P3', capacity: 10, zone: TableZone.VIP, floor: 1, posX: 20, posY: 55 },
+  { name: 'P4', capacity: 10, zone: TableZone.VIP, floor: 1, posX: 20, posY: 70 },
+  { name: 'P5', capacity: 10, zone: TableZone.VIP, floor: 1, posX: 20, posY: 85 },
+
+  // ─── TARIMA (Espacio Vacío - Referencia Visual) ───
+  // Ocupa aprox posX: 35-70, posY: 0-30. No es una mesa.
+
+  // ─── BLOQUE MESAS GRANDES DERECHA (P6, P7-P9) ───
+  // P6 está aislada arriba a la derecha (junto a tarima)
+  { name: 'P6', capacity: 10, zone: TableZone.VIP, floor: 1, posX: 85, posY: 18 },
   
-  // Columna izquierda (X=8):
-  // - A-J (Y=5 a Y=50): Barra Cocteles
-  // - V1-V6 (Y=58 a Y=90): Debajo de la barra
+  // P7-P9 alineadas abajo a la derecha
+  { name: 'P7', capacity: 10, zone: TableZone.VIP, floor: 1, posX: 85, posY: 55 }, // Alineada con P3
+  { name: 'P8', capacity: 10, zone: TableZone.VIP, floor: 1, posX: 85, posY: 70 }, // Alineada con P4
+  { name: 'P9', capacity: 10, zone: TableZone.VIP, floor: 1, posX: 85, posY: 85 }, // Alineada con P5
+
+  // ─── GRID CENTRAL (V7 - V19) ───
+  // Ubicadas en el centro, ENTRE las columnas de mesas P
+  // Fila 1 (V7-V9)
+  { name: 'V7', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 40, posY: 48 },
+  { name: 'V8', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 52, posY: 48 },
+  { name: 'V9', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 64, posY: 48 },
+
+  // Fila 2 (V11-V13)
+  { name: 'V11', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 40, posY: 60 },
+  { name: 'V12', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 52, posY: 60 },
+  { name: 'V13', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 64, posY: 60 },
+
+  // Fila 3 (V14-V16)
+  { name: 'V14', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 40, posY: 72 },
+  { name: 'V15', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 52, posY: 72 },
+  { name: 'V16', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 64, posY: 72 },
+
+  // Fila 4 (V17-V19)
+  { name: 'V17', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 40, posY: 84 },
+  { name: 'V18', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 52, posY: 84 },
+  { name: 'V19', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 64, posY: 84 },
+
+  // ─── ZONA CURVA DERECHA (K, L, M, N) ───
+  // Hacen un arco convexo rodeando el espacio entre P6 y P7
+  { name: 'K', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 93, posY: 28 },
+  { name: 'L', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 95, posY: 34 },
+  { name: 'M', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 95, posY: 40 },
+  { name: 'N', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 92, posY: 46 },
+
+  // ─── BARRA PRINCIPAL (Footer) ───
+  // Distribuidas horizontalmente en la parte inferior
+  { name: 'O', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 20, posY: 96 }, // Debajo P5
+  { name: 'P', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 30, posY: 96 },
+  { name: 'Q', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 40, posY: 96 }, // Debajo V17
+  { name: 'R', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 50, posY: 96 }, // Debajo V18
+  { name: 'S', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 60, posY: 96 }, // Debajo V18/19
+  { name: 'T', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 70, posY: 96 }, // Debajo V19
+  { name: 'U', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 80, posY: 96 },
+  { name: 'V', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 90, posY: 96 },  // Debajo P9
   
-  // Centro (X=28):
-  // - P1-P5 (Y=15 a Y=75): Columna vertical en el centro
-  
-  // Centro-derecha (X=48, 58, 68):
-  // - V7-V9 al lado de P3
-  // - V11-V13 al lado de P4  
-  // - V14-V16 entre P4 y P5
-  // - V17-V19 al lado de P5
-  
-  // Derecha (X=82):
-  // - P6 (Y=10): Arriba junto a tarima
-  // - P7 (Y=35), P8 (Y=50), P9 (Y=65): Columna vertical
-  
-  // Extrema derecha (X=92):
-  // - K, L, M, N (Y=15 a Y=35): Entre P6 y P7
-  
-  // Abajo (Y=85):
-  // - O-V: Barra principal
-  
-  // ─── BARRA COCTÉLES (A-J) - Columna izquierda arriba ───
-  { name: 'A', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 8, posY: 5 },
-  { name: 'B', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 8, posY: 10 },
-  { name: 'C', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 8, posY: 15 },
-  { name: 'D', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 8, posY: 20 },
-  { name: 'E', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 8, posY: 25 },
-  { name: 'F', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 8, posY: 30 },
-  { name: 'G', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 8, posY: 35 },
-  { name: 'H', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 8, posY: 40 },
-  { name: 'I', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 8, posY: 45 },
-  { name: 'J', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 8, posY: 50 },
-  
-  // ─── V1-V6 - Columna izquierda abajo ───
-  { name: 'V1', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 8, posY: 58 },
-  { name: 'V2', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 8, posY: 65 },
-  { name: 'V3', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 8, posY: 72 },
-  { name: 'V4', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 8, posY: 79 },
-  { name: 'V5', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 8, posY: 86 },
-  { name: 'V6', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 8, posY: 93 },
-  
-  // ─── P1-P5 - Columna CENTRO ───
-  { name: 'P1', capacity: 10, zone: TableZone.VIP, floor: 1, posX: 28, posY: 15 },
-  { name: 'P2', capacity: 10, zone: TableZone.VIP, floor: 1, posX: 28, posY: 30 },
-  { name: 'P3', capacity: 10, zone: TableZone.VIP, floor: 1, posX: 28, posY: 45 },
-  { name: 'P4', capacity: 10, zone: TableZone.VIP, floor: 1, posX: 28, posY: 60 },
-  { name: 'P5', capacity: 10, zone: TableZone.VIP, floor: 1, posX: 28, posY: 75 },
-  
-  // ─── V7-V9 - Al lado derecho de P3 ───
-  { name: 'V7', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 48, posY: 43 },
-  { name: 'V8', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 58, posY: 43 },
-  { name: 'V9', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 68, posY: 43 },
-  
-  // ─── V11-V13 - Al lado derecho de P4 ───
-  { name: 'V11', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 48, posY: 58 },
-  { name: 'V12', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 58, posY: 58 },
-  { name: 'V13', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 68, posY: 58 },
-  
-  // ─── V14-V16 - Entre P4 y P5 ───
-  { name: 'V14', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 48, posY: 68 },
-  { name: 'V15', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 58, posY: 68 },
-  { name: 'V16', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 68, posY: 68 },
-  
-  // ─── V17-V19 - Al lado derecho de P5 ───
-  { name: 'V17', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 48, posY: 78 },
-  { name: 'V18', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 58, posY: 78 },
-  { name: 'V19', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 68, posY: 78 },
-  
-  // ─── P6 - Arriba derecha junto a tarima ───
-  { name: 'P6', capacity: 10, zone: TableZone.VIP, floor: 1, posX: 82, posY: 10 },
-  
-  // ─── K, L, M, N - Columna extrema derecha, entre P6 y P7 ───
-  { name: 'K', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 92, posY: 16 },
-  { name: 'L', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 92, posY: 22 },
-  { name: 'M', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 92, posY: 28 },
-  { name: 'N', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 92, posY: 34 },
-  
-  // ─── P7, P8, P9 - Columna derecha debajo de K,L,M,N ───
-  { name: 'P7', capacity: 10, zone: TableZone.VIP, floor: 1, posX: 82, posY: 40 },
-  { name: 'P8', capacity: 10, zone: TableZone.VIP, floor: 1, posX: 82, posY: 55 },
-  { name: 'P9', capacity: 10, zone: TableZone.VIP, floor: 1, posX: 82, posY: 70 },
-  
-  // ─── BARRA PRINCIPAL (O, Q-U, Ñ, W) - Fila horizontal abajo ───
-  // Nota: P y V fueron renombradas a Ñ y W para evitar conflicto con mesas P premium y V visitante
-  { name: 'O', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 16, posY: 96 },
-  { name: 'Q', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 28, posY: 96 },
-  { name: 'R', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 40, posY: 96 },
-  { name: 'S', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 52, posY: 96 },
-  { name: 'T', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 64, posY: 96 },
-  { name: 'U', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 76, posY: 96 },
-  { name: 'Ñ', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 88, posY: 96 },
-  { name: 'W', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 96, posY: 96 },
-  // SEGUNDO PISO
-  // Mesas V20-V30
-  { name: 'V20', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 6, posY: 8 },
-  { name: 'V21', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 6, posY: 20 },
   // ═══════════════════════════════════════════════════════════
   // SEGUNDO PISO - Layout exacto según imagen (Forma de U/Herradura)
   // ═══════════════════════════════════════════════════════════
@@ -304,61 +284,21 @@ router.get('/init-tables', async (_req: Request, res: Response) => {
   }
 });
 
-// Endpoint para arreglar las mesas de la barra (renombrar P→Ñ, V→W y reposicionar)
+// Endpoint para arreglar las mesas de la barra (reposicionar nada más)
 router.get('/fix-bar-tables', async (_req: Request, res: Response) => {
   try {
     console.log('🔧 Arreglando mesas de la barra...\n');
 
-    // 1. Manejar conflicto: Si Ñ ya existe, borrar la P. Si no, renombrar P→Ñ
-    let pToN = 0;
-    const existingN = await prisma.table.findUnique({ where: { name: 'Ñ' } });
-    if (existingN) {
-      // Ñ ya existe, borrar P si existe
-      const deletedP = await prisma.table.deleteMany({
-        where: { name: 'P', zone: TableZone.BARRA, floor: 1 }
-      });
-      pToN = deletedP.count;
-      console.log(`✅ Ñ ya existe, P eliminada: ${deletedP.count}`);
-    } else {
-      // Renombrar P→Ñ
-      const renamedP = await prisma.table.updateMany({
-        where: { name: 'P', zone: TableZone.BARRA, floor: 1 },
-        data: { name: 'Ñ' }
-      });
-      pToN = renamedP.count;
-      console.log(`✅ Renombradas P → Ñ: ${renamedP.count}`);
-    }
-
-    // 2. Manejar conflicto: Si W ya existe, borrar la V. Si no, renombrar V→W
-    let vToW = 0;
-    const existingW = await prisma.table.findUnique({ where: { name: 'W' } });
-    if (existingW) {
-      // W ya existe, borrar V si existe
-      const deletedV = await prisma.table.deleteMany({
-        where: { name: 'V', zone: TableZone.BARRA, floor: 1 }
-      });
-      vToW = deletedV.count;
-      console.log(`✅ W ya existe, V eliminada: ${deletedV.count}`);
-    } else {
-      // Renombrar V→W
-      const renamedV = await prisma.table.updateMany({
-        where: { name: 'V', zone: TableZone.BARRA, floor: 1 },
-        data: { name: 'W' }
-      });
-      vToW = renamedV.count;
-      console.log(`✅ Renombradas V → W: ${renamedV.count}`);
-    }
-
     // 2. Actualizar posiciones de todas las mesas de la barra
     const barTables = [
-      { name: 'O', posX: 16, posY: 96 },
-      { name: 'Q', posX: 28, posY: 96 },
-      { name: 'R', posX: 40, posY: 96 },
-      { name: 'S', posX: 52, posY: 96 },
-      { name: 'T', posX: 64, posY: 96 },
-      { name: 'U', posX: 76, posY: 96 },
-      { name: 'Ñ', posX: 88, posY: 96 },
-      { name: 'W', posX: 96, posY: 96 },
+      { name: 'O', posX: 20, posY: 96 },
+      { name: 'P', posX: 30, posY: 96 },
+      { name: 'Q', posX: 40, posY: 96 },
+      { name: 'R', posX: 50, posY: 96 },
+      { name: 'S', posX: 60, posY: 96 },
+      { name: 'T', posX: 70, posY: 96 },
+      { name: 'U', posX: 80, posY: 96 },
+      { name: 'V', posX: 90, posY: 96 },
     ];
 
     let updatedCount = 0;
@@ -379,10 +319,8 @@ router.get('/fix-bar-tables', async (_req: Request, res: Response) => {
 
     res.json({
       status: 'success',
-      message: 'Mesas de la barra arregladas',
+      message: 'Mesas de la barra reposicionadas',
       details: {
-        renamedPtoN: pToN,
-        renamedVtoW: vToW,
         repositioned: updatedCount,
         currentBarTables: barraTables.map(t => ({
           name: t.name,
@@ -535,64 +473,63 @@ router.get('/reset-floor1', async (_req: Request, res: Response) => {
   try {
     console.log('🔧 Reseteando Piso 1 según especificación exacta...\n');
 
-    // Definición exacta de todas las mesas del piso 1
+    // Definición exacta de todas las mesas del piso 1 (MAPEO EXACTO)
     const floor1Tables = [
-      // Barra Cocteles (A-J)
-      { name: 'A', posX: 6, posY: 10, zone: TableZone.BARRA, capacity: 2 },
-      { name: 'B', posX: 6, posY: 15, zone: TableZone.BARRA, capacity: 2 },
-      { name: 'C', posX: 6, posY: 20, zone: TableZone.BARRA, capacity: 2 },
-      { name: 'D', posX: 6, posY: 25, zone: TableZone.BARRA, capacity: 2 },
-      { name: 'E', posX: 6, posY: 30, zone: TableZone.BARRA, capacity: 2 },
-      { name: 'F', posX: 6, posY: 35, zone: TableZone.BARRA, capacity: 2 },
-      { name: 'G', posX: 6, posY: 40, zone: TableZone.BARRA, capacity: 2 },
-      { name: 'H', posX: 6, posY: 45, zone: TableZone.BARRA, capacity: 2 },
-      { name: 'I', posX: 8, posY: 50, zone: TableZone.BARRA, capacity: 2 },
-      { name: 'J', posX: 10, posY: 52, zone: TableZone.BARRA, capacity: 2 },
-      // Periqueras V1-V6
-      { name: 'V1', posX: 6, posY: 58, zone: TableZone.SALON, capacity: 4 },
-      { name: 'V2', posX: 6, posY: 65, zone: TableZone.SALON, capacity: 4 },
-      { name: 'V3', posX: 6, posY: 72, zone: TableZone.SALON, capacity: 4 },
-      { name: 'V4', posX: 6, posY: 79, zone: TableZone.SALON, capacity: 4 },
-      { name: 'V5', posX: 6, posY: 86, zone: TableZone.SALON, capacity: 4 },
-      { name: 'V6', posX: 6, posY: 93, zone: TableZone.SALON, capacity: 4 },
-      // Mesas P1-P5
-      { name: 'P1', posX: 16, posY: 20, zone: TableZone.VIP, capacity: 10 },
-      { name: 'P2', posX: 16, posY: 35, zone: TableZone.VIP, capacity: 10 },
-      { name: 'P3', posX: 16, posY: 55, zone: TableZone.VIP, capacity: 10 },
-      { name: 'P4', posX: 16, posY: 70, zone: TableZone.VIP, capacity: 10 },
-      { name: 'P5', posX: 16, posY: 85, zone: TableZone.VIP, capacity: 10 },
-      // Grid Central V7-V9, V11-V13, V14-V16, V17-V19
-      { name: 'V7', posX: 32, posY: 50, zone: TableZone.SALON, capacity: 4 },
-      { name: 'V8', posX: 40, posY: 50, zone: TableZone.SALON, capacity: 4 },
-      { name: 'V9', posX: 48, posY: 50, zone: TableZone.SALON, capacity: 4 },
-      { name: 'V11', posX: 32, posY: 60, zone: TableZone.SALON, capacity: 4 },
-      { name: 'V12', posX: 40, posY: 60, zone: TableZone.SALON, capacity: 4 },
-      { name: 'V13', posX: 48, posY: 60, zone: TableZone.SALON, capacity: 4 },
-      { name: 'V14', posX: 32, posY: 70, zone: TableZone.SALON, capacity: 4 },
-      { name: 'V15', posX: 40, posY: 70, zone: TableZone.SALON, capacity: 4 },
-      { name: 'V16', posX: 48, posY: 70, zone: TableZone.SALON, capacity: 4 },
-      { name: 'V17', posX: 32, posY: 80, zone: TableZone.SALON, capacity: 4 },
-      { name: 'V18', posX: 40, posY: 80, zone: TableZone.SALON, capacity: 4 },
-      { name: 'V19', posX: 48, posY: 80, zone: TableZone.SALON, capacity: 4 },
-      // VIP Derecha: P6 con K, L, M, N
-      { name: 'P6', posX: 76, posY: 12, zone: TableZone.VIP, capacity: 10 },
-      { name: 'K', posX: 76, posY: 22, zone: TableZone.BARRA, capacity: 2 },
-      { name: 'L', posX: 84, posY: 22, zone: TableZone.BARRA, capacity: 2 },
-      { name: 'M', posX: 88, posY: 28, zone: TableZone.BARRA, capacity: 2 },
-      { name: 'N', posX: 88, posY: 36, zone: TableZone.BARRA, capacity: 2 },
-      // P7, P8, P9
-      { name: 'P7', posX: 76, posY: 40, zone: TableZone.VIP, capacity: 10 },
-      { name: 'P8', posX: 76, posY: 55, zone: TableZone.VIP, capacity: 10 },
-      { name: 'P9', posX: 76, posY: 70, zone: TableZone.VIP, capacity: 10 },
-      // Barra Principal: O, Ñ, Q, R, S, T, U, W (P renombrada a Ñ, V renombrada a W)
-      { name: 'O', posX: 16, posY: 96, zone: TableZone.BARRA, capacity: 2 },
-      { name: 'Ñ', posX: 28, posY: 96, zone: TableZone.BARRA, capacity: 2 },
+      // BARRA COCTÉLES (A-J)
+      { name: 'A', posX: 4, posY: 18, zone: TableZone.BARRA, capacity: 2 },
+      { name: 'B', posX: 4, posY: 22, zone: TableZone.BARRA, capacity: 2 },
+      { name: 'C', posX: 4, posY: 26, zone: TableZone.BARRA, capacity: 2 },
+      { name: 'D', posX: 4, posY: 30, zone: TableZone.BARRA, capacity: 2 },
+      { name: 'E', posX: 4, posY: 34, zone: TableZone.BARRA, capacity: 2 },
+      { name: 'F', posX: 4, posY: 38, zone: TableZone.BARRA, capacity: 2 },
+      { name: 'G', posX: 4, posY: 42, zone: TableZone.BARRA, capacity: 2 },
+      { name: 'H', posX: 4, posY: 46, zone: TableZone.BARRA, capacity: 2 },
+      { name: 'I', posX: 6, posY: 50, zone: TableZone.BARRA, capacity: 2 },
+      { name: 'J', posX: 9, posY: 51, zone: TableZone.BARRA, capacity: 2 },
+      // V1-V6
+      { name: 'V1', posX: 5, posY: 58, zone: TableZone.SALON, capacity: 4 },
+      { name: 'V2', posX: 5, posY: 65, zone: TableZone.SALON, capacity: 4 },
+      { name: 'V3', posX: 5, posY: 72, zone: TableZone.SALON, capacity: 4 },
+      { name: 'V4', posX: 5, posY: 79, zone: TableZone.SALON, capacity: 4 },
+      { name: 'V5', posX: 5, posY: 86, zone: TableZone.SALON, capacity: 4 },
+      { name: 'V6', posX: 5, posY: 93, zone: TableZone.SALON, capacity: 4 },
+      // P1-P5
+      { name: 'P1', posX: 20, posY: 25, zone: TableZone.VIP, capacity: 10 },
+      { name: 'P2', posX: 20, posY: 40, zone: TableZone.VIP, capacity: 10 },
+      { name: 'P3', posX: 20, posY: 55, zone: TableZone.VIP, capacity: 10 },
+      { name: 'P4', posX: 20, posY: 70, zone: TableZone.VIP, capacity: 10 },
+      { name: 'P5', posX: 20, posY: 85, zone: TableZone.VIP, capacity: 10 },
+      // Grid Central V7-V19
+      { name: 'V7', posX: 40, posY: 48, zone: TableZone.SALON, capacity: 4 },
+      { name: 'V8', posX: 52, posY: 48, zone: TableZone.SALON, capacity: 4 },
+      { name: 'V9', posX: 64, posY: 48, zone: TableZone.SALON, capacity: 4 },
+      { name: 'V11', posX: 40, posY: 60, zone: TableZone.SALON, capacity: 4 },
+      { name: 'V12', posX: 52, posY: 60, zone: TableZone.SALON, capacity: 4 },
+      { name: 'V13', posX: 64, posY: 60, zone: TableZone.SALON, capacity: 4 },
+      { name: 'V14', posX: 40, posY: 72, zone: TableZone.SALON, capacity: 4 },
+      { name: 'V15', posX: 52, posY: 72, zone: TableZone.SALON, capacity: 4 },
+      { name: 'V16', posX: 64, posY: 72, zone: TableZone.SALON, capacity: 4 },
+      { name: 'V17', posX: 40, posY: 84, zone: TableZone.SALON, capacity: 4 },
+      { name: 'V18', posX: 52, posY: 84, zone: TableZone.SALON, capacity: 4 },
+      { name: 'V19', posX: 64, posY: 84, zone: TableZone.SALON, capacity: 4 },
+      // VIP Derecha
+      { name: 'P6', posX: 85, posY: 18, zone: TableZone.VIP, capacity: 10 },
+      { name: 'K', posX: 93, posY: 28, zone: TableZone.BARRA, capacity: 2 },
+      { name: 'L', posX: 95, posY: 34, zone: TableZone.BARRA, capacity: 2 },
+      { name: 'M', posX: 95, posY: 40, zone: TableZone.BARRA, capacity: 2 },
+      { name: 'N', posX: 92, posY: 46, zone: TableZone.BARRA, capacity: 2 },
+      { name: 'P7', posX: 85, posY: 55, zone: TableZone.VIP, capacity: 10 },
+      { name: 'P8', posX: 85, posY: 70, zone: TableZone.VIP, capacity: 10 },
+      { name: 'P9', posX: 85, posY: 85, zone: TableZone.VIP, capacity: 10 },
+      // Barra Principal (O, P, Q, R, S, T, U, V)
+      { name: 'O', posX: 20, posY: 96, zone: TableZone.BARRA, capacity: 2 },
+      { name: 'P', posX: 30, posY: 96, zone: TableZone.BARRA, capacity: 2 },
       { name: 'Q', posX: 40, posY: 96, zone: TableZone.BARRA, capacity: 2 },
-      { name: 'R', posX: 52, posY: 96, zone: TableZone.BARRA, capacity: 2 },
-      { name: 'S', posX: 64, posY: 96, zone: TableZone.BARRA, capacity: 2 },
-      { name: 'T', posX: 76, posY: 96, zone: TableZone.BARRA, capacity: 2 },
-      { name: 'U', posX: 88, posY: 96, zone: TableZone.BARRA, capacity: 2 },
-      { name: 'W', posX: 96, posY: 96, zone: TableZone.BARRA, capacity: 2 },
+      { name: 'R', posX: 50, posY: 96, zone: TableZone.BARRA, capacity: 2 },
+      { name: 'S', posX: 60, posY: 96, zone: TableZone.BARRA, capacity: 2 },
+      { name: 'T', posX: 70, posY: 96, zone: TableZone.BARRA, capacity: 2 },
+      { name: 'U', posX: 80, posY: 96, zone: TableZone.BARRA, capacity: 2 },
+      { name: 'V', posX: 90, posY: 96, zone: TableZone.BARRA, capacity: 2 },
     ];
 
     let updatedCount = 0;
@@ -626,22 +563,11 @@ router.get('/reset-floor1', async (_req: Request, res: Response) => {
       updatedCount++;
     }
 
-    // Eliminar mesas antiguas que ya no existen (P y V de la barra)
-    const deletedOld = await prisma.table.deleteMany({
-      where: {
-        name: { in: ['P', 'V'] },
-        floor: 1,
-        zone: TableZone.BARRA
-      }
-    });
-    console.log(`🗑️ Mesas antiguas eliminadas: ${deletedOld.count}`);
-
     res.json({
       status: 'success',
       message: 'Piso 1 reseteado según especificación exacta',
       details: {
-        tablesUpdated: updatedCount,
-        oldTablesRemoved: deletedOld.count
+        tablesUpdated: updatedCount
       }
     });
     return;
