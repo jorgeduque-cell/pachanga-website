@@ -126,23 +126,23 @@ const tablesData = [
   // Mesas R1-R2
   { name: 'R1', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 22, posY: 15 },
   { name: 'R2', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 22, posY: 30 },
-  // ═══ Mesas Premium P10-P21 (AJUSTADO) ═══
-  // Columna izquierda (corrida un puesto arriba)
-  { name: 'P10', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 36, posY: 20 },
-  { name: 'P11', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 36, posY: 35 },
-  { name: 'P12', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 36, posY: 50 },
-  { name: 'P13', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 36, posY: 65 },
-  { name: 'P14', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 36, posY: 80 },
-  // Columna derecha (junto a tarima)
-  { name: 'P15', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 74, posY: 20 },
-  { name: 'P16', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 74, posY: 35 },
-  { name: 'P17', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 74, posY: 50 },
-  // Columna derecha-abajo
-  { name: 'P18', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 74, posY: 65 },
-  { name: 'P19', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 74, posY: 80 },
-  // P20 en el medio de P14 y P19
-  { name: 'P20', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 55, posY: 80 },
-  { name: 'P21', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 74, posY: 95 },
+  // ═══ Mesas Premium P10-P21 en FORMA DE U ═══
+  // Brazo izquierdo (vertical)
+  { name: 'P10', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 30, posY: 20 },
+  { name: 'P11', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 30, posY: 35 },
+  { name: 'P12', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 30, posY: 50 },
+  // Base horizontal de la U
+  { name: 'P13', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 30, posY: 65 },
+  { name: 'P14', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 42, posY: 65 },
+  { name: 'P20', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 55, posY: 65 }, // Centro
+  { name: 'P19', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 68, posY: 65 },
+  { name: 'P18', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 80, posY: 65 },
+  // Brazo derecho arriba (vertical)
+  { name: 'P15', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 80, posY: 20 },
+  { name: 'P16', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 80, posY: 35 },
+  { name: 'P17', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 80, posY: 50 },
+  // Brazo derecho abajo
+  { name: 'P21', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 80, posY: 80 },
   // Mesas V31-V35
   { name: 'V31', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 90, posY: 12 },
   { name: 'V32', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 90, posY: 26 },
@@ -396,24 +396,24 @@ router.get('/fix-floor2', async (_req: Request, res: Response) => {
     });
     console.log(`✅ Barra eliminada del piso 2: ${deletedBar.count} mesas`);
 
-    // 2. Reposicionar mesas P10-P21 (AJUSTADO)
+    // 2. Reposicionar mesas P10-P21 en FORMA DE U
     const pTables = [
-      // Columna izquierda (corrida un puesto arriba)
-      { name: 'P10', posX: 36, posY: 20 },
-      { name: 'P11', posX: 36, posY: 35 },
-      { name: 'P12', posX: 36, posY: 50 },
-      { name: 'P13', posX: 36, posY: 65 },
-      { name: 'P14', posX: 36, posY: 80 },
-      // Columna derecha (junto a tarima)
-      { name: 'P15', posX: 74, posY: 20 },
-      { name: 'P16', posX: 74, posY: 35 },
-      { name: 'P17', posX: 74, posY: 50 },
-      // Columna derecha-abajo
-      { name: 'P18', posX: 74, posY: 65 },
-      { name: 'P19', posX: 74, posY: 80 },
-      // P20 en el medio de P14 y P19
-      { name: 'P20', posX: 55, posY: 80 },
-      { name: 'P21', posX: 74, posY: 95 },
+      // Brazo izquierdo (vertical)
+      { name: 'P10', posX: 30, posY: 20 },
+      { name: 'P11', posX: 30, posY: 35 },
+      { name: 'P12', posX: 30, posY: 50 },
+      // Base horizontal
+      { name: 'P13', posX: 30, posY: 65 },
+      { name: 'P14', posX: 42, posY: 65 },
+      { name: 'P20', posX: 55, posY: 65 }, // Centro de la U
+      { name: 'P19', posX: 68, posY: 65 },
+      { name: 'P18', posX: 80, posY: 65 },
+      // Brazo derecho arriba
+      { name: 'P15', posX: 80, posY: 20 },
+      { name: 'P16', posX: 80, posY: 35 },
+      { name: 'P17', posX: 80, posY: 50 },
+      // Brazo derecho abajo
+      { name: 'P21', posX: 80, posY: 80 },
     ];
 
     let updatedCount = 0;
