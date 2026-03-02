@@ -123,15 +123,16 @@ async function main() {
     { name: 'M', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 90, posY: 56 },
     { name: 'N', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 90, posY: 74 },
 
-    // ─── BARRA PRINCIPAL (O-V) - Abajo horizontal, bien distribuidas ───
-    { name: 'O', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 18, posY: 108 },
-    { name: 'P', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 28, posY: 108 },
-    { name: 'Q', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 38, posY: 108 },
-    { name: 'R', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 48, posY: 108 },
-    { name: 'S', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 58, posY: 108 },
-    { name: 'T', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 68, posY: 108 },
-    { name: 'U', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 78, posY: 108 },
-    { name: 'V', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 88, posY: 108 },
+    // ─── BARRA PRINCIPAL (O, Q-U, Ñ, W) - Abajo horizontal, bien distribuidas
+    // Nota: P y V fueron renombradas a Ñ y W para evitar conflicto con mesas P premium y V visitante
+    { name: 'O', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 16, posY: 96 },
+    { name: 'Q', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 28, posY: 96 },
+    { name: 'R', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 40, posY: 96 },
+    { name: 'S', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 52, posY: 96 },
+    { name: 'T', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 64, posY: 96 },
+    { name: 'U', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 76, posY: 96 },
+    { name: 'Ñ', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 88, posY: 96 },
+    { name: 'W', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 96, posY: 96 },
 
     // ═══════════════════════════════════════════════════════════
     // SEGUNDO PISO - Distribución exacta según mapa

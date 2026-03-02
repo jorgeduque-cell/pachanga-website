@@ -100,15 +100,16 @@ const tablesData = [
   { name: 'P8', capacity: 10, zone: TableZone.VIP, floor: 1, posX: 82, posY: 55 },
   { name: 'P9', capacity: 10, zone: TableZone.VIP, floor: 1, posX: 82, posY: 70 },
   
-  // ─── BARRA PRINCIPAL (O-V) - Fila horizontal abajo ───
-  { name: 'O', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 18, posY: 88 },
-  { name: 'P', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 26, posY: 88 },
-  { name: 'Q', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 34, posY: 88 },
-  { name: 'R', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 42, posY: 88 },
-  { name: 'S', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 50, posY: 88 },
-  { name: 'T', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 58, posY: 88 },
-  { name: 'U', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 66, posY: 88 },
-  { name: 'V', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 74, posY: 88 },
+  // ─── BARRA PRINCIPAL (O, Q-U, Ñ, W) - Fila horizontal abajo ───
+  // Nota: P y V fueron renombradas a Ñ y W para evitar conflicto con mesas P premium y V visitante
+  { name: 'O', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 16, posY: 96 },
+  { name: 'Q', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 28, posY: 96 },
+  { name: 'R', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 40, posY: 96 },
+  { name: 'S', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 52, posY: 96 },
+  { name: 'T', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 64, posY: 96 },
+  { name: 'U', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 76, posY: 96 },
+  { name: 'Ñ', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 88, posY: 96 },
+  { name: 'W', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 96, posY: 96 },
   // SEGUNDO PISO
   // Mesas V20-V30
   { name: 'V20', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 6, posY: 8 },
@@ -277,6 +278,79 @@ router.get('/init-tables', async (_req: Request, res: Response) => {
     res.status(500).json({ 
       status: 'error',
       message: 'Error al crear mesas',
+      details: error.message
+    });
+    return;
+  }
+});
+
+// Endpoint para arreglar las mesas de la barra (renombrar P→Ñ, V→W y reposicionar)
+router.get('/fix-bar-tables', async (_req: Request, res: Response) => {
+  try {
+    console.log('🔧 Arreglando mesas de la barra...\n');
+
+    // 1. Renombrar mesas conflictivas (si existen)
+    const renameP = await prisma.table.updateMany({
+      where: { name: 'P', zone: TableZone.BARRA, floor: 1 },
+      data: { name: 'Ñ' }
+    });
+    console.log(`✅ Renombradas P → Ñ: ${renameP.count}`);
+
+    const renameV = await prisma.table.updateMany({
+      where: { name: 'V', zone: TableZone.BARRA, floor: 1 },
+      data: { name: 'W' }
+    });
+    console.log(`✅ Renombradas V → W: ${renameV.count}`);
+
+    // 2. Actualizar posiciones de todas las mesas de la barra
+    const barTables = [
+      { name: 'O', posX: 16, posY: 96 },
+      { name: 'Q', posX: 28, posY: 96 },
+      { name: 'R', posX: 40, posY: 96 },
+      { name: 'S', posX: 52, posY: 96 },
+      { name: 'T', posX: 64, posY: 96 },
+      { name: 'U', posX: 76, posY: 96 },
+      { name: 'Ñ', posX: 88, posY: 96 },
+      { name: 'W', posX: 96, posY: 96 },
+    ];
+
+    let updatedCount = 0;
+    for (const table of barTables) {
+      const result = await prisma.table.updateMany({
+        where: { name: table.name, floor: 1 },
+        data: { posX: table.posX, posY: table.posY }
+      });
+      updatedCount += result.count;
+      console.log(`✅ ${table.name}: posición actualizada (${table.posX}%, ${table.posY}%)`);
+    }
+
+    // 3. Verificar resultado
+    const barraTables = await prisma.table.findMany({
+      where: { floor: 1, zone: TableZone.BARRA },
+      orderBy: { posX: 'asc' }
+    });
+
+    res.json({
+      status: 'success',
+      message: 'Mesas de la barra arregladas',
+      details: {
+        renamedPtoN: renameP.count,
+        renamedVtoW: renameV.count,
+        repositioned: updatedCount,
+        currentBarTables: barraTables.map(t => ({
+          name: t.name,
+          posX: t.posX,
+          posY: t.posY
+        }))
+      }
+    });
+    return;
+
+  } catch (error: any) {
+    console.error('❌ Error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Error al arreglar mesas de la barra',
       details: error.message
     });
     return;
