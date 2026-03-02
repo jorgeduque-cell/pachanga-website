@@ -126,22 +126,23 @@ const tablesData = [
   // Mesas R1-R2
   { name: 'R1', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 22, posY: 15 },
   { name: 'R2', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 22, posY: 30 },
-  // ═══ Mesas Premium P10-P21 (DISTRIBUCIÓN EXACTA COMO LA IMAGEN) ═══
-  // Columna izquierda (debajo de R2)
-  { name: 'P10', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 36, posY: 35 },
-  { name: 'P11', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 36, posY: 50 },
-  { name: 'P12', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 36, posY: 65 },
-  { name: 'P13', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 36, posY: 80 },
-  { name: 'P14', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 36, posY: 95 },
+  // ═══ Mesas Premium P10-P21 (AJUSTADO) ═══
+  // Columna izquierda (corrida un puesto arriba)
+  { name: 'P10', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 36, posY: 20 },
+  { name: 'P11', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 36, posY: 35 },
+  { name: 'P12', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 36, posY: 50 },
+  { name: 'P13', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 36, posY: 65 },
+  { name: 'P14', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 36, posY: 80 },
   // Columna derecha (junto a tarima)
   { name: 'P15', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 74, posY: 20 },
   { name: 'P16', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 74, posY: 35 },
   { name: 'P17', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 74, posY: 50 },
-  // Columna derecha-abajo (debajo de P17)
+  // Columna derecha-abajo
   { name: 'P18', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 74, posY: 65 },
   { name: 'P19', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 74, posY: 80 },
-  { name: 'P20', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 74, posY: 95 },
-  { name: 'P21', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 74, posY: 110 },
+  // P20 en el medio de P14 y P19
+  { name: 'P20', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 55, posY: 80 },
+  { name: 'P21', capacity: 10, zone: TableZone.VIP, floor: 2, posX: 74, posY: 95 },
   // Mesas V31-V35
   { name: 'V31', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 90, posY: 12 },
   { name: 'V32', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 90, posY: 26 },
@@ -395,24 +396,24 @@ router.get('/fix-floor2', async (_req: Request, res: Response) => {
     });
     console.log(`✅ Barra eliminada del piso 2: ${deletedBar.count} mesas`);
 
-    // 2. Reposicionar mesas P10-P21 EXACTAMENTE como en la imagen
-    // Columna izquierda: P10-P14, Columna derecha: P15-P21
+    // 2. Reposicionar mesas P10-P21 (AJUSTADO)
     const pTables = [
-      // Columna izquierda (debajo de R2)
-      { name: 'P10', posX: 36, posY: 35 },
-      { name: 'P11', posX: 36, posY: 50 },
-      { name: 'P12', posX: 36, posY: 65 },
-      { name: 'P13', posX: 36, posY: 80 },
-      { name: 'P14', posX: 36, posY: 95 },
+      // Columna izquierda (corrida un puesto arriba)
+      { name: 'P10', posX: 36, posY: 20 },
+      { name: 'P11', posX: 36, posY: 35 },
+      { name: 'P12', posX: 36, posY: 50 },
+      { name: 'P13', posX: 36, posY: 65 },
+      { name: 'P14', posX: 36, posY: 80 },
       // Columna derecha (junto a tarima)
       { name: 'P15', posX: 74, posY: 20 },
       { name: 'P16', posX: 74, posY: 35 },
       { name: 'P17', posX: 74, posY: 50 },
-      // Columna derecha-abajo (debajo de P17)
+      // Columna derecha-abajo
       { name: 'P18', posX: 74, posY: 65 },
       { name: 'P19', posX: 74, posY: 80 },
-      { name: 'P20', posX: 74, posY: 95 },
-      { name: 'P21', posX: 74, posY: 110 },
+      // P20 en el medio de P14 y P19
+      { name: 'P20', posX: 55, posY: 80 },
+      { name: 'P21', posX: 74, posY: 95 },
     ];
 
     let updatedCount = 0;
