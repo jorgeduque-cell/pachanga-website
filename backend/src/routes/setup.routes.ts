@@ -289,18 +289,45 @@ router.get('/fix-bar-tables', async (_req: Request, res: Response) => {
   try {
     console.log('🔧 Arreglando mesas de la barra...\n');
 
-    // 1. Renombrar mesas conflictivas (si existen)
-    const renameP = await prisma.table.updateMany({
-      where: { name: 'P', zone: TableZone.BARRA, floor: 1 },
-      data: { name: 'Ñ' }
-    });
-    console.log(`✅ Renombradas P → Ñ: ${renameP.count}`);
+    // 1. Manejar conflicto: Si Ñ ya existe, borrar la P. Si no, renombrar P→Ñ
+    let pToN = 0;
+    const existingN = await prisma.table.findUnique({ where: { name: 'Ñ' } });
+    if (existingN) {
+      // Ñ ya existe, borrar P si existe
+      const deletedP = await prisma.table.deleteMany({
+        where: { name: 'P', zone: TableZone.BARRA, floor: 1 }
+      });
+      pToN = deletedP.count;
+      console.log(`✅ Ñ ya existe, P eliminada: ${deletedP.count}`);
+    } else {
+      // Renombrar P→Ñ
+      const renamedP = await prisma.table.updateMany({
+        where: { name: 'P', zone: TableZone.BARRA, floor: 1 },
+        data: { name: 'Ñ' }
+      });
+      pToN = renamedP.count;
+      console.log(`✅ Renombradas P → Ñ: ${renamedP.count}`);
+    }
 
-    const renameV = await prisma.table.updateMany({
-      where: { name: 'V', zone: TableZone.BARRA, floor: 1 },
-      data: { name: 'W' }
-    });
-    console.log(`✅ Renombradas V → W: ${renameV.count}`);
+    // 2. Manejar conflicto: Si W ya existe, borrar la V. Si no, renombrar V→W
+    let vToW = 0;
+    const existingW = await prisma.table.findUnique({ where: { name: 'W' } });
+    if (existingW) {
+      // W ya existe, borrar V si existe
+      const deletedV = await prisma.table.deleteMany({
+        where: { name: 'V', zone: TableZone.BARRA, floor: 1 }
+      });
+      vToW = deletedV.count;
+      console.log(`✅ W ya existe, V eliminada: ${deletedV.count}`);
+    } else {
+      // Renombrar V→W
+      const renamedV = await prisma.table.updateMany({
+        where: { name: 'V', zone: TableZone.BARRA, floor: 1 },
+        data: { name: 'W' }
+      });
+      vToW = renamedV.count;
+      console.log(`✅ Renombradas V → W: ${renamedV.count}`);
+    }
 
     // 2. Actualizar posiciones de todas las mesas de la barra
     const barTables = [
@@ -334,8 +361,8 @@ router.get('/fix-bar-tables', async (_req: Request, res: Response) => {
       status: 'success',
       message: 'Mesas de la barra arregladas',
       details: {
-        renamedPtoN: renameP.count,
-        renamedVtoW: renameV.count,
+        renamedPtoN: pToN,
+        renamedVtoW: vToW,
         repositioned: updatedCount,
         currentBarTables: barraTables.map(t => ({
           name: t.name,
