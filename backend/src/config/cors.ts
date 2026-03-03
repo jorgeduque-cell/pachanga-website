@@ -3,7 +3,12 @@ import { env } from './env.js';
 // ─── CORS Origins (single source of truth) ───────────────────
 const CORS_ORIGINS: Record<string, string[]> = {
     development: ['http://localhost:3000', 'http://localhost:5173'],
-    production: ['https://pachanga-website.vercel.app', 'https://pachanga.com', env.FRONTEND_URL],
+    production: [
+      'https://pachanga-frontend.vercel.app',
+      'https://pachanga-website.vercel.app', 
+      'https://pachanga.com', 
+      env.FRONTEND_URL
+    ],
     test: ['http://localhost:3000'],
 };
 
