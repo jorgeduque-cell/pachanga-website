@@ -1,10 +1,18 @@
 import { useState } from 'react';
-import { Calendar } from 'lucide-react';
+import { Calendar, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateReservation } from '@/hooks/useReservations';
 import { Spinner } from '@/components/ui/spinner';
+
+// Horas disponibles para reservas: 7, 8, 9, 10 PM
+const AVAILABLE_HOURS = [
+  { value: '19:00', label: '7:00 PM' },
+  { value: '20:00', label: '8:00 PM' },
+  { value: '21:00', label: '9:00 PM' },
+  { value: '22:00', label: '10:00 PM' },
+];
 
 export function ReservasSection() {
   const [formData, setFormData] = useState({
@@ -47,7 +55,7 @@ export function ReservasSection() {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData(prev => ({
       ...prev,
       [e.target.name]: e.target.value
@@ -110,15 +118,23 @@ export function ReservasSection() {
               </div>
               <div>
                 <label className="block text-white/80 mb-2 font-body text-sm">Hora</label>
-                <Input 
-                  name="reservationTime"
-                  type="time"
-                  value={formData.reservationTime}
-                  onChange={handleChange}
-                  placeholder="20:00" 
-                  required
-                  className="bg-[#0a0a0a] border-[#333] text-white placeholder:text-white/40 focus:border-[#E31B23]"
-                />
+                <div className="relative">
+                  <select
+                    name="reservationTime"
+                    value={formData.reservationTime}
+                    onChange={handleChange}
+                    required
+                    className="w-full h-10 px-3 rounded-md bg-[#0a0a0a] border border-[#333] text-white appearance-none cursor-pointer focus:border-[#E31B23] focus:outline-none"
+                  >
+                    <option value="">Seleccionar hora</option>
+                    {AVAILABLE_HOURS.map((hour) => (
+                      <option key={hour.value} value={hour.value}>
+                        {hour.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
+                </div>
               </div>
             </div>
             <div>

@@ -6,8 +6,16 @@ import { TableMap } from '@/components/reservas/TableMap';
 import { ReservationForm } from '@/components/reservas/ReservationForm';
 import { ReservationSuccessModal } from '@/components/reservas/ReservationSuccessModal';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, MapPin, Loader2 } from 'lucide-react';
+import { Calendar, Clock, MapPin, Loader2, ChevronDown } from 'lucide-react';
 import type { CreateReservationDTO } from '@/types';
+
+// Horas disponibles para reservas: 7, 8, 9, 10 PM
+const AVAILABLE_HOURS = [
+  { value: '19:00', label: '7:00 PM' },
+  { value: '20:00', label: '8:00 PM' },
+  { value: '21:00', label: '9:00 PM' },
+  { value: '22:00', label: '10:00 PM' },
+];
 
 export function ReservasPage() {
   const [date, setDate] = useState<string>('');
@@ -107,12 +115,21 @@ export function ReservasPage() {
                 <Clock className="w-4 h-4" />
                 Hora
               </label>
-              <input
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="glass-input w-full px-4 py-3 rounded-lg text-white [color-scheme:dark]"
-              />
+              <div className="relative">
+                <select
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className="glass-input w-full px-4 py-3 rounded-lg text-white appearance-none cursor-pointer"
+                >
+                  <option value="" className="bg-[#1a1a1a]">Seleccionar hora</option>
+                  {AVAILABLE_HOURS.map((hour) => (
+                    <option key={hour.value} value={hour.value} className="bg-[#1a1a1a]">
+                      {hour.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50 pointer-events-none" />
+              </div>
             </div>
           </div>
 

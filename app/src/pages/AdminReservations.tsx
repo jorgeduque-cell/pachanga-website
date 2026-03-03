@@ -7,7 +7,8 @@ import {
   Clock,
   MoreHorizontal,
   Calendar,
-  RefreshCw
+  RefreshCw,
+  ChevronDown
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -25,9 +26,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useReservations, useUpdateReservation, useCancelReservation } from '@/hooks/useReservations';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { useReservations, useUpdateReservation, useCancelReservation, useCreateReservation } from '@/hooks/useReservations';
 import { Spinner } from '@/components/ui/spinner';
-import type { ReservationStatus } from '@/types';
+import { toast } from 'sonner';
+import type { ReservationStatus, CreateReservationDTO } from '@/types';
 
 const STATUS_LABELS: Record<ReservationStatus, string> = {
   PENDING: 'Pendiente',
@@ -36,14 +44,35 @@ const STATUS_LABELS: Record<ReservationStatus, string> = {
   COMPLETED: 'Completada',
 };
 
+// Horas disponibles para reservas: 7, 8, 9, 10 PM
+const AVAILABLE_HOURS = [
+  { value: '19:00', label: '7:00 PM' },
+  { value: '20:00', label: '8:00 PM' },
+  { value: '21:00', label: '9:00 PM' },
+  { value: '22:00', label: '10:00 PM' },
+];
+
 export function AdminReservations() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<ReservationStatus | 'todos'>('todos');
+  const [isNewReservationOpen, setIsNewReservationOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  
+  // Form state for new reservation
+  const [newReservation, setNewReservation] = useState<CreateReservationDTO>({
+    customerName: '',
+    customerPhone: '',
+    reservationDate: '',
+    reservationTime: '',
+    partySize: 2,
+  });
   
   const { data: reservationsData, isLoading, refetch } = useReservations({
     search: search || undefined,
     status: statusFilter !== 'todos' ? statusFilter : undefined,
   });
+
+  const createReservation = useCreateReservation();
 
   // Recargar automáticamente cada 30 segundos
   useEffect(() => {
@@ -62,6 +91,38 @@ export function AdminReservations() {
 
   const handleCancel = async (id: string) => {
     await cancelMutation.mutateAsync(id);
+  };
+
+  const handleCreateReservation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCreating(true);
+    
+    try {
+      await createReservation.mutateAsync(newReservation);
+      toast.success('Reserva creada exitosamente');
+      setIsNewReservationOpen(false);
+      setNewReservation({
+        customerName: '',
+        customerPhone: '',
+        reservationDate: '',
+        reservationTime: '',
+        partySize: 2,
+      });
+      refetch();
+    } catch (error) {
+      toast.error('Error al crear la reserva');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleManualRefresh = async () => {
+    try {
+      await refetch();
+      toast.success('Reservas actualizadas');
+    } catch (error) {
+      toast.error('Error al recargar las reservas');
+    }
   };
 
   const getStatusColor = (status: ReservationStatus) => {
@@ -96,14 +157,17 @@ export function AdminReservations() {
         <div className="flex gap-2">
           <Button 
             variant="outline" 
-            onClick={() => refetch()}
+            onClick={handleManualRefresh}
             disabled={isLoading}
             className="border-[#333] bg-[#1a1a1a] text-white hover:bg-[#333]"
           >
             <RefreshCw className={`mr-2 ${isLoading ? 'animate-spin' : ''}`} size={18} />
             Recargar
           </Button>
-          <Button className="btn-primary">
+          <Button 
+            className="btn-primary"
+            onClick={() => setIsNewReservationOpen(true)}
+          >
             <Calendar className="mr-2" size={18} />
             Nueva Reserva
           </Button>
@@ -231,7 +295,7 @@ export function AdminReservations() {
               </p>
               <Button 
                 variant="outline" 
-                onClick={() => refetch()}
+                onClick={handleManualRefresh}
                 disabled={isLoading}
                 className="border-[#333] bg-[#1a1a1a] text-white hover:bg-[#333] mt-4"
               >
@@ -242,6 +306,124 @@ export function AdminReservations() {
           )}
         </CardContent>
       </Card>
+
+      {/* New Reservation Modal */}
+      <Dialog open={isNewReservationOpen} onOpenChange={setIsNewReservationOpen}>
+        <DialogContent className="bg-[#1a1a1a] border-[#333] text-white max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-heading uppercase text-white">
+              Nueva Reserva
+            </DialogTitle>
+          </DialogHeader>
+          
+          <form onSubmit={handleCreateReservation} className="space-y-4 mt-4">
+            <div>
+              <label className="block text-white/80 mb-2 text-sm">Nombre del cliente</label>
+              <Input
+                value={newReservation.customerName}
+                onChange={(e) => setNewReservation({...newReservation, customerName: e.target.value})}
+                placeholder="Juan Pérez"
+                required
+                className="bg-[#0a0a0a] border-[#333] text-white placeholder:text-white/40"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-white/80 mb-2 text-sm">Teléfono</label>
+              <Input
+                value={newReservation.customerPhone}
+                onChange={(e) => setNewReservation({...newReservation, customerPhone: e.target.value})}
+                placeholder="300 123 4567"
+                required
+                className="bg-[#0a0a0a] border-[#333] text-white placeholder:text-white/40"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-white/80 mb-2 text-sm">Fecha</label>
+                <Input
+                  type="date"
+                  value={newReservation.reservationDate}
+                  onChange={(e) => setNewReservation({...newReservation, reservationDate: e.target.value})}
+                  min={new Date().toISOString().split('T')[0]}
+                  required
+                  className="bg-[#0a0a0a] border-[#333] text-white"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-white/80 mb-2 text-sm">Hora</label>
+                <div className="relative">
+                  <select
+                    value={newReservation.reservationTime}
+                    onChange={(e) => setNewReservation({...newReservation, reservationTime: e.target.value})}
+                    required
+                    className="w-full h-10 px-3 rounded-md bg-[#0a0a0a] border border-[#333] text-white appearance-none cursor-pointer"
+                  >
+                    <option value="">Seleccionar</option>
+                    {AVAILABLE_HOURS.map((hour) => (
+                      <option key={hour.value} value={hour.value}>
+                        {hour.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-white/80 mb-2 text-sm">Número de personas</label>
+              <Input
+                type="number"
+                min={1}
+                max={50}
+                value={newReservation.partySize}
+                onChange={(e) => setNewReservation({...newReservation, partySize: parseInt(e.target.value) || 1})}
+                required
+                className="bg-[#0a0a0a] border-[#333] text-white"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-white/80 mb-2 text-sm">Mensaje (opcional)</label>
+              <textarea
+                value={newReservation.message || ''}
+                onChange={(e) => setNewReservation({...newReservation, message: e.target.value})}
+                placeholder="Notas adicionales..."
+                rows={3}
+                className="w-full px-3 py-2 rounded-md bg-[#0a0a0a] border border-[#333] text-white placeholder:text-white/40 resize-none"
+              />
+            </div>
+            
+            <div className="flex gap-3 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsNewReservationOpen(false)}
+                className="flex-1 border-[#333] bg-transparent text-white hover:bg-[#333]"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={isCreating}
+                className="flex-1 btn-primary"
+              >
+                {isCreating ? (
+                  <span className="flex items-center gap-2">
+                    <Spinner className="w-4 h-4" />
+                    Creando...
+                  </span>
+                ) : (
+                  'Crear Reserva'
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

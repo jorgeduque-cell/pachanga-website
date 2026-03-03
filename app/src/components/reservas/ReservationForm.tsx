@@ -14,10 +14,19 @@ import {
   CheckCircle, 
   AlertCircle,
   Armchair,
-  Info
+  Info,
+  ChevronDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CreateReservationDTO } from '@/types';
+
+// Horas disponibles para reservas: 7, 8, 9, 10 PM
+const AVAILABLE_HOURS = [
+  { value: '19:00', label: '7:00 PM' },
+  { value: '20:00', label: '8:00 PM' },
+  { value: '21:00', label: '9:00 PM' },
+  { value: '22:00', label: '10:00 PM' },
+];
 
 const reservationSchema = z.object({
   customerName: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
@@ -235,14 +244,23 @@ export function ReservationForm({
           </FormField>
 
           <FormField label="Hora" icon={Clock} error={errors.reservationTime?.message}>
-            <input
-              type="time"
-              {...register('reservationTime')}
-              className={cn(
-                'glass-input w-full px-4 py-3 rounded-lg text-white [color-scheme:dark]',
-                errors.reservationTime && 'border-[var(--accent-red)]'
-              )}
-            />
+            <div className="relative">
+              <select
+                {...register('reservationTime')}
+                className={cn(
+                  'glass-input w-full px-4 py-3 rounded-lg text-white appearance-none cursor-pointer',
+                  errors.reservationTime && 'border-[var(--accent-red)]'
+                )}
+              >
+                <option value="" className="bg-[#1a1a1a]">Seleccionar hora</option>
+                {AVAILABLE_HOURS.map((hour) => (
+                  <option key={hour.value} value={hour.value} className="bg-[#1a1a1a]">
+                    {hour.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50 pointer-events-none" />
+            </div>
           </FormField>
 
           <FormField label="Personas" icon={Users} error={errors.partySize?.message}>

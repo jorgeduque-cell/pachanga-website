@@ -25,8 +25,8 @@ export const reservationService = {
     if (filters?.page) params.append('page', filters.page.toString());
     if (filters?.limit) params.append('limit', filters.limit.toString());
     
-    const response = await apiClient.get<{ data: PaginatedReservations }>(`/reservations?${params}`);
-    return extractData(response);
+    const response = await apiClient.get<PaginatedReservations>(`/reservations?${params}`);
+    return response.data; // El backend devuelve { data: [...], pagination: {...} } directamente
   },
 
   // Obtener reserva por ID
@@ -61,6 +61,6 @@ export const reservationService = {
   // Obtener estadísticas
   async getStats(): Promise<ReservationStats> {
     const response = await apiClient.get<{ data: ReservationStats }>('/reservations/stats');
-    return extractData(response);
+    return extractData(response); // Este endpoint sí envuelve en { data: ... }
   },
 };

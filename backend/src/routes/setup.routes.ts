@@ -75,16 +75,18 @@ const tablesData = [
   { name: 'P8', capacity: 10, zone: TableZone.VIP, floor: 1, posX: 85, posY: 60 },
   { name: 'P9', capacity: 10, zone: TableZone.VIP, floor: 1, posX: 85, posY: 75 },
 
-  // ─── BARRA PRINCIPAL - Fila horizontal abajo, AL FRENTE de la barra ───
-  // Cambiado posY de 95 a 88 para que estén visualmente arriba de la barra, no sobre ella
-  { name: 'O', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 15, posY: 88 },
-  { name: 'Ñ', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 26, posY: 88 }, // Representa P
-  { name: 'Q', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 37, posY: 88 },
-  { name: 'R', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 48, posY: 88 },
-  { name: 'S', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 59, posY: 88 },
-  { name: 'T', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 70, posY: 88 },
-  { name: 'U', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 81, posY: 88 },
-  { name: 'W', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 92, posY: 88 },  // Representa V
+  // ═══════════════════════════════════════════════════════════
+  // BARRA PRINCIPAL - Coordenadas ajustadas AL FRENTE de la barra
+  // O alineada con V5 (izquierda), mesas más juntas (espaciado 6%)
+  // ═══════════════════════════════════════════════════════════
+  { name: 'O', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 8, posY: 88 },   // Alineada con V5
+  { name: 'Ñ', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 14, posY: 88 },  // P en mapa
+  { name: 'Q', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 20, posY: 88 },
+  { name: 'R', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 26, posY: 88 },
+  { name: 'S', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 32, posY: 88 },
+  { name: 'T', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 38, posY: 88 },
+  { name: 'U', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 44, posY: 88 },
+  { name: 'W', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 50, posY: 88 },  // V en mapa
 
   // ═══════════════════════════════════════════════════════════
   // SEGUNDO PISO - Layout exacto según imagen (Forma de U/Herradura)
