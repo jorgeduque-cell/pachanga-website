@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Search, 
   Filter, 
@@ -6,7 +6,8 @@ import {
   XCircle, 
   Clock,
   MoreHorizontal,
-  Calendar
+  Calendar,
+  RefreshCw
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -39,10 +40,18 @@ export function AdminReservations() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<ReservationStatus | 'todos'>('todos');
   
-  const { data: reservationsData, isLoading } = useReservations({
+  const { data: reservationsData, isLoading, refetch } = useReservations({
     search: search || undefined,
     status: statusFilter !== 'todos' ? statusFilter : undefined,
   });
+
+  // Recargar automáticamente cada 30 segundos
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refetch();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [refetch]);
 
   const updateMutation = useUpdateReservation();
   const cancelMutation = useCancelReservation();
@@ -84,10 +93,21 @@ export function AdminReservations() {
             Gestiona todas las reservas del bar
           </p>
         </div>
-        <Button className="btn-primary">
-          <Calendar className="mr-2" size={18} />
-          Nueva Reserva
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => refetch()}
+            disabled={isLoading}
+            className="border-[#333] bg-[#1a1a1a] text-white hover:bg-[#333]"
+          >
+            <RefreshCw className={`mr-2 ${isLoading ? 'animate-spin' : ''}`} size={18} />
+            Recargar
+          </Button>
+          <Button className="btn-primary">
+            <Calendar className="mr-2" size={18} />
+            Nueva Reserva
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -203,8 +223,21 @@ export function AdminReservations() {
               </table>
             </div>
           ) : (
-            <div className="text-center py-12">
-              <p className="text-white/60">No se encontraron reservas</p>
+            <div className="text-center py-12 space-y-4">
+              <p className="text-white/60 text-lg">No se encontraron reservas</p>
+              <p className="text-white/40 text-sm max-w-md mx-auto">
+                Si acabas de crear una reserva y no aparece, espera unos segundos y recarga la página. 
+                El servidor puede estar despertando del modo sleep.
+              </p>
+              <Button 
+                variant="outline" 
+                onClick={() => refetch()}
+                disabled={isLoading}
+                className="border-[#333] bg-[#1a1a1a] text-white hover:bg-[#333] mt-4"
+              >
+                <RefreshCw className={`mr-2 ${isLoading ? 'animate-spin' : ''}`} size={18} />
+                {isLoading ? 'Cargando...' : 'Recargar reservas'}
+              </Button>
             </div>
           )}
         </CardContent>
