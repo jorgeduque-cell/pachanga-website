@@ -22,7 +22,13 @@ export function ReservasPage() {
     customerName: string;
   } | null>(null);
 
-  const { data: mapData, isLoading: isLoadingMap, error: mapError } = useTableMap(date, time);
+  const { 
+    data: mapData, 
+    isLoading: isLoadingMap, 
+    isFetching: isFetchingMap,
+    error: mapError, 
+    refetch: refetchMap 
+  } = useTableMap(date, time);
   const { mutate: createReservation, isPending: isCreating, error: createError } = useCreateReservation();
 
   const handleSelectTable = (id: string) => {
@@ -132,17 +138,24 @@ export function ReservasPage() {
           >
             {/* Table Map */}
             <div>
-              {isLoadingMap ? (
+              {isLoadingMap || (isFetchingMap && !mapData) ? (
                 <div className="glass-card-heavy p-12 flex flex-col items-center justify-center min-h-[400px]">
                   <Loader2 className="w-8 h-8 animate-spin text-[var(--accent-red)] mb-4" />
-                  <p className="text-white/60">Cargando mapa de mesas...</p>
+                  <p className="text-white/60">
+                    {isFetchingMap && !isLoadingMap 
+                      ? 'Reintentando conexión...' 
+                      : 'Cargando mapa de mesas...'}
+                  </p>
                 </div>
               ) : mapError ? (
                 <div className="glass-card-heavy p-12 text-center min-h-[400px] flex flex-col items-center justify-center">
-                  <p className="text-[var(--accent-red)]">Error al cargar el mapa</p>
+                  <p className="text-[var(--accent-red)] font-medium mb-2">Error al cargar el mapa</p>
+                  <p className="text-white/50 text-sm mb-4 max-w-xs">
+                    {mapError instanceof Error ? mapError.message : 'Error de conexión con el servidor'}
+                  </p>
                   <Button
-                    onClick={() => window.location.reload()}
-                    className="mt-4 btn-primary"
+                    onClick={() => refetchMap()}
+                    className="mt-2 btn-primary"
                   >
                     Reintentar
                   </Button>

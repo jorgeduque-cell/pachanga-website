@@ -9,6 +9,21 @@ export function useTableMap(date: string, time: string) {
     queryFn: () => tableService.getMap(date, time),
     enabled: !!date && !!time, // Solo ejecutar si hay fecha y hora
     staleTime: 30000, // 30 segundos de cache fresca
+    retry: (failureCount, error) => {
+      // Reintentar hasta 3 veces si hay errores de red o timeout
+      if (failureCount >= 3) return false;
+      
+      // Reintentar si es un error de red o timeout
+      const errorMessage = error instanceof Error ? error.message : '';
+      const shouldRetry = 
+        errorMessage.includes('tardando') || 
+        errorMessage.includes('No se pudo conectar') ||
+        errorMessage.includes('timeout') ||
+        errorMessage.includes('network');
+      
+      return shouldRetry;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * (attemptIndex + 1), 5000), // Delay incremental
   });
 }
 

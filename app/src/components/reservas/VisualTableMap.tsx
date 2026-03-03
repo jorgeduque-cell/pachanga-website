@@ -46,18 +46,25 @@ export function VisualTableMap({
     if (name.startsWith('R')) {
       return 'bg-emerald-500/20 hover:bg-emerald-500/30 border-emerald-500/50 cursor-pointer text-emerald-300 hover:shadow-[0_0_20px_rgba(16,185,129,0.3)]';
     }
-    // Letras (Barra) - cyan
+    // Letras (Barra: O, Q, U, Ñ, W, etc.) - cyan
     return 'bg-cyan-500/20 hover:bg-cyan-500/30 border-cyan-500/50 cursor-pointer text-cyan-300 hover:shadow-[0_0_20px_rgba(6,182,212,0.3)]';
   };
 
-  const getTableSize = (name: string) => {
+  const getTableSize = (name: string, floor: number) => {
+    // Mesas P (Premium) - grandes rectangulares
     if (name.startsWith('P')) {
-      return 'w-16 h-12 text-sm'; // Mesas premium grandes (rectangulares)
+      return 'w-16 h-12 text-sm';
     }
+    // Mesas V (Visitantes) y R - redondas medianas
     if (name.startsWith('V') || name.startsWith('R')) {
-      return 'w-11 h-11 text-xs'; // Mesas redondas medianas
+      return 'w-11 h-11 text-xs';
     }
-    return 'w-8 h-8 text-[10px]'; // Letras pequeñas
+    // BARRA PRINCIPAL (O, Ñ, Q, R, S, T, U, W en piso 1) - MÁS PEQUEÑAS
+    if (floor === 1 && ['O','Ñ','Q','S','T','U','W'].includes(name)) {
+      return 'w-7 h-7 text-[9px]'; // ← MÁS PEQUEÑO: 28px para barra principal
+    }
+    // Barra lateral (A-J, K-N) y otras letras
+    return 'w-8 h-8 text-[10px]';
   };
 
   const getTableShape = (name: string) => {
@@ -118,20 +125,22 @@ export function VisualTableMap({
         </div>
       </motion.div>
 
-      {/* BARRA PRINCIPAL - Glass style */}
-      <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2">
-        <div 
-          className="glass-card px-10 py-3 rounded-lg"
-          style={{
-            background: 'linear-gradient(135deg, rgba(227,27,35,0.15), rgba(227,27,35,0.05))',
-            borderColor: 'rgba(227,27,35,0.3)',
-          }}
-        >
-          <span className="text-sm font-heading text-white/90 tracking-wider">
-            BARRA PRINCIPAL
-          </span>
+      {/* BARRA PRINCIPAL - Solo en piso 1 */}
+      {floorNumber === 1 && (
+        <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2">
+          <div 
+            className="glass-card px-10 py-3 rounded-lg"
+            style={{
+              background: 'linear-gradient(135deg, rgba(227,27,35,0.15), rgba(227,27,35,0.05))',
+              borderColor: 'rgba(227,27,35,0.3)',
+            }}
+          >
+            <span className="text-sm font-heading text-white/90 tracking-wider">
+              BARRA PRINCIPAL
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* BARRA COCTÉLES - Glass style (solo piso 1) */}
       {floorNumber === 1 && (
@@ -150,8 +159,10 @@ export function VisualTableMap({
         </div>
       )}
 
-      {/* Mesas posicionadas */}
-      {floorData.tables.map((table, index) => (
+      {/* Mesas posicionadas - Filtrar mesas P y V sueltas (ya fueron renombradas a Ñ y W) */}
+      {floorData.tables
+        .filter((table) => table.name !== 'P' && table.name !== 'V')
+        .map((table, index) => (
         <motion.div
           key={table.id}
           initial={{ opacity: 0, scale: 0 }}
@@ -178,7 +189,7 @@ export function VisualTableMap({
             className={cn(
               'flex items-center justify-center font-bold border-2 transition-all duration-200 backdrop-blur-sm',
               getTableColor(table),
-              getTableSize(table.name),
+              getTableSize(table.name, table.floor),
               getTableShape(table.name)
             )}
             style={{

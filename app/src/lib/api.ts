@@ -20,7 +20,7 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  timeout: 30000, // 30 segundos para dar tiempo al backend de Render de despertar
 });
 
 // Request interceptor para agregar token
@@ -39,10 +39,29 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Manejar timeout específicamente
+    if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+      console.error('Request timeout:', error);
+      return Promise.reject(new Error('El servidor está tardando en responder. Por favor intente nuevamente.'));
+    }
+    
+    // Manejar errores de red (backend no disponible)
+    if (!error.response) {
+      console.error('Network error:', error);
+      return Promise.reject(new Error('No se pudo conectar con el servidor. Verifique su conexión o intente más tarde.'));
+    }
+    
     if (error.response?.status === 401) {
       localStorage.removeItem('auth_token');
       window.location.href = '/admin/login';
     }
+    
+    // Extraer mensaje de error del backend si está disponible
+    const backendMessage = error.response?.data?.error || error.response?.data?.message;
+    if (backendMessage) {
+      return Promise.reject(new Error(backendMessage));
+    }
+    
     return Promise.reject(error);
   }
 );
