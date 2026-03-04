@@ -7,7 +7,7 @@ const DEV_API_URL = 'http://localhost:3001/api';
 const PROD_API_URL = 'https://pachanga-api.onrender.com/api';
 
 // Determinar la URL base según el entorno
-const API_BASE_URL = import.meta.env.VITE_API_URL || 
+const API_BASE_URL = import.meta.env.VITE_API_URL ||
   (import.meta.env.PROD ? PROD_API_URL : DEV_API_URL);
 
 // Helper para extraer data anidada del backend
@@ -41,27 +41,25 @@ apiClient.interceptors.response.use(
   (error) => {
     // Manejar timeout específicamente
     if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
-      console.error('Request timeout:', error);
       return Promise.reject(new Error('El servidor está tardando en responder. Por favor intente nuevamente.'));
     }
-    
+
     // Manejar errores de red (backend no disponible)
     if (!error.response) {
-      console.error('Network error:', error);
       return Promise.reject(new Error('No se pudo conectar con el servidor. Verifique su conexión o intente más tarde.'));
     }
-    
+
     if (error.response?.status === 401) {
       localStorage.removeItem('auth_token');
       window.location.href = '/admin/login';
     }
-    
+
     // Extraer mensaje de error del backend si está disponible
     const backendMessage = error.response?.data?.error || error.response?.data?.message;
     if (backendMessage) {
       return Promise.reject(new Error(backendMessage));
     }
-    
+
     return Promise.reject(error);
   }
 );

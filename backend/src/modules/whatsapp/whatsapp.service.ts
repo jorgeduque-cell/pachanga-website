@@ -6,7 +6,7 @@ import { getTemplateConfig, type TemplateConfig } from './whatsapp.templates.js'
 
 // ─── Constants ───────────────────────────────────────────────
 const GRAPH_API_URL = 'https://graph.facebook.com';
-const RESERVAS_URL = 'https://pachanga.com/reservas';
+
 
 // ─── Service ─────────────────────────────────────────────────
 export class WhatsAppService {
@@ -45,7 +45,7 @@ export class WhatsAppService {
         return this.sendTemplate(
             customer.phone,
             'cumpleanos_pachanga',
-            [customer.name, RESERVAS_URL],
+            [customer.name, `${env.FRONTEND_URL}/reservas`],
             customer.id,
         );
     }

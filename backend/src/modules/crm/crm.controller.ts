@@ -5,9 +5,8 @@ import { whatsappService } from '../whatsapp/whatsapp.service.js';
 import { asyncHandler } from '../../middleware/async-handler.js';
 import { validatedQuery, validatedBody } from '../../middleware/validate.middleware.js';
 import type { CustomerFilters, MessageFilters, SendMessageInput } from '../../schemas/crm.schema.js';
+import { env } from '../../config/env.js';
 
-// ─── Constants ───────────────────────────────────────────────
-const RESERVATION_URL = 'https://pachanga.com/reservas';
 
 export class CrmController {
     capture = asyncHandler(async (req: Request, res: Response): Promise<void> => {
@@ -15,8 +14,8 @@ export class CrmController {
 
         // Fire-and-forget: send welcome WhatsApp (non-blocking)
         if (isNew) {
-            whatsappService.sendWelcome(customer).catch((error: unknown) => {
-                console.error('⚠️ WhatsApp welcome failed:', error);
+            whatsappService.sendWelcome(customer).catch(() => {
+                // Non-blocking: welcome message failure should not affect capture flow
             });
         }
 
@@ -56,7 +55,7 @@ export class CrmController {
 
         const variables: string[] = [customer.name];
         if (templateName === 'cumpleanos_pachanga') {
-            variables.push(RESERVATION_URL);
+            variables.push(`${env.FRONTEND_URL}/reservas`);
         }
 
         const messageId = await whatsappService.sendTemplate(

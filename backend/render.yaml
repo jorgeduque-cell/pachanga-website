@@ -15,7 +15,9 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ORIGIN
-        value: https://pachanga-frontend.vercel.app  # Actualizar con tu dominio de Vercel
+        value: https://pachanga-frontend.vercel.app
+      - key: FRONTEND_URL
+        value: https://pachanga-frontend.vercel.app
       # Variables opcionales para WhatsApp
       - key: WHATSAPP_ACCESS_TOKEN
         sync: false
@@ -25,5 +27,7 @@ services:
         sync: false
       - key: WHATSAPP_WEBHOOK_SECRET
         sync: false
+      - key: WHATSAPP_APP_SECRET
+        sync: false  # Secreto de la App en Meta para verificación HMAC del webhook
     healthCheckPath: /api/health
     autoDeploy: true

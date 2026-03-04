@@ -16,9 +16,10 @@ const envSchema = z.object({
   WHATSAPP_VERIFY_TOKEN: z.string().optional().default('pachanga_webhook_2026'),
   WHATSAPP_API_VERSION: z.string().optional().default('v21.0'),
   WHATSAPP_DRY_RUN: z.string().optional().default('true'),
+  WHATSAPP_APP_SECRET: z.string().optional().default(''),
 
   // Frontend URL (for QR generation and CORS)
-  FRONTEND_URL: z.string().url().optional().default('https://pachanga.com'),
+  FRONTEND_URL: z.string().url().optional().default('https://pachanga-frontend.vercel.app'),
   CORS_ORIGIN: z.string().optional().default('*'),
 });
 

@@ -5,7 +5,7 @@ export function verifyWebhookSignature(
   rawBody: Buffer,
   signature: string,
 ): boolean {
-  const appSecret = env.WHATSAPP_TOKEN;
+  const appSecret = env.WHATSAPP_APP_SECRET;
   if (!appSecret || !signature) return false;
 
   const expectedSig = `sha256=${crypto
