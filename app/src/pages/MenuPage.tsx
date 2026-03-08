@@ -1,48 +1,78 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wine, Beer, Coffee, UtensilsCrossed, GlassWater, Citrus, Sparkles } from 'lucide-react';
+import { Wine, Beer, GlassWater, Coffee, Sparkles } from 'lucide-react';
 import { ScrollReveal } from '@/components/ScrollReveal';
 
 const categories = [
-  { id: 'cocteles', label: 'Cócteles', icon: Wine },
-  { id: 'cervezas', label: 'Cervezas', icon: Beer },
-  { id: 'sin-alcohol', label: 'Sin Alcohol', icon: GlassWater },
-  { id: 'shots', label: 'Shots', icon: Coffee },
+  { id: 'whisky', label: 'Whisky', icon: Wine },
+  { id: 'vodka-gin', label: 'Vodka & Gin', icon: GlassWater },
+  { id: 'ron', label: 'Ron', icon: Wine },
+  { id: 'aguardiente', label: 'Aguardiente', icon: GlassWater },
+  { id: 'tequila', label: 'Tequila', icon: Wine },
+  { id: 'viche', label: 'Viche', icon: GlassWater },
+  { id: 'soft-drinks', label: 'Soft Drinks', icon: Beer },
 ];
 
 const menuItems = {
-  cocteles: [
-    { name: 'Mojito Cubano', description: 'Ron, hierbabuena, limón, azúcar y soda', price: '$25.000', popular: true },
-    { name: 'Cuba Libre', description: 'Ron, Coca-Cola y limón', price: '$22.000', popular: false },
-    { name: 'Margarita', description: 'Tequila, triple sec y limón', price: '$28.000', popular: true },
-    { name: 'Piña Colada', description: 'Ron, crema de coco y jugo de piña', price: '$26.000', popular: false },
-    { name: 'Caipirinha', description: 'Cachaça, limón y azúcar', price: '$24.000', popular: false },
-    { name: 'Gin Tonic', description: 'Gin premium y agua tónica', price: '$32.000', popular: false },
+  whisky: [
+    // Blended Scotch
+    { name: 'Whisky Buchanans 18 Years', description: 'Blended Scotch', price: '$620.000', popular: true },
+    { name: 'Old Parr 18 Years', description: 'Blended Scotch', price: '$620.000', popular: true },
+    { name: 'Buchanans Master', description: 'Blended Scotch', price: '$380.000', popular: false },
+    { name: 'Whisky Buchanans Two Souls', description: 'Blended Scotch', price: '$380.000', popular: false },
+    { name: 'Buchanans 12 Años Botella', description: 'Blended Scotch', price: '$300.000', popular: true },
+    { name: 'Buchanans 12 Media', description: 'Blended Scotch', price: '$180.000', popular: false },
+    { name: 'Old Parr 12 Botella', description: 'Blended Scotch', price: '$320.000', popular: false },
+    { name: 'Old Parr 12 Media', description: 'Blended Scotch', price: '$200.000', popular: false },
+    { name: 'JW Double Black', description: 'Blended Scotch', price: '$360.000', popular: false },
+    { name: 'JW Sello Negro', description: 'Blended Scotch', price: '$320.000', popular: false },
+    { name: 'JW Sello Rojo', description: 'Blended Scotch', price: '$220.000', popular: false },
+    // Malts
+    { name: 'Glenlivet Founders', description: 'Single Malt', price: '$380.000', popular: true },
+    { name: 'Monkey Shoulder', description: 'Blended Malt', price: '$320.000', popular: true },
   ],
-  cervezas: [
-    { name: 'Corona', description: 'Cerveza mexicana 355ml', price: '$12.000', popular: false },
-    { name: 'Club Colombia', description: 'Cerveza nacional 330ml', price: '$10.000', popular: true },
-    { name: 'Heineken', description: 'Cerveza holandesa 330ml', price: '$13.000', popular: false },
-    { name: 'Stella Artois', description: 'Cerveza belga 330ml', price: '$14.000', popular: false },
-    { name: 'Poker', description: 'Cerveza nacional 330ml', price: '$8.000', popular: false },
+  'vodka-gin': [
+    { name: 'Smirnoff Tradicional', description: 'Vodka', price: '$260.000', popular: false },
+    { name: 'Vodka Absolut', description: 'Vodka sueco', price: '$250.000', popular: true },
+    { name: 'Gordons Dry Gin', description: 'Gin inglés', price: '$220.000', popular: false },
+    { name: 'Smirnoff Tamarindo', description: 'Vodka saborizado', price: '$200.000', popular: true },
   ],
-  'sin-alcohol': [
-    { name: 'Limonada Natural', description: 'Limón, agua y azúcar', price: '$8.000', popular: false },
-    { name: 'Limonada de Coco', description: 'Limón, crema de coco y azúcar', price: '$12.000', popular: true },
-    { name: 'Jugo de Mango', description: 'Jugo natural de mango', price: '$10.000', popular: false },
-    { name: 'Jugo de Maracuyá', description: 'Jugo natural de maracuyá', price: '$10.000', popular: false },
-    { name: 'Agua sin Gas', description: 'Agua mineral 500ml', price: '$5.000', popular: false },
+  ron: [
+    { name: 'Caldas 8 Años Botella', description: 'Ron añejo colombiano', price: '$220.000', popular: true },
+    { name: 'Caldas 8 Años Media', description: 'Ron añejo colombiano', price: '$120.000', popular: false },
+    { name: 'Caldas 3 Años Botella', description: 'Ron añejo colombiano', price: '$180.000', popular: false },
+    { name: 'Caldas Esencial Botella', description: 'Ron añejo colombiano', price: '$160.000', popular: false },
   ],
-  shots: [
-    { name: 'Tequila', description: 'Shot de tequila con sal y limón', price: '$15.000', popular: true },
-    { name: 'Jägermeister', description: 'Shot de Jäger frío', price: '$18.000', popular: false },
-    { name: 'Fireball', description: 'Whisky de canela', price: '$16.000', popular: true },
-    { name: 'Aguardiente', description: 'Tradicional colombiano', price: '$12.000', popular: true },
+  aguardiente: [
+    { name: 'Amarillo de Manzanares', description: 'Aguardiente tradicional', price: '$180.000', popular: true },
+    { name: 'Antioqueño Azul', description: 'Aguardiente sin azúcar', price: '$160.000', popular: false },
+    { name: 'Antioqueño Verde', description: 'Aguardiente tradicional', price: '$160.000', popular: false },
+  ],
+  tequila: [
+    { name: 'Don Julio 70', description: 'Tequila añejo cristalino', price: '$750.000', popular: true },
+    { name: 'Tequila Maestro Dobel', description: 'Tequila cristalino', price: '$560.000', popular: true },
+    { name: 'Reserva Don Julio Reposado', description: 'Tequila reposado', price: '$500.000', popular: false },
+    { name: 'Tequila Jimador Reposado', description: 'Tequila reposado', price: '$240.000', popular: false },
+  ],
+  viche: [
+    { name: 'Viche Botella', description: 'Licor artesanal de caña', price: '$150.000', popular: true },
+    { name: 'Viche Media', description: 'Licor artesanal de caña', price: '$80.000', popular: false },
+  ],
+  'soft-drinks': [
+    { name: 'Erdinger Weissbier 500ml', description: 'Cerveza de trigo alemana', price: '$30.000', popular: true },
+    { name: 'Peroni / Corona', description: 'Cerveza importada', price: '$18.000', popular: false },
+    { name: 'Smirnoff Ice', description: 'Bebida alcohólica saborizada', price: '$15.000', popular: false },
+    { name: 'Electrolit', description: 'Bebida hidratante', price: '$25.000', popular: false },
+    { name: 'Redbull', description: 'Bebida energética', price: '$20.000', popular: true },
+    { name: 'Gatorade', description: 'Bebida deportiva', price: '$12.000', popular: false },
+    { name: 'Agua Cristal', description: 'Agua mineral', price: '$8.000', popular: false },
+    { name: 'Soda / Ginger Ale', description: 'Gaseosa', price: '$8.000', popular: false },
+    { name: 'Coca Cola 400ml', description: 'Gaseosa', price: '$8.000', popular: false },
   ],
 };
 
 export function MenuPage() {
-  const [activeCategory, setActiveCategory] = useState('cocteles');
+  const [activeCategory, setActiveCategory] = useState('whisky');
 
   return (
     <div className="min-h-screen bg-[var(--bg-base)] pt-24">
@@ -58,10 +88,10 @@ export function MenuPage() {
               Nuestra Carta
             </span>
             <h1 className="text-5xl md:text-7xl font-heading text-white mb-6">
-              MENÚ DE <span className="text-gradient-fire">BEBIDAS</span>
+              CARTA DE <span className="text-gradient-fire">LICORES</span>
             </h1>
             <p className="text-white/60 max-w-xl mx-auto font-body text-lg">
-              Los mejores cócteles y bebidas para acompañar tu noche de salsa
+              Los mejores licores, whiskys, rones y bebidas para acompañar tu noche de salsa
             </p>
           </ScrollReveal>
         </div>
@@ -69,7 +99,7 @@ export function MenuPage() {
 
       {/* Category Tabs - Glass */}
       <section className="sticky top-20 z-30 glass-nav border-y border-[var(--glass-border)] py-4 px-4">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <div className="flex flex-wrap justify-center gap-2">
             {categories.map((cat) => {
               const Icon = cat.icon;
@@ -81,7 +111,7 @@ export function MenuPage() {
                   onClick={() => setActiveCategory(cat.id)}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className={`relative flex items-center gap-2 px-5 py-2.5 rounded-full font-heading text-sm uppercase tracking-wider transition-all overflow-hidden ${
+                  className={`relative flex items-center gap-2 px-4 py-2.5 rounded-full font-heading text-sm uppercase tracking-wider transition-all overflow-hidden ${
                     isActive
                       ? 'text-white'
                       : 'text-white/60 hover:text-white glass-btn'
@@ -127,7 +157,7 @@ export function MenuPage() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05 }}
                   whileHover={{ scale: 1.01, x: 5 }}
-                  className="group glass-card p-6 cursor-pointer"
+                  className="group glass-card p-6 cursor-pointer relative overflow-hidden"
                 >
                   <div className="flex justify-between items-start gap-4">
                     <div className="flex-1">
@@ -157,7 +187,7 @@ export function MenuPage() {
                       </p>
                     </div>
                     {/* Gold gradient price */}
-                    <span className="text-2xl font-heading text-gradient-gold group-hover:scale-110 transition-transform">
+                    <span className="text-2xl font-heading text-gradient-gold group-hover:scale-110 transition-transform whitespace-nowrap">
                       {item.price}
                     </span>
                   </div>
@@ -182,9 +212,9 @@ export function MenuPage() {
           <ScrollReveal>
             <div className="grid md:grid-cols-3 gap-8">
               {[
-                { icon: Wine, title: 'Cócteles Premium', desc: 'Preparados por bartenders expertos', color: 'var(--accent-red)' },
-                { icon: UtensilsCrossed, title: 'Snack Bar', desc: 'Acompañamientos disponibles', color: 'var(--accent-gold)' },
-                { icon: Citrus, title: 'Ingredientes Frescos', desc: 'Siempre frescos y naturales', color: 'var(--accent-red)' },
+                { icon: Wine, title: 'Licores Premium', desc: 'Las mejores marcas nacionales e importadas', color: 'var(--accent-red)' },
+                { icon: Coffee, title: 'Reserva tu Botella', desc: 'Servicio de reserva de botellas disponible', color: 'var(--accent-gold)' },
+                { icon: GlassWater, title: 'Cócteles Especiales', desc: 'Pregunta por nuestra carta de cócteles', color: 'var(--accent-red)' },
               ].map((item) => (
                 <motion.div
                   key={item.title}

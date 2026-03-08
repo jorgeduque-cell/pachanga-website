@@ -1,19 +1,126 @@
 import { Link } from 'react-router-dom';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { useRef } from 'react';
-import { ArrowRight, Music, Star, ChevronRight, Users, Award } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { ArrowRight, Music, Star, ChevronRight, Users, Award, type LucideIcon } from 'lucide-react';
 import { HeroSection } from '@/sections/HeroSection';
 import { ScrollReveal } from '@/components/ScrollReveal';
 import { StaggerContainer, StaggerItem } from '@/components/StaggerContainer';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { Button } from '@/components/ui/button';
 
-const stats = [
-  { value: 37, suffix: '+', label: 'Años de Historia', icon: Award },
-  { value: 2, suffix: '', label: 'Pisos de Rumba', icon: Music },
-  { value: 1000, suffix: '+', label: 'Noches Épicas', icon: Star },
-  { value: 50000, suffix: '+', label: 'Bailadores', icon: Users },
-];
+// Componente TooltipStat para palabras clave interactivas
+interface TooltipStatProps {
+  word: string;
+  value: number;
+  suffix: string;
+  label: string;
+  icon: LucideIcon;
+  delay?: number;
+}
+
+function TooltipStat({ word, value, suffix, label, icon: Icon, delay = 0 }: TooltipStatProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [showValue, setShowValue] = useState(false);
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+    // Pequeño delay para la animación del contador
+    setTimeout(() => setShowValue(true), 150);
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    setShowValue(false);
+  };
+
+  return (
+    <span 
+      className="relative inline-block cursor-pointer"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      {/* Palabra subrayada con efecto */}
+      <motion.span
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ delay: delay + 0.3, duration: 0.5 }}
+        className={`
+          relative text-[#FFD700] font-heading
+          transition-all duration-300 ease-out
+          ${isHovered ? 'text-[#E31B23]' : ''}
+        `}
+      >
+        {word}
+        {/* Línea decorativa subrayada */}
+        <span 
+          className={`
+            absolute -bottom-1 left-0 h-0.5 bg-gradient-to-r from-[#E31B23] to-[#FFD700]
+            transition-all duration-300 ease-out
+            ${isHovered ? 'w-full' : 'w-0'}
+          `}
+        />
+      </motion.span>
+
+      {/* Tooltip/Burbuja emergente */}
+      <motion.div
+        initial={{ opacity: 0, y: 10, scale: 0.8 }}
+        animate={{ 
+          opacity: isHovered ? 1 : 0, 
+          y: isHovered ? 0 : 10,
+          scale: isHovered ? 1 : 0.8
+        }}
+        transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+        className={`
+          absolute left-1/2 -translate-x-1/2 bottom-full mb-3
+          pointer-events-none z-50
+          ${isHovered ? 'visible' : 'invisible'}
+        `}
+      >
+        {/* Burbuja neón */}
+        <div className="relative">
+          {/* Glow effect */}
+          <div className="absolute inset-0 bg-[#E31B23] blur-xl opacity-40 rounded-2xl" />
+          
+          {/* Contenido */}
+          <div className="relative px-5 py-4 bg-[#0a0a0a] border border-[#E31B23]/60 rounded-2xl shadow-2xl shadow-[#E31B23]/30 min-w-[140px]">
+            {/* Icono */}
+            <div className="flex justify-center mb-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#E31B23] to-[#E31B23]/60 flex items-center justify-center">
+                <Icon className="text-white" size={16} />
+              </div>
+            </div>
+            
+            {/* Valor */}
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-heading text-white leading-none">
+                {showValue ? (
+                  <AnimatedCounter 
+                    end={value} 
+                    suffix={suffix}
+                    duration={1}
+                  />
+                ) : (
+                  <span>0{suffix}</span>
+                )}
+              </div>
+              <p className="text-[#FFD700] text-xs uppercase tracking-wider mt-1 font-heading">
+                {label}
+              </p>
+            </div>
+
+            {/* Decorative corner */}
+            <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-gradient-to-tl from-[#E31B23]/20 to-transparent rounded-tl-full" />
+          </div>
+
+          {/* Flecha */}
+          <div className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-[#0a0a0a]" />
+          <div className="absolute left-1/2 -translate-x-1/2 -bottom-[9px] w-0 h-0 border-l-[9px] border-r-[9px] border-t-[9px] border-l-transparent border-r-transparent border-t-[#E31B23]/40" />
+        </div>
+      </motion.div>
+    </span>
+  );
+}
 
 const highlights = [
   {
@@ -38,75 +145,133 @@ const highlights = [
 
 export function HomePage() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const statsRef = useRef<HTMLDivElement>(null);
+  
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ['start end', 'end start'],
   });
 
+  // Scroll progress específico para la sección de stats
+  const { scrollYProgress: statsScrollProgress } = useScroll({
+    target: statsRef,
+    offset: ['start end', 'end start'],
+  });
+
   const bgY = useTransform(scrollYProgress, [0, 1], ['0%', '30%']);
+  
+  // Transformaciones dinámicas para la sección de stats
+  // Aparece cuando se acerca al centro, desaparece al alejarse
+  const statsOpacity = useTransform(
+    statsScrollProgress, 
+    [0, 0.2, 0.4, 0.6, 0.8], 
+    [0, 0.5, 1, 0.5, 0]
+  );
+  
+  const statsY = useTransform(
+    statsScrollProgress, 
+    [0, 0.2, 0.4, 0.6, 0.8], 
+    [100, 50, 0, 50, 100]
+  );
+  
+  const textOpacity = useTransform(
+    statsScrollProgress, 
+    [0.1, 0.25, 0.35, 0.55, 0.7], 
+    [0, 0.5, 1, 0.5, 0]
+  );
+  
+  const lineScale = useTransform(
+    statsScrollProgress, 
+    [0.15, 0.3, 0.4, 0.6, 0.75], 
+    [0, 0.5, 1, 0.5, 0]
+  );
 
   return (
     <div ref={containerRef}>
       <HeroSection />
 
-      {/* Stats Section - Contadores Animados */}
-      <section className="relative z-10 px-4 py-16 bg-gradient-to-b from-transparent via-[#0a0a0a] to-[#0a0a0a]">
-        <div className="max-w-6xl mx-auto">
+      {/* Stats Section - Diseño Editorial Interactivo con scroll dinámico */}
+      <section ref={statsRef} className="relative z-10 px-4 py-32 overflow-hidden min-h-[80vh] flex items-center">
+        {/* Imagen de fondo sutil con parallax */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-fixed"
+          style={{ backgroundImage: `url(/hero-salsa.jpg)` }}
+        />
+        
+        {/* Gradiente de transición suave desde el Hero */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0a] via-[#0a0a0a]/85 to-[#0a0a0a]/95" />
+        
+        {/* Overlay con patrón sutil */}
+        <div className="absolute inset-0 opacity-30" style={{
+          backgroundImage: `radial-gradient(circle at 25% 25%, #E31B23/20 0%, transparent 50%),
+                           radial-gradient(circle at 75% 75%, #FFD700/10 0%, transparent 50%)`
+        }} />
+        
+        {/* Glow effect sutil */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#E31B23]/5 via-transparent to-[#FFD700]/5 blur-3xl" />
+        
+        <div className="max-w-5xl mx-auto">
           <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
+            style={{ opacity: statsOpacity, y: statsY }}
             className="relative"
           >
-            {/* Background glow effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-[#E31B23]/20 via-[#FFD700]/10 to-[#E31B23]/20 blur-3xl -z-10" />
-            
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-              {stats.map((stat, index) => {
-                const Icon = stat.icon;
-                return (
-                  <motion.div
-                    key={stat.label}
-                    initial={{ opacity: 0, y: 30, scale: 0.9 }}
-                    whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.15, duration: 0.5 }}
-                    whileHover={{ y: -5, scale: 1.02 }}
-                    className="relative group"
-                  >
-                    <div className="relative p-6 bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] border border-[#333] rounded-2xl overflow-hidden hover:border-[#E31B23]/50 transition-all duration-300">
-                      {/* Animated background on hover */}
-                      <div className="absolute inset-0 bg-gradient-to-br from-[#E31B23]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                      
-                      {/* Icon */}
-                      <div className="relative mb-4">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#E31B23]/20 to-[#E31B23]/5 border border-[#E31B23]/30 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                          <Icon className="text-[#E31B23]" size={24} />
-                        </div>
-                      </div>
-                      
-                      {/* Counter */}
-                      <div className="relative">
-                        <p className="text-4xl md:text-5xl font-heading text-white mb-1">
-                          <AnimatedCounter 
-                            end={stat.value} 
-                            suffix={stat.suffix}
-                            duration={2.5}
-                          />
-                        </p>
-                        <p className="text-[#FFD700] text-xs md:text-sm uppercase tracking-wider font-heading">
-                          {stat.label}
-                        </p>
-                      </div>
+            {/* Label */}
+            <motion.span
+              style={{ opacity: textOpacity }}
+              className="text-[#E31B23] uppercase tracking-[0.3em] text-sm font-heading mb-8 block text-center"
+            >
+              Nuestra Esencia
+            </motion.span>
 
-                      {/* Decorative corner */}
-                      <div className="absolute -bottom-2 -right-2 w-16 h-16 bg-gradient-to-tl from-[#E31B23]/20 to-transparent rounded-tl-full opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
+            {/* Texto Editorial Principal */}
+            <motion.div
+              style={{ opacity: textOpacity }}
+              className="relative"
+            >
+              <div className="text-2xl md:text-4xl lg:text-5xl font-heading text-white/90 leading-relaxed md:leading-relaxed text-center">
+                Somos el alma de la fiesta.{' '}
+                <TooltipStat 
+                  word="Una tradición"
+                  value={37}
+                  suffix="+"
+                  label="Años de Historia"
+                  icon={Award}
+                  delay={0}
+                />{' '}
+                que lleva conectando corazones. Con{' '}
+                <TooltipStat 
+                  word="múltiples espacios"
+                  value={2}
+                  suffix=""
+                  label="Pisos de Rumba"
+                  icon={Music}
+                  delay={0.1}
+                />{' '}
+                y{' '}
+                <TooltipStat 
+                  word="miles de noches épicas"
+                  value={1000}
+                  suffix="+"
+                  label="Noches Épicas"
+                  icon={Star}
+                  delay={0.2}
+                />, hemos hecho bailar a una legión de{' '}
+                <TooltipStat 
+                  word="fanáticos."
+                  value={50000}
+                  suffix="+"
+                  label="Bailadores"
+                  icon={Users}
+                  delay={0.3}
+                />
+              </div>
+            </motion.div>
+
+            {/* Decorative line */}
+            <motion.div
+              style={{ opacity: textOpacity, scaleX: lineScale }}
+              className="mt-12 mx-auto w-24 h-px bg-gradient-to-r from-transparent via-[#E31B23] to-transparent"
+            />
           </motion.div>
         </div>
       </section>
@@ -149,12 +314,9 @@ export function HomePage() {
                 <span className="text-[#FFD700]">SALSERA</span> AUTÉNTICA
               </h2>
               <p className="text-white/70 font-body text-lg leading-relaxed mb-6">
-                En Pachanga y Pochola no se viene a hacer piruetas de academia. Se viene a bailar 
-                "pegadito", con el ritmo en la cadera, sintiendo cada golpe de tambor, cada nota 
-                de piano, cada grito de la trompeta.
-              </p>
-              <p className="text-white/60 font-body mb-8">
-                Somos más que un bar. Somos una embajada del sabor chocoano y valluno en Bogotá.
+                Rescatamos la esencia de la rumba de verdad: esa que se baila pegadito, con el 
+                ritmo en la cadera y el alma en la pista. Aquí se viene a gozar cada vibración, 
+                desde el golpe del tambor hasta el grito de la trompeta.
               </p>
               <Link to="/historia">
                 <Button className="btn-outline-red group">
@@ -176,7 +338,7 @@ export function HomePage() {
                 Experiencias
               </span>
               <h2 className="text-4xl md:text-5xl font-heading text-white">
-                VIVE LA <span className="text-[#E31B23]">POCHOLA</span>
+                VIVE LA <span className="text-[#E31B23]">PACHANGA</span>
               </h2>
             </div>
           </ScrollReveal>

@@ -95,9 +95,8 @@ export function HistoriaPage() {
         <div className="max-w-4xl mx-auto text-center">
           <ScrollReveal>
             <p className="text-2xl md:text-3xl text-white/90 font-body leading-relaxed mb-8">
-              "En <span className="text-[#FFD700] font-bold">Pachanga y Pochola</span> no se viene a hacer piruetas de academia. 
-              Se viene a bailar <span className="text-[#E31B23] font-bold">pegadito</span>, con el ritmo en la cadera, 
-              sintiendo cada golpe de tambor."
+              "Rescatamos la esencia de la rumba de verdad: esa que se baila <span className="text-[#E31B23] font-bold">pegadito</span>, 
+              con el ritmo en la cadera y el alma en la pista."
             </p>
             <p className="text-white/60 font-body">
               — Fundadores, 1988
