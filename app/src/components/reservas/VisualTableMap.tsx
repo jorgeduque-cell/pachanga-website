@@ -60,8 +60,12 @@ export function VisualTableMap({
     if (name.startsWith('V') || (name.startsWith('R') && name.length > 1)) {
       return 'w-11 h-11 text-xs';
     }
-    // BARRA PRINCIPAL (O, Ñ, Q, R, S, T, U, W en piso 1) - MÁS PEQUEÑAS
-    if (floor === 1 && ['O','Ñ','Q','R','S','T','U','W'].includes(name)) {
+    // BARRA PRINCIPAL piso 1
+    if (floor === 1 && ['O','Ñ','Q','R','S','T','U'].includes(name)) {
+      return 'w-7 h-7 text-[9px]';
+    }
+    // BARRA piso 2
+    if (floor === 2 && ['W','X','Y','Z'].includes(name)) {
       return 'w-7 h-7 text-[9px]';
     }
     // Barra lateral (A-J, K-N) y otras letras

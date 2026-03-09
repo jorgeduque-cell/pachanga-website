@@ -62,130 +62,121 @@ async function main() {
 
   const tablesData: TableSeed[] = [
     // ═══════════════════════════════════════════════════════════
-    // PRIMER PISO - Distribución exacta según mapa
+    // PRIMER PISO (Planta Baja)
     // ═══════════════════════════════════════════════════════════
 
-    // ─── BARRA COCTÉLES (A-J) - Vertical izquierda, más separadas ───
-    { name: 'A', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 6, posY: 8 },
-    { name: 'B', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 6, posY: 18 },
-    { name: 'C', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 6, posY: 28 },
-    { name: 'D', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 6, posY: 38 },
-    { name: 'E', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 6, posY: 48 },
-    { name: 'F', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 6, posY: 58 },
-    { name: 'G', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 6, posY: 68 },
+    // ─── ZONA IZQUIERDA: Barra Coctéles (A-H vertical, A=tarima, H=fondo) ───
+    { name: 'A', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 6, posY: 14 },
+    { name: 'B', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 6, posY: 24 },
+    { name: 'C', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 6, posY: 33 },
+    { name: 'D', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 6, posY: 42 },
+    { name: 'E', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 6, posY: 51 },
+    { name: 'F', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 6, posY: 60 },
+    { name: 'G', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 6, posY: 69 },
     { name: 'H', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 6, posY: 78 },
-    { name: 'I', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 10, posY: 76 },
-    { name: 'J', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 10, posY: 84 },
+    // I-J: fila horizontal al final de barra (J=pared, I=pasillo)
+    { name: 'I', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 13, posY: 86 },
+    { name: 'J', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 6, posY: 86 },
 
-    // ─── MESAS V1-V6 (Lado izquierdo vertical, separadas de la barra) ───
-    { name: 'V1', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 16, posY: 25 },
-    { name: 'V2', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 16, posY: 40 },
-    { name: 'V3', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 16, posY: 55 },
-    { name: 'V4', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 16, posY: 70 },
-    { name: 'V5', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 16, posY: 76 },
-    { name: 'V6', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 16, posY: 84 },
+    // ─── V1-V6: Pared izquierda, paralelas a P3-P5 (V1=frente, V6=esquina inf-izq) ───
+    { name: 'V1', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 15, posY: 42 },
+    { name: 'V2', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 15, posY: 50 },
+    { name: 'V3', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 15, posY: 58 },
+    { name: 'V4', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 15, posY: 66 },
+    { name: 'V5', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 15, posY: 74 },
+    { name: 'V6', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 15, posY: 82 },
 
-    // ─── MESAS PREMIUM P1-P5 (Columna izquierda del centro, más separadas) ───
-    { name: 'P1', capacity: 10, zone: TableZone.SALON, floor: 1, posX: 30, posY: 12 },
-    { name: 'P2', capacity: 10, zone: TableZone.SALON, floor: 1, posX: 30, posY: 32 },
-    { name: 'P3', capacity: 10, zone: TableZone.SALON, floor: 1, posX: 30, posY: 52 },
-    { name: 'P4', capacity: 10, zone: TableZone.SALON, floor: 1, posX: 30, posY: 72 },
-    { name: 'P5', capacity: 10, zone: TableZone.SALON, floor: 1, posX: 28, posY: 78 },
+    // ─── Palcos P1-P5: Columna paralela a barra, separada por pasillo A-H ───
+    { name: 'P1', capacity: 10, zone: TableZone.SALON, floor: 1, posX: 27, posY: 14 },
+    { name: 'P2', capacity: 10, zone: TableZone.SALON, floor: 1, posX: 27, posY: 28 },
+    { name: 'P3', capacity: 10, zone: TableZone.SALON, floor: 1, posX: 27, posY: 42 },
+    { name: 'P4', capacity: 10, zone: TableZone.SALON, floor: 1, posX: 27, posY: 58 },
+    { name: 'P5', capacity: 10, zone: TableZone.SALON, floor: 1, posX: 27, posY: 74 },
 
-    // ─── MESAS V7-V9 (Fila superior centro) ───
-    { name: 'V7', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 46, posY: 20 },
-    { name: 'V8', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 55, posY: 20 },
-    { name: 'V9', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 64, posY: 20 },
+    // ─── ZONA CENTRAL (Pista): 4 filas de 3 ───
+    { name: 'V7', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 40, posY: 22 },
+    { name: 'V8', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 48, posY: 22 },
+    { name: 'V9', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 56, posY: 22 },
+    { name: 'V11', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 40, posY: 36 },
+    { name: 'V12', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 48, posY: 36 },
+    { name: 'V13', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 56, posY: 36 },
+    { name: 'V14', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 40, posY: 50 },
+    { name: 'V15', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 48, posY: 50 },
+    { name: 'V16', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 56, posY: 50 },
+    { name: 'V17', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 40, posY: 64 },
+    { name: 'V18', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 48, posY: 64 },
+    { name: 'V19', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 56, posY: 64 },
 
-    // ─── MESAS CENTRALES V11-V19 (3 filas de 3, bien distribuidas) ───
-    // Primera fila
-    { name: 'V11', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 46, posY: 38 },
-    { name: 'V12', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 55, posY: 38 },
-    { name: 'V13', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 64, posY: 38 },
-    // Segunda fila
-    { name: 'V14', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 46, posY: 55 },
-    { name: 'V15', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 55, posY: 55 },
-    { name: 'V16', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 64, posY: 55 },
-    // Tercera fila
-    { name: 'V17', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 46, posY: 72 },
-    { name: 'V18', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 55, posY: 72 },
-    { name: 'V19', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 64, posY: 72 },
-
-    // ─── MESAS PREMIUM P6-P9 (Columna derecha, distribuidas verticalmente) ───
+    // ─── ZONA DERECHA SUPERIOR: P6 VIP + curva diagonal K-L-M-N ───
     { name: 'P6', capacity: 10, zone: TableZone.SALON, floor: 1, posX: 78, posY: 12 },
-    { name: 'P7', capacity: 10, zone: TableZone.SALON, floor: 1, posX: 78, posY: 35 },
-    { name: 'P8', capacity: 10, zone: TableZone.SALON, floor: 1, posX: 78, posY: 58 },
-    { name: 'P9', capacity: 10, zone: TableZone.SALON, floor: 1, posX: 78, posY: 81 },
+    { name: 'K', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 84, posY: 24 },
+    { name: 'L', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 82, posY: 36 },
+    { name: 'M', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 78, posY: 48 },
+    { name: 'N', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 72, posY: 58 },
 
-    // ─── LATERALES DERECHA K-N (distribuidas verticalmente) ───
-    { name: 'K', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 90, posY: 20 },
-    { name: 'L', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 90, posY: 38 },
-    { name: 'M', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 90, posY: 56 },
-    { name: 'N', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 90, posY: 74 },
+    // ─── ZONA DERECHA INFERIOR: Palcos P7-P9 (mitad del salón hacia fondo) ───
+    { name: 'P7', capacity: 10, zone: TableZone.SALON, floor: 1, posX: 68, posY: 26 },
+    { name: 'P8', capacity: 10, zone: TableZone.SALON, floor: 1, posX: 68, posY: 42 },
+    { name: 'P9', capacity: 10, zone: TableZone.SALON, floor: 1, posX: 68, posY: 62 },
 
-    // ─── BARRA PRINCIPAL (O, Q-U, Ñ, W) - Abajo horizontal, bien distribuidas
-    // Nota: P y V fueron renombradas a Ñ y W para evitar conflicto con mesas P premium y V visitante
-    { name: 'O', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 16, posY: 96 },
-    { name: 'Q', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 28, posY: 96 },
-    { name: 'R', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 40, posY: 96 },
-    { name: 'S', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 52, posY: 96 },
-    { name: 'T', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 64, posY: 96 },
-    { name: 'U', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 76, posY: 96 },
-    { name: 'Ñ', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 88, posY: 96 },
-    { name: 'W', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 96, posY: 96 },
+    // ─── BARRA PRINCIPAL: fila horizontal al fondo (O=izq, Ñ=der) ───
+    { name: 'O', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 24, posY: 86 },
+    { name: 'Q', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 34, posY: 86 },
+    { name: 'R', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 42, posY: 86 },
+    { name: 'S', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 50, posY: 86 },
+    { name: 'T', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 58, posY: 86 },
+    { name: 'U', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 66, posY: 86 },
+    { name: 'Ñ', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 74, posY: 86 },
 
     // ═══════════════════════════════════════════════════════════
-    // SEGUNDO PISO - Distribución exacta según mapa
+    // SEGUNDO PISO (Balcón / Mezzanine) - Forma de U invertida
     // ═══════════════════════════════════════════════════════════
 
-    // ─── MESAS V20-V30 (Lado izquierdo vertical, distribuidas) ───
-    { name: 'V20', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 6, posY: 8 },
-    { name: 'V21', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 6, posY: 20 },
-    { name: 'V22', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 6, posY: 32 },
-    { name: 'V23', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 6, posY: 44 },
-    { name: 'V24', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 6, posY: 56 },
-    { name: 'V25', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 6, posY: 68 },
-    { name: 'V26', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 6, posY: 80 },
-    { name: 'V27', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 14, posY: 85 },
-    // V28-V30 más a la derecha abajo
-    { name: 'V28', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 14, posY: 95 },
-    { name: 'V29', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 6, posY: 95 },
-    { name: 'V30', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 6, posY: 105 },
+    // ─── ALA IZQUIERDA: V20-V30 pegadas a pared izquierda ───
+    { name: 'V20', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 6, posY: 10 },
+    { name: 'V21', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 6, posY: 17 },
+    { name: 'V22', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 6, posY: 24 },
+    { name: 'V23', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 6, posY: 31 },
+    { name: 'V24', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 6, posY: 38 },
+    { name: 'V25', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 6, posY: 45 },
+    { name: 'V26', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 6, posY: 52 },
+    { name: 'V27', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 6, posY: 59 },
+    { name: 'V28', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 6, posY: 66 },
+    { name: 'V29', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 6, posY: 73 },
+    { name: 'V30', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 6, posY: 80 },
 
-    // ─── MESAS R1-R2 (Arriba izquierda de tarima) ───
-    { name: 'R1', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 22, posY: 15 },
-    { name: 'R2', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 22, posY: 30 },
+    // ─── R1-R2: Codo superior izquierdo (entre tarima y palcos) ───
+    { name: 'R1', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 18, posY: 14 },
+    { name: 'R2', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 18, posY: 22 },
 
-    // ─── MESAS PREMIUM P10-P14 (Columna izquierda debajo de R1-R2) ───
-    { name: 'P10', capacity: 10, zone: TableZone.SALON, floor: 2, posX: 36, posY: 28 },
-    { name: 'P11', capacity: 10, zone: TableZone.SALON, floor: 2, posX: 36, posY: 45 },
-    { name: 'P12', capacity: 10, zone: TableZone.SALON, floor: 2, posX: 36, posY: 62 },
-    { name: 'P13', capacity: 10, zone: TableZone.SALON, floor: 2, posX: 36, posY: 79 },
-    { name: 'P14', capacity: 10, zone: TableZone.SALON, floor: 2, posX: 36, posY: 96 },
+    // ─── P10-P14: Columna interior izquierda (borde interno) ───
+    { name: 'P10', capacity: 10, zone: TableZone.SALON, floor: 2, posX: 24, posY: 22 },
+    { name: 'P11', capacity: 10, zone: TableZone.SALON, floor: 2, posX: 24, posY: 38 },
+    { name: 'P12', capacity: 10, zone: TableZone.SALON, floor: 2, posX: 24, posY: 54 },
+    { name: 'P13', capacity: 10, zone: TableZone.SALON, floor: 2, posX: 24, posY: 68 },
+    { name: 'P14', capacity: 10, zone: TableZone.SALON, floor: 2, posX: 24, posY: 78 },
 
-    // ─── MESAS PREMIUM P15-P17 (Columna derecha arriba) ───
-    { name: 'P15', capacity: 10, zone: TableZone.SALON, floor: 2, posX: 74, posY: 18 },
-    { name: 'P16', capacity: 10, zone: TableZone.SALON, floor: 2, posX: 74, posY: 40 },
-    { name: 'P17', capacity: 10, zone: TableZone.SALON, floor: 2, posX: 74, posY: 62 },
+    // ─── ALA DERECHA SUPERIOR: P15-P17 + V31-V35 ───
+    { name: 'P15', capacity: 10, zone: TableZone.SALON, floor: 2, posX: 72, posY: 12 },
+    { name: 'P16', capacity: 10, zone: TableZone.SALON, floor: 2, posX: 72, posY: 28 },
+    { name: 'P17', capacity: 10, zone: TableZone.SALON, floor: 2, posX: 72, posY: 44 },
+    { name: 'V31', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 88, posY: 12 },
+    { name: 'V32', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 88, posY: 20 },
+    { name: 'V33', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 88, posY: 28 },
+    { name: 'V34', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 88, posY: 36 },
+    { name: 'V35', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 88, posY: 44 },
 
-    // ─── MESAS PREMIUM P18-P21 (Columna derecha abajo) ───
-    { name: 'P18', capacity: 10, zone: TableZone.SALON, floor: 2, posX: 74, posY: 80 },
-    { name: 'P19', capacity: 10, zone: TableZone.SALON, floor: 2, posX: 74, posY: 95 },
-    { name: 'P20', capacity: 10, zone: TableZone.SALON, floor: 2, posX: 74, posY: 110 },
-    { name: 'P21', capacity: 10, zone: TableZone.SALON, floor: 2, posX: 74, posY: 125 },
+    // ─── ALA DERECHA INFERIOR: P18-P21 extensión ───
+    { name: 'P18', capacity: 10, zone: TableZone.SALON, floor: 2, posX: 72, posY: 54 },
+    { name: 'P19', capacity: 10, zone: TableZone.SALON, floor: 2, posX: 72, posY: 62 },
+    { name: 'P20', capacity: 10, zone: TableZone.SALON, floor: 2, posX: 72, posY: 70 },
+    { name: 'P21', capacity: 10, zone: TableZone.SALON, floor: 2, posX: 72, posY: 78 },
 
-    // ─── MESAS V31-V35 (Lado derecho vertical) ───
-    { name: 'V31', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 90, posY: 12 },
-    { name: 'V32', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 90, posY: 26 },
-    { name: 'V33', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 90, posY: 42 },
-    { name: 'V34', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 90, posY: 58 },
-    { name: 'V35', capacity: 4, zone: TableZone.SALON, floor: 2, posX: 90, posY: 74 },
-
-    // ─── BARRA ABAJO (W-Z) - Horizontal ───
-    { name: 'W', capacity: 2, zone: TableZone.BARRA, floor: 2, posX: 36, posY: 115 },
-    { name: 'X', capacity: 2, zone: TableZone.BARRA, floor: 2, posX: 48, posY: 115 },
-    { name: 'Y', capacity: 2, zone: TableZone.BARRA, floor: 2, posX: 60, posY: 115 },
-    { name: 'Z', capacity: 2, zone: TableZone.BARRA, floor: 2, posX: 72, posY: 115 },
+    // ─── BORDE INFERIOR: W,X,Y,Z conectando alas izq y der ───
+    { name: 'W', capacity: 2, zone: TableZone.BARRA, floor: 2, posX: 24, posY: 87 },
+    { name: 'X', capacity: 2, zone: TableZone.BARRA, floor: 2, posX: 40, posY: 87 },
+    { name: 'Y', capacity: 2, zone: TableZone.BARRA, floor: 2, posX: 56, posY: 87 },
+    { name: 'Z', capacity: 2, zone: TableZone.BARRA, floor: 2, posX: 72, posY: 87 },
   ];
 
   console.log(`📋 Creando ${tablesData.length} mesas con posicionamiento visual exacto...`);
