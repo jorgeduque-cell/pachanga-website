@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "tables" ADD COLUMN     "pos_x" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "pos_y" INTEGER NOT NULL DEFAULT 0;

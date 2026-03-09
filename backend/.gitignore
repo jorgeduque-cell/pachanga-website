@@ -9,8 +9,8 @@ node_modules/
 # Build
 dist/
 
-# Prisma
-prisma/migrations/
+# Prisma (migrations MUST be tracked for deployment)
+# prisma/migrations/  ← REMOVED: migrations must be in Git for Render to deploy them
 
 # IDE
 .vscode/
