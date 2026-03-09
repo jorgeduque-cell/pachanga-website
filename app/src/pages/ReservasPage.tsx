@@ -31,7 +31,8 @@ async function testDirectReservation() {
     return data;
   } catch (error) {
     console.error('[TEST DIRECTO] Error:', error);
-    alert('Error: ' + error.message);
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    alert('Error: ' + errorMessage);
   }
 }
 
