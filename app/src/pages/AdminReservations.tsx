@@ -439,14 +439,20 @@ export function AdminReservations() {
 
       {/* Reservation Detail Modal */}
       <Dialog open={!!selectedReservation} onOpenChange={(open) => !open && setSelectedReservation(null)}>
-        <DialogContent className="bg-[#1a1a1a] border-[#333] text-white max-w-md">
+        <DialogContent className="bg-[#1a1a1a] border-[#333] text-white max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-heading uppercase text-white">
               Detalle de Reserva
             </DialogTitle>
           </DialogHeader>
 
-          {selectedReservation && (
+          {selectedReservation && (() => {
+            // Parse zone from message
+            const zoneMatch = selectedReservation.message?.match(/\[ZONA:\s*(.+?)\]/);
+            const requestedZone = zoneMatch ? zoneMatch[1] : null;
+            const cleanMessage = selectedReservation.message?.replace(/\[ZONA:\s*.+?\]\s*/, '').trim() || null;
+
+            return (
             <div className="space-y-4 mt-2">
               {/* Status Badge */}
               <div className="flex justify-center">
@@ -491,6 +497,19 @@ export function AdminReservations() {
                     <p className="text-white">{selectedReservation.partySize}</p>
                   </div>
                 </div>
+
+                {/* Zone Requested */}
+                {requestedZone && (
+                  <div className="flex items-center gap-3">
+                    <MapPin size={16} className="text-[var(--accent-gold)] flex-shrink-0" />
+                    <div>
+                      <p className="text-white/40 text-xs uppercase">Zona Solicitada</p>
+                      <span className="inline-block px-3 py-1 mt-1 rounded-full text-xs font-heading uppercase bg-[var(--accent-gold)]/20 text-[var(--accent-gold)] border border-[var(--accent-gold)]/40">
+                        {requestedZone}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 {selectedReservation.table && (
                   <div className="flex items-center gap-3">
@@ -564,16 +583,29 @@ export function AdminReservations() {
                   </div>
                 )}
 
-                {selectedReservation.message && (
+                {cleanMessage && (
                   <div className="flex items-start gap-3">
                     <MessageSquare size={16} className="text-white/40 flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="text-white/40 text-xs uppercase">Mensaje</p>
-                      <p className="text-white/80 text-sm">{selectedReservation.message}</p>
+                      <p className="text-white/80 text-sm">{cleanMessage}</p>
                     </div>
                   </div>
                 )}
               </div>
+
+              {/* Map Reference Image */}
+              {selectedReservation.status !== 'CANCELLED' && selectedReservation.status !== 'COMPLETED' && (
+                <div className="bg-[#0a0a0a] rounded-lg p-3">
+                  <p className="text-[var(--accent-gold)] text-xs uppercase font-heading mb-2 text-center">Mapa de Referencia</p>
+                  <img
+                    src="/maps/mapa-completo.jpg"
+                    alt="Mapa completo de mesas"
+                    className="w-full rounded-lg"
+                    draggable={false}
+                  />
+                </div>
+              )}
 
               {/* Timestamps */}
               <div className="text-white/30 text-xs text-center space-y-1">
@@ -606,7 +638,8 @@ export function AdminReservations() {
                 )}
               </div>
             </div>
-          )}
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>

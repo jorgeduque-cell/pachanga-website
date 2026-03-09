@@ -67,6 +67,18 @@ export class ReservationService {
     }
 
     try {
+      // Persist zone preference in the message field
+      const ZONE_LABELS: Record<string, string> = {
+        PALCO: 'Palco VIP',
+        VISITANTE: 'Mesa Visitante',
+        BARRA: 'Mesa Barra',
+      };
+      let finalMessage = data.message || '';
+      if (data.zone) {
+        const zoneLabel = ZONE_LABELS[data.zone] || data.zone;
+        finalMessage = `[ZONA: ${zoneLabel}]${finalMessage ? ' ' + finalMessage : ''}`;
+      }
+
       const reservation = await prisma.$transaction(async (tx) => {
         if (data.tableId) {
           await this.validateTableForReservation(tx, data.tableId, data.partySize, reservationDate, data.reservationTime);
@@ -80,7 +92,7 @@ export class ReservationService {
             reservationTime: data.reservationTime,
             partySize: data.partySize,
             tableId: data.tableId ?? null,
-            message: data.message,
+            message: finalMessage || null,
             status: 'PENDING',
           },
           include: { table: true },
