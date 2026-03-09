@@ -84,6 +84,7 @@ export function ReservationForm({
   }, [error]);
 
   const handleFormSubmit = (data: ReservationFormData) => {
+    console.log('[ReservationForm] handleFormSubmit called with:', data);
     setSubmitError(null);
 
     const reservationData: CreateReservationDTO = {
@@ -91,6 +92,7 @@ export function ReservationForm({
       tableId: selectedTableId ?? undefined,
     };
 
+    console.log('[ReservationForm] Calling onSubmit with:', reservationData);
     onSubmit(reservationData);
   };
 
