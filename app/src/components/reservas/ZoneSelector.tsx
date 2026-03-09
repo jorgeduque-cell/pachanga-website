@@ -29,7 +29,7 @@ const ZONE_OPTIONS: ZoneOption[] = [
     gradientFrom: 'rgba(255, 215, 0, 0.15)',
     gradientTo: 'rgba(255, 215, 0, 0.03)',
     borderColor: 'rgba(255, 215, 0, 0.4)',
-    features: ['Ubicación privilegiada', 'Servicio prioritario', 'Ideal para grupos grandes'],
+    features: ['Ubicación privilegiada', 'Servicio prioritario', 'Ideal para grupos grandes', '🍾 Consumo mínimo: 1 botella de licor'],
   },
   {
     type: 'VISITANTE',
