@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Reserva Directa</title>
+</head>
+<body>
+  <h1>Test de Reserva Directa al Backend</h1>
+  <button onclick="testReserva()">Crear Reserva de Prueba</button>
+  <pre id="result"></pre>
+
+  <script>
+    async function testReserva() {
+      const result = document.getElementById('result');
+      result.textContent = 'Enviando...';
+      
+      try {
+        const response = await fetch('https://pachanga-api.onrender.com/api/reservations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customerName: 'Test Web',
+            customerPhone: '1234567890',
+            reservationDate: '2026-03-20',
+            reservationTime: '19:00',
+            partySize: 2
+          })
+        });
+        
+        const data = await response.json();
+        result.textContent = JSON.stringify(data, null, 2);
+      } catch (error) {
+        result.textContent = 'Error: ' + error.message;
+      }
+    }
+  </script>
+</body>
+</html>
