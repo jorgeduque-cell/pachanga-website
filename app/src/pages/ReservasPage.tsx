@@ -57,10 +57,16 @@ export function ReservasPage() {
       customerName: data.customerName,
     });
 
+    console.log('[ReservasPage] Submitting reservation:', data);
     createReservation(data, {
-      onSuccess: () => {
+      onSuccess: (result) => {
+        console.log('[ReservasPage] Reservation success:', result);
         setSelectedTableId(null);
         setShowSuccessModal(true);
+      },
+      onError: (error) => {
+        console.error('[ReservasPage] Reservation error:', error);
+        alert('Error al crear la reserva: ' + error.message);
       },
     });
   };

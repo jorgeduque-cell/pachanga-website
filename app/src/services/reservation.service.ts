@@ -12,8 +12,15 @@ import type {
 export const reservationService = {
   // Crear nueva reserva (público)
   async create(data: CreateReservationDTO): Promise<Reservation> {
-    const response = await apiClient.post<{ data: Reservation }>('/reservations', data);
-    return extractData(response);
+    console.log('[reservationService.create] Sending data:', JSON.stringify(data));
+    try {
+      const response = await apiClient.post<{ data: Reservation }>('/reservations', data);
+      console.log('[reservationService.create] Response:', response.data);
+      return extractData(response);
+    } catch (error) {
+      console.error('[reservationService.create] Error:', error);
+      throw error;
+    }
   },
 
   // Obtener todas las reservas (admin) - paginado
