@@ -102,7 +102,6 @@ export function ZoneSelector({ selectedZone, onSelectZone, availability }: ZoneS
                 background: `linear-gradient(135deg, ${zone.gradientFrom}, ${zone.gradientTo})`,
                 borderColor: isSelected ? zone.accentColor : zone.borderColor,
                 border: `1px solid ${isSelected ? zone.accentColor : zone.borderColor}`,
-                ringColor: isSelected ? zone.accentColor : undefined,
                 boxShadow: isSelected
                   ? `0 0 25px ${zone.gradientFrom}, inset 0 1px 0 ${zone.borderColor}`
                   : `inset 0 1px 0 ${zone.borderColor}`,
