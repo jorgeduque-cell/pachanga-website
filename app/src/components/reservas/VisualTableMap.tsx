@@ -1,266 +1,250 @@
-import { useState, useRef } from 'react';
-import { motion } from 'framer-motion';
-import type { TableSummary, FloorMap } from '@/types';
-import { TableTooltip } from './TableTooltip';
-import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+'use client';
 
-interface VisualTableMapProps {
-  floorData: FloorMap;
-  selectedTableId: string | null;
-  onSelectTable: (id: string) => void;
-  floorNumber: number;
+import { useState } from 'react';
+
+import { motion, AnimatePresence } from 'framer-motion';
+import TableTooltip from './TableTooltip';
+
+interface Table {
+  id: string;
+  name: string;
+  capacity: number;
+  zone: string;
+  floor: number;
+  posX: number;
+  posY: number;
+  status?: string;
 }
 
-export function VisualTableMap({
-  floorData,
-  selectedTableId,
-  onSelectTable,
-  floorNumber,
-}: VisualTableMapProps) {
-  const [hoveredTable, setHoveredTable] = useState<TableSummary | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+interface VisualTableMapProps {
+  tables: Table[];
+  selectedTable: Table | null;
+  onSelectTable: (table: Table) => void;
+  floor: number;
+}
 
-  // For pinch-to-zoom gesture support (prepared for future use)
-  // const scale = useMotionValue(1);
-  // const x = useMotionValue(0);
-  // const y = useMotionValue(0);
+// ═══════════════════════════════════════════════════════════
+// Coordenadas de hotspots por piso — posicionadas como % de la imagen
+// Mapeadas visualmente sobre las imágenes reales del local
+// ═══════════════════════════════════════════════════════════
 
-  const getTableColor = (table: TableSummary) => {
-    if (!table.isAvailable) {
-      return 'bg-white/10 cursor-not-allowed border-white/5 text-white/30';
-    }
-    if (selectedTableId === table.id) {
-      return 'bg-[var(--accent-gold)] cursor-pointer border-[var(--accent-gold-light)] text-black shadow-[0_0_30px_rgba(255,215,0,0.5)]';
-    }
+const FLOOR_1_HOTSPOTS: Record<string, { x: number; y: number; w: number; h: number; shape: 'circle' | 'rect' }> = {
+  // Barra Cocteles (A-J) — columna izquierda vertical
+  'A': { x: 16.5, y: 12.5, w: 4.5, h: 3.5, shape: 'circle' },
+  'B': { x: 16.5, y: 19, w: 4.5, h: 3.5, shape: 'circle' },
+  'C': { x: 16.5, y: 25.5, w: 4.5, h: 3.5, shape: 'circle' },
+  'D': { x: 16.5, y: 32, w: 4.5, h: 3.5, shape: 'circle' },
+  'E': { x: 16.5, y: 38.5, w: 4.5, h: 3.5, shape: 'circle' },
+  'F': { x: 16.5, y: 45, w: 4.5, h: 3.5, shape: 'circle' },
+  'G': { x: 12, y: 51, w: 4.5, h: 3.5, shape: 'circle' },
+  'H': { x: 12, y: 57, w: 4.5, h: 3.5, shape: 'circle' },
+  'I': { x: 16.5, y: 57, w: 4.5, h: 3.5, shape: 'circle' },
+  'J': { x: 12, y: 63.5, w: 4.5, h: 3.5, shape: 'circle' },
 
-    const name = table.name;
-    // Mesas P (Premium) - dorado
-    if (name.startsWith('P') && name.length > 1) {
-      return 'bg-[var(--accent-gold)]/20 hover:bg-[var(--accent-gold)]/30 border-[var(--accent-gold)]/50 cursor-pointer text-[var(--accent-gold)] hover:shadow-[0_0_20px_rgba(255,215,0,0.3)]';
-    }
-    // Mesas V (Visitante) - rojo
-    if (name.startsWith('V')) {
-      return 'bg-[var(--accent-red)]/20 hover:bg-[var(--accent-red)]/30 border-[var(--accent-red)]/50 cursor-pointer text-white hover:shadow-[0_0_20px_rgba(227,27,35,0.3)]';
-    }
-    // Mesas R1, R2 (Regular) - verde (NOT single 'R' which is barra)
-    if (name.startsWith('R') && name.length > 1) {
-      return 'bg-emerald-500/20 hover:bg-emerald-500/30 border-emerald-500/50 cursor-pointer text-emerald-300 hover:shadow-[0_0_20px_rgba(16,185,129,0.3)]';
-    }
-    // Single letters (Barra: A-N, O, Q, R, S, T, U, Ñ, W, X, Y, Z) - cyan
-    return 'bg-cyan-500/20 hover:bg-cyan-500/30 border-cyan-500/50 cursor-pointer text-cyan-300 hover:shadow-[0_0_20px_rgba(6,182,212,0.3)]';
-  };
+  // V1-V6 — izquierda, debajo de barra
+  'V1': { x: 16, y: 63.5, w: 4.5, h: 3.5, shape: 'circle' },
+  'V2': { x: 16, y: 69, w: 4.5, h: 3.5, shape: 'circle' },
+  'V3': { x: 16, y: 74.5, w: 4.5, h: 3.5, shape: 'circle' },
+  'V4': { x: 16, y: 80, w: 4.5, h: 3.5, shape: 'circle' },
+  'V5': { x: 16, y: 85.5, w: 4.5, h: 3.5, shape: 'circle' },
+  'V6': { x: 16, y: 91, w: 4.5, h: 3.5, shape: 'circle' },
 
-  const getTableSize = (name: string, floor: number) => {
-    // Mesas P (Premium) - grandes rectangulares (P1, P2... not single 'P')
-    if (name.startsWith('P') && name.length > 1) {
-      return 'w-16 h-12 text-sm';
-    }
-    // Mesas V (Visitantes) y R1/R2 - redondas medianas
-    if (name.startsWith('V') || (name.startsWith('R') && name.length > 1)) {
-      return 'w-11 h-11 text-xs';
-    }
-    // BARRA PRINCIPAL piso 1
-    if (floor === 1 && ['O','Ñ','Q','R','S','T','U'].includes(name)) {
-      return 'w-7 h-7 text-[9px]';
-    }
-    // BARRA piso 2
-    if (floor === 2 && ['W','X','Y','Z'].includes(name)) {
-      return 'w-7 h-7 text-[9px]';
-    }
-    // Barra lateral (A-J, K-N) y otras letras
-    return 'w-8 h-8 text-[10px]';
-  };
+  // Palcos P1-P5 — columna centro-izquierda
+  'P1': { x: 28, y: 22, w: 14, h: 8, shape: 'rect' },
+  'P2': { x: 28, y: 34, w: 14, h: 8, shape: 'rect' },
+  'P3': { x: 28, y: 48, w: 14, h: 8, shape: 'rect' },
+  'P4': { x: 28, y: 62, w: 14, h: 8, shape: 'rect' },
+  'P5': { x: 28, y: 76, w: 14, h: 8, shape: 'rect' },
 
-  const getTableShape = (name: string) => {
-    if (name.startsWith('P')) {
-      return 'rounded-lg'; // Rectangular
-    }
-    return 'rounded-full'; // Redonda
-  };
+  // Centro pista — V7-V9
+  'V7': { x: 44, y: 32, w: 4.5, h: 3.5, shape: 'circle' },
+  'V8': { x: 52, y: 32, w: 4.5, h: 3.5, shape: 'circle' },
+  'V9': { x: 60, y: 32, w: 4.5, h: 3.5, shape: 'circle' },
 
-  const handleTableClick = (table: TableSummary) => {
-    if (table.isAvailable) {
-      onSelectTable(table.id);
-    } else {
-      toast.error('Esta mesa ya está reservada para esta fecha. Elige otra', {
-        duration: 3000,
-      });
+  // V11-V13
+  'V11': { x: 44, y: 48, w: 4.5, h: 3.5, shape: 'circle' },
+  'V12': { x: 52, y: 48, w: 4.5, h: 3.5, shape: 'circle' },
+  'V13': { x: 60, y: 48, w: 4.5, h: 3.5, shape: 'circle' },
+
+  // V14-V16
+  'V14': { x: 44, y: 62, w: 4.5, h: 3.5, shape: 'circle' },
+  'V15': { x: 52, y: 62, w: 4.5, h: 3.5, shape: 'circle' },
+  'V16': { x: 60, y: 62, w: 4.5, h: 3.5, shape: 'circle' },
+
+  // V17-V19
+  'V17': { x: 44, y: 76, w: 4.5, h: 3.5, shape: 'circle' },
+  'V18': { x: 52, y: 76, w: 4.5, h: 3.5, shape: 'circle' },
+  'V19': { x: 60, y: 76, w: 4.5, h: 3.5, shape: 'circle' },
+
+  // P6 VIP — esquina superior derecha
+  'P6': { x: 74, y: 10, w: 14, h: 8, shape: 'rect' },
+
+  // K-N — diagonal derecha
+  'K': { x: 84, y: 22, w: 4.5, h: 3.5, shape: 'circle' },
+  'L': { x: 87, y: 34, w: 4.5, h: 3.5, shape: 'circle' },
+  'M': { x: 87, y: 44, w: 4.5, h: 3.5, shape: 'circle' },
+  'N': { x: 84, y: 52, w: 4.5, h: 3.5, shape: 'circle' },
+
+  // P7-P9 — columna derecha
+  'P7': { x: 68, y: 38, w: 14, h: 8, shape: 'rect' },
+  'P8': { x: 68, y: 56, w: 14, h: 8, shape: 'rect' },
+  'P9': { x: 68, y: 72, w: 14, h: 8, shape: 'rect' },
+
+  // Barra principal — fila inferior
+  'O': { x: 20, y: 92, w: 4, h: 3, shape: 'circle' },
+  'Q': { x: 30, y: 92, w: 4, h: 3, shape: 'circle' },
+  'R': { x: 38, y: 92, w: 4, h: 3, shape: 'circle' },
+  'S': { x: 46, y: 92, w: 4, h: 3, shape: 'circle' },
+  'T': { x: 54, y: 92, w: 4, h: 3, shape: 'circle' },
+  'U': { x: 62, y: 92, w: 4, h: 3, shape: 'circle' },
+  'Ñ': { x: 70, y: 92, w: 4, h: 3, shape: 'circle' },
+};
+
+const FLOOR_2_HOTSPOTS: Record<string, { x: number; y: number; w: number; h: number; shape: 'circle' | 'rect' }> = {
+  // V20-V30 — pared izquierda
+  'V20': { x: 3, y: 9, w: 4, h: 3, shape: 'circle' },
+  'V21': { x: 3, y: 15, w: 4, h: 3, shape: 'circle' },
+  'V22': { x: 3, y: 22, w: 4, h: 3, shape: 'circle' },
+  'V23': { x: 3, y: 30, w: 4, h: 3, shape: 'circle' },
+  'V24': { x: 3, y: 37, w: 4, h: 3, shape: 'circle' },
+  'V25': { x: 3, y: 44, w: 4, h: 3, shape: 'circle' },
+  'V26': { x: 3, y: 52, w: 4, h: 3, shape: 'circle' },
+  'V27': { x: 3, y: 59, w: 4, h: 3, shape: 'circle' },
+  'V28': { x: 3, y: 66, w: 4, h: 3, shape: 'circle' },
+  'V29': { x: 3, y: 73, w: 4, h: 3, shape: 'circle' },
+  'V30': { x: 3, y: 81, w: 4, h: 3, shape: 'circle' },
+
+  // R1-R2
+  'R1': { x: 10, y: 9, w: 5, h: 4, shape: 'circle' },
+  'R2': { x: 10, y: 16, w: 5, h: 4, shape: 'circle' },
+
+  // P10-P14
+  'P10': { x: 8, y: 28, w: 12, h: 6, shape: 'rect' },
+  'P11': { x: 8, y: 40, w: 12, h: 6, shape: 'rect' },
+  'P12': { x: 8, y: 52, w: 12, h: 6, shape: 'rect' },
+  'P13': { x: 8, y: 64, w: 12, h: 6, shape: 'rect' },
+  'P14': { x: 8, y: 76, w: 12, h: 6, shape: 'rect' },
+
+  // P15-P17
+  'P15': { x: 37, y: 9, w: 12, h: 6, shape: 'rect' },
+  'P16': { x: 37, y: 18, w: 12, h: 6, shape: 'rect' },
+  'P17': { x: 37, y: 27, w: 12, h: 6, shape: 'rect' },
+
+  // V31-V35
+  'V31': { x: 46, y: 9, w: 4, h: 3, shape: 'circle' },
+  'V32': { x: 46, y: 16, w: 4, h: 3, shape: 'circle' },
+  'V33': { x: 46, y: 23, w: 4, h: 3, shape: 'circle' },
+  'V34': { x: 46, y: 30, w: 4, h: 3, shape: 'circle' },
+  'V35': { x: 46, y: 37, w: 4, h: 3, shape: 'circle' },
+
+  // P18-P21
+  'P18': { x: 32, y: 40, w: 12, h: 6, shape: 'rect' },
+  'P19': { x: 32, y: 52, w: 12, h: 6, shape: 'rect' },
+  'P20': { x: 32, y: 64, w: 12, h: 6, shape: 'rect' },
+  'P21': { x: 32, y: 76, w: 12, h: 6, shape: 'rect' },
+
+  // W, X, Y, Z — borde inferior
+  'W': { x: 13, y: 87, w: 4, h: 3, shape: 'circle' },
+  'X': { x: 21, y: 87, w: 4, h: 3, shape: 'circle' },
+  'Y': { x: 25, y: 87, w: 4, h: 3, shape: 'circle' },
+  'Z': { x: 29, y: 87, w: 4, h: 3, shape: 'circle' },
+};
+
+const FLOOR_IMAGES: Record<number, string> = {
+  1: '/maps/primer-piso.png',
+  2: '/maps/segundo-piso.png',
+};
+
+export default function VisualTableMap({ tables, selectedTable, onSelectTable, floor }: VisualTableMapProps) {
+  const [hoveredTable, setHoveredTable] = useState<Table | null>(null);
+
+  const floorTables = tables.filter(t => t.floor === floor);
+  const hotspots = floor === 1 ? FLOOR_1_HOTSPOTS : FLOOR_2_HOTSPOTS;
+
+  const getOverlayStyle = (table: Table) => {
+    const isSelected = selectedTable?.id === table.id;
+    const isOccupied = table.status === 'occupied';
+
+    if (isSelected) {
+      return 'bg-[var(--accent-gold)]/40 border-2 border-[var(--accent-gold)] shadow-[0_0_15px_rgba(255,215,0,0.5)]';
     }
+    if (isOccupied) {
+      return 'bg-red-500/30 border border-red-500/60 cursor-not-allowed';
+    }
+    // Disponible — casi invisible, sutil al hover
+    return 'bg-transparent border border-transparent hover:bg-white/10 hover:border-white/20 cursor-pointer';
   };
 
   return (
-    <div
-      ref={containerRef}
-      className="relative w-full h-[750px] bg-gradient-radial rounded-2xl border border-[var(--glass-border)] overflow-hidden touch-pan-x touch-pan-y"
-    >
-      {/* Background grid pattern */}
-      <div 
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: `
-            linear-gradient(var(--glass-border) 1px, transparent 1px),
-            linear-gradient(90deg, var(--glass-border) 1px, transparent 1px)
-          `,
-          backgroundSize: '40px 40px',
-        }}
+    <div className="relative w-full">
+      {/* Imagen del mapa real */}
+      <img
+        src={FLOOR_IMAGES[floor]}
+        alt={`Mapa Piso ${floor}`}
+        className="w-full h-auto rounded-xl"
+        draggable={false}
       />
 
-      {/* Radial gradient overlay */}
-      <div 
-        className="absolute inset-0"
-        style={{
-          background: 'radial-gradient(ellipse at center, transparent 0%, var(--bg-base) 80%)',
-        }}
-      />
+      {/* Overlay de hotspots clickeables */}
+      {floorTables.map(table => {
+        const hotspot = hotspots[table.name];
+        if (!hotspot) return null;
 
-      {/* TARIMA - Glassmorphism style */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="absolute top-6 left-1/2 transform -translate-x-1/2"
-      >
-        <div 
-          className="glass-card-heavy px-12 py-4 rounded-xl"
-          style={{
-            background: 'linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,215,0,0.05))',
-            borderColor: 'rgba(255,215,0,0.3)',
-            boxShadow: '0 0 40px rgba(255,215,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1)',
-          }}
-        >
-          <span className="text-xl font-heading text-[var(--accent-gold)] tracking-[0.3em]">
-            TARIMA
-          </span>
-        </div>
-      </motion.div>
+        const isOccupied = table.status === 'occupied';
 
-      {/* BARRA PRINCIPAL - Solo en piso 1 */}
-      {floorNumber === 1 && (
-        <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2">
-          <div 
-            className="glass-card px-10 py-3 rounded-lg"
-            style={{
-              background: 'linear-gradient(135deg, rgba(227,27,35,0.15), rgba(227,27,35,0.05))',
-              borderColor: 'rgba(227,27,35,0.3)',
-            }}
-          >
-            <span className="text-sm font-heading text-white/90 tracking-wider">
-              BARRA PRINCIPAL
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* BARRA COCTÉLES - Glass style (solo piso 1) */}
-      {floorNumber === 1 && (
-        <div className="absolute left-6 top-1/2 transform -translate-y-1/2 -rotate-90 origin-left">
-          <div 
-            className="glass-card px-8 py-3 rounded-lg whitespace-nowrap"
-            style={{
-              background: 'linear-gradient(135deg, rgba(227,27,35,0.15), rgba(227,27,35,0.05))',
-              borderColor: 'rgba(227,27,35,0.3)',
-            }}
-          >
-            <span className="text-sm font-heading text-white/90 tracking-wider">
-              BARRA COCTÉLES
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Mesas posicionadas - Filtrar mesas P y V sueltas (ya fueron renombradas a Ñ y W) */}
-      {floorData.tables
-        .filter((table) => table.name !== 'P' && table.name !== 'V')
-        .map((table, index) => (
-        <motion.div
-          key={table.id}
-          initial={{ opacity: 0, scale: 0 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ 
-            delay: index * 0.02,
-            type: 'spring',
-            stiffness: 300,
-            damping: 20,
-          }}
-          className="absolute transform -translate-x-1/2 -translate-y-1/2"
-          style={{
-            left: `${Math.min(Math.max(table.posX, 5), 95)}%`,
-            top: `${Math.min(Math.max(table.posY, 5), 87)}%`,
-          }}
-        >
+        return (
           <motion.button
-            onClick={() => handleTableClick(table)}
+            key={table.id}
+            className={`absolute transition-all duration-200 ${
+              hotspot.shape === 'circle' ? 'rounded-full' : 'rounded-md'
+            } ${getOverlayStyle(table)}`}
+            style={{
+              left: `${hotspot.x}%`,
+              top: `${hotspot.y}%`,
+              width: `${hotspot.w}%`,
+              height: `${hotspot.h}%`,
+            }}
+            onClick={() => !isOccupied && onSelectTable(table)}
             onMouseEnter={() => setHoveredTable(table)}
             onMouseLeave={() => setHoveredTable(null)}
-            disabled={false}
-            whileHover={{ scale: table.isAvailable ? 1.15 : 1 }}
-            whileTap={{ scale: table.isAvailable ? 0.95 : 1 }}
-            className={cn(
-              'flex items-center justify-center font-bold border-2 transition-all duration-200 backdrop-blur-sm',
-              getTableColor(table),
-              getTableSize(table.name, table.floor),
-              getTableShape(table.name)
-            )}
-            style={{
-              textShadow: selectedTableId === table.id ? 'none' : '0 1px 2px rgba(0,0,0,0.5)',
-            }}
-          >
-            {table.name}
-          </motion.button>
-
-          {/* Selection ring animation */}
-          {selectedTableId === table.id && (
-            <motion.div
-              layoutId="selectionRing"
-              className="absolute inset-0 rounded-lg border-2 border-[var(--accent-gold)]"
-              initial={{ scale: 1.2, opacity: 0 }}
-              animate={{ scale: 1.3, opacity: [0.5, 0] }}
-              transition={{ duration: 1, repeat: Infinity }}
-            />
-          )}
-        </motion.div>
-      ))}
-
-      {hoveredTable && (() => {
-        const clampedX = Math.min(Math.max(hoveredTable.posX, 5), 95);
-        const clampedY = Math.min(Math.max(hoveredTable.posY, 5), 87);
-        // Show tooltip above by default, below if table is near top
-        const tooltipY = clampedY < 20 ? clampedY + 8 : clampedY - 12;
-        // Horizontal: center, but shift if near edges
-        const tooltipX = clampedX < 20 ? 18 : clampedX > 80 ? 82 : clampedX;
-        const translateX = clampedX < 20 ? '0%' : clampedX > 80 ? '-100%' : '-50%';
-        return (
-          <motion.div
-            key={hoveredTable.id}
-            initial={{ opacity: 0, y: clampedY < 20 ? -10 : 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="absolute z-50 pointer-events-none"
-            style={{
-              left: `${tooltipX}%`,
-              top: `${tooltipY}%`,
-              transform: `translateX(${translateX})`,
-            }}
-          >
-            <TableTooltip table={hoveredTable} />
-          </motion.div>
+            whileHover={!isOccupied ? { scale: 1.15 } : undefined}
+            whileTap={!isOccupied ? { scale: 0.95 } : undefined}
+            disabled={isOccupied}
+            title={`Mesa ${table.name} - Cap: ${table.capacity}`}
+          />
         );
-      })()}
+      })}
 
-      {/* Floor indicator */}
-      <div className="absolute top-6 right-6 glass-card px-4 py-2">
-        <span className="text-sm font-heading text-white/80">
-          {floorNumber === 1 ? 'Primer Piso' : 'Segundo Piso'}
-        </span>
-      </div>
+      {/* Tooltip al hover */}
+      <AnimatePresence>
+        {hoveredTable && (() => {
+          const hotspot = hotspots[hoveredTable.name];
+          if (!hotspot) return null;
 
-      {/* Glow effect at bottom */}
-      <div 
-        className="absolute bottom-0 left-0 right-0 h-32 pointer-events-none"
-        style={{
-          background: 'linear-gradient(to top, var(--bg-base), transparent)',
-        }}
-      />
+          // Position tooltip near the hotspot
+          const tooltipX = Math.min(Math.max(hotspot.x + hotspot.w / 2, 15), 85);
+          const showAbove = hotspot.y > 25;
+          const tooltipY = showAbove ? hotspot.y - 2 : hotspot.y + hotspot.h + 2;
+
+          return (
+            <motion.div
+              key="tooltip"
+              initial={{ opacity: 0, y: showAbove ? 5 : -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="absolute z-50 pointer-events-none"
+              style={{
+                left: `${tooltipX}%`,
+                top: `${tooltipY}%`,
+                transform: `translateX(-50%) ${showAbove ? 'translateY(-100%)' : ''}`,
+              }}
+            >
+              <TableTooltip table={hoveredTable} />
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
     </div>
   );
 }
+
