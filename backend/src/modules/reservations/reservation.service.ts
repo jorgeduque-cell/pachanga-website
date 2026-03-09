@@ -59,6 +59,10 @@ export class ReservationService {
     this.validateFutureDate(reservationDate);
 
     try {
+      // Count before
+      const countBefore = await prisma.reservation.count();
+      console.log(`[ReservationService] Count before: ${countBefore}`);
+      
       const reservation = await prisma.$transaction(async (tx) => {
         if (data.tableId) {
           await this.validateTableForReservation(tx, data.tableId, data.partySize, reservationDate, data.reservationTime);
@@ -81,6 +85,14 @@ export class ReservationService {
         console.log(`[ReservationService] Reservation created with ID: ${created.id}`);
         return created;
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+      
+      // Count after and verify
+      const countAfter = await prisma.reservation.count();
+      console.log(`[ReservationService] Count after: ${countAfter}`);
+      
+      // Try to read it back
+      const verify = await prisma.reservation.findUnique({ where: { id: reservation.id } });
+      console.log(`[ReservationService] Verified in DB: ${verify ? 'YES' : 'NO'}`);
 
       socketService.emitNewReservation(reservation);
 
