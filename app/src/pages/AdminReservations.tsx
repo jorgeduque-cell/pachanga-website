@@ -8,7 +8,13 @@ import {
   MoreHorizontal,
   Calendar,
   RefreshCw,
-  ChevronDown
+  ChevronDown,
+  Eye,
+  User,
+  Phone,
+  Users,
+  MessageSquare,
+  MapPin
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -56,6 +62,7 @@ export function AdminReservations() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<ReservationStatus | 'todos'>('todos');
   const [isNewReservationOpen, setIsNewReservationOpen] = useState(false);
+  const [selectedReservation, setSelectedReservation] = useState<any>(null);
   const [isCreating, setIsCreating] = useState(false);
   
   // Form state for new reservation
@@ -274,8 +281,11 @@ export function AdminReservations() {
                                 Cancelar
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem className="text-white/60 focus:text-white focus:bg-[#0a0a0a]">
-                              <Clock className="mr-2" size={16} />
+                            <DropdownMenuItem 
+                              onClick={() => setSelectedReservation(reservation)}
+                              className="text-white/60 focus:text-white focus:bg-[#0a0a0a]"
+                            >
+                              <Eye className="mr-2" size={16} />
                               Ver detalles
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -422,6 +432,117 @@ export function AdminReservations() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reservation Detail Modal */}
+      <Dialog open={!!selectedReservation} onOpenChange={(open) => !open && setSelectedReservation(null)}>
+        <DialogContent className="bg-[#1a1a1a] border-[#333] text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-heading uppercase text-white">
+              Detalle de Reserva
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedReservation && (
+            <div className="space-y-4 mt-2">
+              {/* Status Badge */}
+              <div className="flex justify-center">
+                <span className={`px-4 py-1.5 rounded-full text-sm font-heading uppercase ${getStatusColor(selectedReservation.status)}`}>
+                  {STATUS_LABELS[selectedReservation.status]}
+                </span>
+              </div>
+
+              {/* Info Grid */}
+              <div className="space-y-3 bg-[#0a0a0a] rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <User size={16} className="text-white/40 flex-shrink-0" />
+                  <div>
+                    <p className="text-white/40 text-xs uppercase">Cliente</p>
+                    <p className="text-white font-heading">{selectedReservation.customerName}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Phone size={16} className="text-white/40 flex-shrink-0" />
+                  <div>
+                    <p className="text-white/40 text-xs uppercase">Teléfono</p>
+                    <p className="text-white">{selectedReservation.customerPhone}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Calendar size={16} className="text-white/40 flex-shrink-0" />
+                  <div>
+                    <p className="text-white/40 text-xs uppercase">Fecha y Hora</p>
+                    <p className="text-white">
+                      {new Date(selectedReservation.reservationDate).toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                      {' — '}{selectedReservation.reservationTime}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Users size={16} className="text-white/40 flex-shrink-0" />
+                  <div>
+                    <p className="text-white/40 text-xs uppercase">Personas</p>
+                    <p className="text-white">{selectedReservation.partySize}</p>
+                  </div>
+                </div>
+
+                {selectedReservation.table && (
+                  <div className="flex items-center gap-3">
+                    <MapPin size={16} className="text-white/40 flex-shrink-0" />
+                    <div>
+                      <p className="text-white/40 text-xs uppercase">Mesa Asignada</p>
+                      <p className="text-white">{selectedReservation.table.label || `Mesa ${selectedReservation.table.number}`}</p>
+                    </div>
+                  </div>
+                )}
+
+                {selectedReservation.message && (
+                  <div className="flex items-start gap-3">
+                    <MessageSquare size={16} className="text-white/40 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-white/40 text-xs uppercase">Mensaje</p>
+                      <p className="text-white/80 text-sm">{selectedReservation.message}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Timestamps */}
+              <div className="text-white/30 text-xs text-center space-y-1">
+                <p>Creada: {new Date(selectedReservation.createdAt).toLocaleString('es-CO')}</p>
+                {selectedReservation.updatedAt !== selectedReservation.createdAt && (
+                  <p>Actualizada: {new Date(selectedReservation.updatedAt).toLocaleString('es-CO')}</p>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-2">
+                {selectedReservation.status === 'PENDING' && (
+                  <Button
+                    onClick={() => { handleConfirm(selectedReservation.id); setSelectedReservation(null); }}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <CheckCircle className="mr-2" size={16} />
+                    Confirmar
+                  </Button>
+                )}
+                {selectedReservation.status !== 'CANCELLED' && (
+                  <Button
+                    onClick={() => { handleCancel(selectedReservation.id); setSelectedReservation(null); }}
+                    variant="outline"
+                    className="flex-1 border-red-500/50 text-red-500 hover:bg-red-500/10"
+                  >
+                    <XCircle className="mr-2" size={16} />
+                    Cancelar
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
