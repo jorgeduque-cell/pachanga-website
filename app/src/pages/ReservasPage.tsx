@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useCreateReservation } from '@/hooks/useReservations';
-import { useAvailableTables } from '@/hooks/useTableMap';
 import { ZoneSelector, type ZoneType } from '@/components/reservas/ZoneSelector';
 import { ReservationForm } from '@/components/reservas/ReservationForm';
 import { ReservationSuccessModal } from '@/components/reservas/ReservationSuccessModal';
@@ -36,20 +35,9 @@ export function ReservasPage() {
   } | null>(null);
 
   const { mutate: createReservation, isPending: isCreating, error: createError } = useCreateReservation();
-  const { data: availableTables } = useAvailableTables(date, time);
 
-  // Compute zone availability from available tables
-  const zoneAvailability = (() => {
-    const counts: Record<ZoneType, number> = { PALCO: 0, VISITANTE: 0, BARRA: 0 };
-    if (!availableTables) return counts;
-    const tables = Array.isArray(availableTables) ? availableTables : ((availableTables as any)?.data || []);
-    for (const t of tables) {
-      if (t.zone === 'VIP') counts.PALCO++;
-      else if (t.zone === 'BARRA') counts.BARRA++;
-      else counts.VISITANTE++; // SALON, TERRAZA, PISTA
-    }
-    return counts;
-  })();
+  // Static urgency counts
+  const zoneAvailability: Record<ZoneType, number> = { PALCO: 5, VISITANTE: 15, BARRA: 15 };
 
   const handleSubmit = (data: CreateReservationDTO) => {
     setLastReservation({
@@ -166,7 +154,7 @@ export function ReservasPage() {
               <ZoneSelector
                 selectedZone={selectedZone}
                 onSelectZone={setSelectedZone}
-                availability={date && time ? zoneAvailability : undefined}
+                availability={zoneAvailability}
               />
             </div>
 
