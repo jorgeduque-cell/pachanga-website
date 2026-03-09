@@ -181,7 +181,7 @@ export function VisualTableMap({
           className="absolute transform -translate-x-1/2 -translate-y-1/2"
           style={{
             left: `${Math.min(Math.max(table.posX, 5), 95)}%`,
-            top: `${Math.min(Math.max(table.posY, 5), 92)}%`,
+            top: `${Math.min(Math.max(table.posY, 5), 87)}%`,
           }}
         >
           <motion.button
@@ -219,7 +219,7 @@ export function VisualTableMap({
 
       {hoveredTable && (() => {
         const clampedX = Math.min(Math.max(hoveredTable.posX, 5), 95);
-        const clampedY = Math.min(Math.max(hoveredTable.posY, 5), 92);
+        const clampedY = Math.min(Math.max(hoveredTable.posY, 5), 87);
         // Show tooltip above by default, below if table is near top
         const tooltipY = clampedY < 20 ? clampedY + 8 : clampedY - 12;
         // Horizontal: center, but shift if near edges
