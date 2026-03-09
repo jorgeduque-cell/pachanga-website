@@ -23,9 +23,10 @@ export const apiClient = axios.create({
   timeout: 30000, // 30 segundos para dar tiempo al backend de Render de despertar
 });
 
-// Request interceptor para agregar token
+// Request interceptor para agregar token y logging
 apiClient.interceptors.request.use(
   (config) => {
+    console.log(`[API Request] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
     const token = localStorage.getItem('auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

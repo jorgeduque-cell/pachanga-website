@@ -25,6 +25,9 @@ const JSON_BODY_LIMIT = '10kb';
 const app = express();
 const httpServer = createServer(app);
 
+// Trust proxy - required for express-rate-limit behind Render's proxy
+app.set('trust proxy', 1);
+
 socketService.initialize(httpServer);
 
 // Middlewares

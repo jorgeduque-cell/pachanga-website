@@ -6,7 +6,9 @@ import type { ReservationFilters } from '../../schemas/reservation.schema.js';
 
 export class ReservationController {
   create = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    console.log(`[POST /reservations] Creating reservation for: ${req.body.customerName}`);
     const reservation = await reservationService.create(req.body);
+    console.log(`[POST /reservations] Reservation created: ${reservation.id}`);
     res.status(201).json({ data: reservation });
   });
 
