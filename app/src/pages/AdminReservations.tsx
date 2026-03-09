@@ -63,6 +63,7 @@ export function AdminReservations() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<ReservationStatus | 'todos'>('todos');
   const [isNewReservationOpen, setIsNewReservationOpen] = useState(false);
+  const [showMapZoom, setShowMapZoom] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   
@@ -597,12 +598,13 @@ export function AdminReservations() {
               {/* Map Reference Image */}
               {selectedReservation.status !== 'CANCELLED' && selectedReservation.status !== 'COMPLETED' && (
                 <div className="bg-[#0a0a0a] rounded-lg p-3">
-                  <p className="text-[var(--accent-gold)] text-xs uppercase font-heading mb-2 text-center">Mapa de Referencia</p>
+                  <p className="text-[var(--accent-gold)] text-xs uppercase font-heading mb-2 text-center">Mapa de Referencia <span className="text-white/40">(click para ampliar)</span></p>
                   <img
                     src="/maps/mapa-completo.jpg"
                     alt="Mapa completo de mesas"
-                    className="w-full rounded-lg"
+                    className="w-full rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
                     draggable={false}
+                    onClick={() => setShowMapZoom(true)}
                   />
                 </div>
               )}
@@ -642,6 +644,28 @@ export function AdminReservations() {
           })()}
         </DialogContent>
       </Dialog>
+
+      {/* Map Zoom Lightbox */}
+      {showMapZoom && (
+        <div
+          className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setShowMapZoom(false)}
+        >
+          <button
+            onClick={() => setShowMapZoom(false)}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white text-xl transition-colors"
+          >
+            ✕
+          </button>
+          <img
+            src="/maps/mapa-completo.jpg"
+            alt="Mapa completo de mesas"
+            className="max-w-[95vw] max-h-[95vh] object-contain rounded-lg"
+            draggable={false}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }
