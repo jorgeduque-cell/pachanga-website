@@ -59,6 +59,26 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), version: '1.0.1' });
 });
 
+// DEBUG: Verificar conexión a base de datos
+app.get('/api/debug/db', async (_req, res) => {
+  try {
+    const count = await prisma.reservation.count();
+    const recent = await prisma.reservation.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      select: { id: true, customerName: true, createdAt: true }
+    });
+    res.json({
+      databaseUrl: env.DATABASE_URL?.replace(/:([^:@]+)@/, ':***@'), // Oculta password
+      reservationCount: count,
+      recentReservations: recent,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({ error: String(error) });
+  }
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/tables', tableRoutes);
