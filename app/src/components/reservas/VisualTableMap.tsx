@@ -84,47 +84,47 @@ const FLOOR_1_HOTSPOTS: Record<string, { x: number; y: number; w: number; h: num
 };
 
 const FLOOR_2_HOTSPOTS: Record<string, { x: number; y: number; w: number; h: number; shape: 'circle' | 'rect' }> = {
-  // V20-V30
-  'V20': { x: 3, y: 9, w: 4, h: 3, shape: 'circle' },
-  'V21': { x: 3, y: 15, w: 4, h: 3, shape: 'circle' },
-  'V22': { x: 3, y: 22, w: 4, h: 3, shape: 'circle' },
-  'V23': { x: 3, y: 30, w: 4, h: 3, shape: 'circle' },
-  'V24': { x: 3, y: 37, w: 4, h: 3, shape: 'circle' },
-  'V25': { x: 3, y: 44, w: 4, h: 3, shape: 'circle' },
-  'V26': { x: 3, y: 52, w: 4, h: 3, shape: 'circle' },
-  'V27': { x: 3, y: 59, w: 4, h: 3, shape: 'circle' },
-  'V28': { x: 3, y: 66, w: 4, h: 3, shape: 'circle' },
-  'V29': { x: 3, y: 73, w: 4, h: 3, shape: 'circle' },
-  'V30': { x: 3, y: 81, w: 4, h: 3, shape: 'circle' },
-  // R1-R2
-  'R1': { x: 10, y: 9, w: 5, h: 4, shape: 'circle' },
-  'R2': { x: 10, y: 16, w: 5, h: 4, shape: 'circle' },
-  // P10-P14
-  'P10': { x: 8, y: 28, w: 12, h: 6, shape: 'rect' },
-  'P11': { x: 8, y: 40, w: 12, h: 6, shape: 'rect' },
-  'P12': { x: 8, y: 52, w: 12, h: 6, shape: 'rect' },
-  'P13': { x: 8, y: 64, w: 12, h: 6, shape: 'rect' },
-  'P14': { x: 8, y: 76, w: 12, h: 6, shape: 'rect' },
-  // P15-P17
-  'P15': { x: 37, y: 9, w: 12, h: 6, shape: 'rect' },
-  'P16': { x: 37, y: 18, w: 12, h: 6, shape: 'rect' },
-  'P17': { x: 37, y: 27, w: 12, h: 6, shape: 'rect' },
-  // V31-V35
-  'V31': { x: 46, y: 9, w: 4, h: 3, shape: 'circle' },
-  'V32': { x: 46, y: 16, w: 4, h: 3, shape: 'circle' },
-  'V33': { x: 46, y: 23, w: 4, h: 3, shape: 'circle' },
-  'V34': { x: 46, y: 30, w: 4, h: 3, shape: 'circle' },
-  'V35': { x: 46, y: 37, w: 4, h: 3, shape: 'circle' },
-  // P18-P21
-  'P18': { x: 32, y: 40, w: 12, h: 6, shape: 'rect' },
-  'P19': { x: 32, y: 52, w: 12, h: 6, shape: 'rect' },
-  'P20': { x: 32, y: 64, w: 12, h: 6, shape: 'rect' },
-  'P21': { x: 32, y: 76, w: 12, h: 6, shape: 'rect' },
-  // W, X, Y, Z
-  'W': { x: 13, y: 87, w: 4, h: 3, shape: 'circle' },
-  'X': { x: 21, y: 87, w: 4, h: 3, shape: 'circle' },
-  'Y': { x: 25, y: 87, w: 4, h: 3, shape: 'circle' },
-  'Z': { x: 29, y: 87, w: 4, h: 3, shape: 'circle' },
+  // V20-V30 — pared izquierda (original x:3 * 1.86 = 5.6)
+  'V20': { x: 5.5, y: 9, w: 7, h: 3, shape: 'circle' },
+  'V21': { x: 5.5, y: 15, w: 7, h: 3, shape: 'circle' },
+  'V22': { x: 5.5, y: 22, w: 7, h: 3, shape: 'circle' },
+  'V23': { x: 5.5, y: 30, w: 7, h: 3, shape: 'circle' },
+  'V24': { x: 5.5, y: 37, w: 7, h: 3, shape: 'circle' },
+  'V25': { x: 5.5, y: 44, w: 7, h: 3, shape: 'circle' },
+  'V26': { x: 5.5, y: 52, w: 7, h: 3, shape: 'circle' },
+  'V27': { x: 5.5, y: 59, w: 7, h: 3, shape: 'circle' },
+  'V28': { x: 5.5, y: 66, w: 7, h: 3, shape: 'circle' },
+  'V29': { x: 5.5, y: 73, w: 7, h: 3, shape: 'circle' },
+  'V30': { x: 5.5, y: 81, w: 7, h: 3, shape: 'circle' },
+  // R1-R2 (original x:10 * 1.86 = 18.6)
+  'R1': { x: 18, y: 9, w: 9, h: 4, shape: 'circle' },
+  'R2': { x: 18, y: 16, w: 9, h: 4, shape: 'circle' },
+  // P10-P14 (original x:8 * 1.86 = 14.9)
+  'P10': { x: 14, y: 28, w: 22, h: 6, shape: 'rect' },
+  'P11': { x: 14, y: 40, w: 22, h: 6, shape: 'rect' },
+  'P12': { x: 14, y: 52, w: 22, h: 6, shape: 'rect' },
+  'P13': { x: 14, y: 64, w: 22, h: 6, shape: 'rect' },
+  'P14': { x: 14, y: 76, w: 22, h: 6, shape: 'rect' },
+  // P15-P17 (original x:37 * 1.86 = 68.8)
+  'P15': { x: 68, y: 9, w: 18, h: 6, shape: 'rect' },
+  'P16': { x: 68, y: 18, w: 18, h: 6, shape: 'rect' },
+  'P17': { x: 68, y: 27, w: 18, h: 6, shape: 'rect' },
+  // V31-V35 (original x:46 * 1.86 = 85.6)
+  'V31': { x: 85, y: 9, w: 7, h: 3, shape: 'circle' },
+  'V32': { x: 85, y: 16, w: 7, h: 3, shape: 'circle' },
+  'V33': { x: 85, y: 23, w: 7, h: 3, shape: 'circle' },
+  'V34': { x: 85, y: 30, w: 7, h: 3, shape: 'circle' },
+  'V35': { x: 85, y: 37, w: 7, h: 3, shape: 'circle' },
+  // P18-P21 (original x:32 * 1.86 = 59.5)
+  'P18': { x: 58, y: 40, w: 18, h: 6, shape: 'rect' },
+  'P19': { x: 58, y: 52, w: 18, h: 6, shape: 'rect' },
+  'P20': { x: 58, y: 64, w: 18, h: 6, shape: 'rect' },
+  'P21': { x: 58, y: 76, w: 18, h: 6, shape: 'rect' },
+  // W, X, Y, Z (original x:13-29 * 1.86)
+  'W': { x: 24, y: 87, w: 7, h: 3, shape: 'circle' },
+  'X': { x: 38, y: 87, w: 7, h: 3, shape: 'circle' },
+  'Y': { x: 46, y: 87, w: 7, h: 3, shape: 'circle' },
+  'Z': { x: 54, y: 87, w: 7, h: 3, shape: 'circle' },
 };
 
 const FLOOR_IMAGES: Record<number, string> = {
