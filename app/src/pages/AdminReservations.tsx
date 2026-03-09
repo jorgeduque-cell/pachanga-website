@@ -4,7 +4,6 @@ import {
   Filter, 
   CheckCircle, 
   XCircle, 
-  Clock,
   MoreHorizontal,
   Calendar,
   RefreshCw,
@@ -41,7 +40,7 @@ import {
 import { useReservations, useUpdateReservation, useCancelReservation, useCreateReservation } from '@/hooks/useReservations';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from 'sonner';
-import type { ReservationStatus, CreateReservationDTO } from '@/types';
+import type { ReservationStatus, CreateReservationDTO, Reservation } from '@/types';
 
 const STATUS_LABELS: Record<ReservationStatus, string> = {
   PENDING: 'Pendiente',
@@ -62,7 +61,7 @@ export function AdminReservations() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<ReservationStatus | 'todos'>('todos');
   const [isNewReservationOpen, setIsNewReservationOpen] = useState(false);
-  const [selectedReservation, setSelectedReservation] = useState<any>(null);
+  const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   
   // Form state for new reservation
@@ -495,7 +494,7 @@ export function AdminReservations() {
                     <MapPin size={16} className="text-white/40 flex-shrink-0" />
                     <div>
                       <p className="text-white/40 text-xs uppercase">Mesa Asignada</p>
-                      <p className="text-white">{selectedReservation.table.label || `Mesa ${selectedReservation.table.number}`}</p>
+                      <p className="text-white">{selectedReservation.table.name}</p>
                     </div>
                   </div>
                 )}
