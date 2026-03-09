@@ -130,11 +130,14 @@ export class TableService {
     time: string,
     statuses: ReservationStatus[],
   ): Promise<string[]> {
+    // Por defecto, siempre incluir PENDING y CONFIRMED para bloquear mesas no disponibles
+    const effectiveStatuses = statuses.length === 0 ? ['CONFIRMED', 'PENDING'] as ReservationStatus[] : statuses;
+    
     const reserved = await prisma.reservation.findMany({
       where: {
         reservationDate: date,
         reservationTime: time,
-        status: { in: statuses },
+        status: { in: effectiveStatuses },
         tableId: { not: null },
       },
       select: { tableId: true },

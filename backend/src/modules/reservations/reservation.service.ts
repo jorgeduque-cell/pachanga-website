@@ -53,39 +53,49 @@ interface PaginatedResult {
 // ─── Service ─────────────────────────────────────────────────
 export class ReservationService {
   async create(data: CreateReservationData): Promise<ReservationWithTable> {
+    console.log(`[ReservationService] Creating reservation for: ${data.customerName}, date: ${data.reservationDate}, time: ${data.reservationTime}`);
+    
     const reservationDate = new Date(data.reservationDate);
     this.validateFutureDate(reservationDate);
 
-    const reservation = await prisma.$transaction(async (tx) => {
-      if (data.tableId) {
-        await this.validateTableForReservation(tx, data.tableId, data.partySize, reservationDate, data.reservationTime);
-      }
+    try {
+      const reservation = await prisma.$transaction(async (tx) => {
+        if (data.tableId) {
+          await this.validateTableForReservation(tx, data.tableId, data.partySize, reservationDate, data.reservationTime);
+        }
 
-      return tx.reservation.create({
-        data: {
-          customerName: data.customerName,
-          customerPhone: data.customerPhone,
-          reservationDate,
-          reservationTime: data.reservationTime,
-          partySize: data.partySize,
-          tableId: data.tableId ?? null,
-          message: data.message,
-          status: 'PENDING',
-        },
-        include: { table: true },
-      });
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+        const created = await tx.reservation.create({
+          data: {
+            customerName: data.customerName,
+            customerPhone: data.customerPhone,
+            reservationDate,
+            reservationTime: data.reservationTime,
+            partySize: data.partySize,
+            tableId: data.tableId ?? null,
+            message: data.message,
+            status: 'PENDING',
+          },
+          include: { table: true },
+        });
+        
+        console.log(`[ReservationService] Reservation created with ID: ${created.id}`);
+        return created;
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
-    socketService.emitNewReservation(reservation);
+      socketService.emitNewReservation(reservation);
 
-    // CRM: link reservation to customer (fire-and-forget, non-blocking)
-    crmService.linkToReservation(
-      data.customerPhone,
-      data.customerName,
-      reservation.id,
-    ).catch(() => { /* handled internally */ });
+      // CRM: link reservation to customer (fire-and-forget, non-blocking)
+      crmService.linkToReservation(
+        data.customerPhone,
+        data.customerName,
+        reservation.id,
+      ).catch(() => { /* handled internally */ });
 
-    return reservation;
+      return reservation;
+    } catch (error) {
+      console.error(`[ReservationService] Error creating reservation:`, error);
+      throw error;
+    }
   }
 
   async getAll(filters: ReservationFilters): Promise<PaginatedResult> {
@@ -230,8 +240,14 @@ export class ReservationService {
       throw new AppError(`La capacidad de la mesa (${table.capacity}) es menor que el grupo (${partySize})`, 400);
     }
 
+    // Verificar si la mesa ya está reservada (PENDING o CONFIRMED)
     const existingReservation = await tx.reservation.findFirst({
-      where: { tableId, reservationDate, reservationTime, status: 'CONFIRMED' },
+      where: { 
+        tableId, 
+        reservationDate, 
+        reservationTime, 
+        status: { in: ['CONFIRMED', 'PENDING'] } 
+      },
     });
 
     if (existingReservation) {
@@ -263,7 +279,7 @@ export class ReservationService {
         tableId,
         reservationDate,
         reservationTime,
-        status: 'CONFIRMED',
+        status: { in: ['CONFIRMED', 'PENDING'] },
       },
     });
 
