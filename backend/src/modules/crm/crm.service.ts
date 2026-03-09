@@ -99,9 +99,10 @@ export class CrmService {
 
                 await this.createInteraction(customer.id, 'reservation', { reservationId });
             }
-        } catch {
+        } catch (err) {
             // Non-critical: CRM link failure should NOT block reservation creation
-            console.warn(`⚠️ CRM link failed for phone ${phone}:`, 'non-blocking');
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            console.error(`⚠️ CRM link failed for phone ${phone}: ${errorMessage}`);
         }
     }
 

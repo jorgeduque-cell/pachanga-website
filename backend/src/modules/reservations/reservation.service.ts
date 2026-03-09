@@ -101,7 +101,9 @@ export class ReservationService {
         data.customerPhone,
         data.customerName,
         reservation.id,
-      ).catch(() => { /* handled internally */ });
+      ).catch((err) => {
+        console.error('[ReservationService] CRM link failed:', err instanceof Error ? err.message : err);
+      });
 
       return reservation;
     } catch (error) {
