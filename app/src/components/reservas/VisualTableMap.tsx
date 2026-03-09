@@ -180,8 +180,8 @@ export function VisualTableMap({
           }}
           className="absolute transform -translate-x-1/2 -translate-y-1/2"
           style={{
-            left: `${Math.min(Math.max(table.posX, 3), 97)}%`,
-            top: `${Math.min(Math.max(table.posY, 3), 97)}%`,
+            left: `${Math.min(Math.max(table.posX, 5), 95)}%`,
+            top: `${Math.min(Math.max(table.posY, 5), 92)}%`,
           }}
         >
           <motion.button
@@ -217,24 +217,31 @@ export function VisualTableMap({
         </motion.div>
       ))}
 
-      {/* Tooltip */}
-      {hoveredTable && (
-        <motion.div
-          initial={{ opacity: 0, y: hoveredTable.posY < 20 ? -10 : 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 5 }}
-          className="absolute z-50 pointer-events-none"
-          style={{
-            left: `${Math.min(Math.max(hoveredTable.posX, 15), 85)}%`,
-            top: hoveredTable.posY < 20
-              ? `${Math.min(Math.max(hoveredTable.posY, 3), 97) + 8}%`
-              : `${Math.min(Math.max(hoveredTable.posY, 3), 97) - 10}%`,
-            transform: 'translateX(-50%)',
-          }}
-        >
-          <TableTooltip table={hoveredTable} />
-        </motion.div>
-      )}
+      {hoveredTable && (() => {
+        const clampedX = Math.min(Math.max(hoveredTable.posX, 5), 95);
+        const clampedY = Math.min(Math.max(hoveredTable.posY, 5), 92);
+        // Show tooltip above by default, below if table is near top
+        const tooltipY = clampedY < 20 ? clampedY + 8 : clampedY - 12;
+        // Horizontal: center, but shift if near edges
+        const tooltipX = clampedX < 20 ? 18 : clampedX > 80 ? 82 : clampedX;
+        const translateX = clampedX < 20 ? '0%' : clampedX > 80 ? '-100%' : '-50%';
+        return (
+          <motion.div
+            key={hoveredTable.id}
+            initial={{ opacity: 0, y: clampedY < 20 ? -10 : 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="absolute z-50 pointer-events-none"
+            style={{
+              left: `${tooltipX}%`,
+              top: `${tooltipY}%`,
+              transform: `translateX(${translateX})`,
+            }}
+          >
+            <TableTooltip table={hoveredTable} />
+          </motion.div>
+        );
+      })()}
 
       {/* Floor indicator */}
       <div className="absolute top-6 right-6 glass-card px-4 py-2">
