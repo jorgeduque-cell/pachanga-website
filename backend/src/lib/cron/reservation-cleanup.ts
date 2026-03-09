@@ -4,52 +4,61 @@ import type { ScheduledTask } from 'node-cron';
 import { prisma } from '../prisma.js';
 
 /**
- * Cron job para liberar todas las reservas activas los domingos a las 12:00 PM
+ * Cron job para completar las reservas de la noche anterior.
  * 
- * Esto incluye:
- * - Reservas con estado PENDING (pendientes)
- * - Reservas con estado CONFIRMED (confirmadas)
+ * Se ejecuta a las 3:00 AM los Viernes, Sábados y Domingos
+ * (para limpiar las noches de Jueves, Viernes y Sábado respectivamente).
  * 
- * Las reservas CANCELLED y COMPLETED no se modifican.
+ * Marca como COMPLETED todas las reservas PENDING y CONFIRMED
+ * cuya fecha sea el día anterior, liberando las mesas.
  */
 
-const CLEANUP_SCHEDULE = '0 12 * * 0'; // Domingos a las 12:00 PM
+// Viernes(5), Sábado(6), Domingo(0) a las 3:00 AM
+const CLEANUP_SCHEDULE = '0 3 * * 0,5,6';
 const TIMEZONE = 'America/Bogota';
 
 let task: ScheduledTask | null = null;
 
 /**
- * Cancela todas las reservas activas (PENDING y CONFIRMED)
+ * Completa las reservas activas de la noche anterior.
+ * Solo afecta reservas con reservationDate = ayer.
  */
-async function cleanupReservations(): Promise<void> {
+async function cleanupNightReservations(): Promise<void> {
   const now = new Date();
-  console.log(`[${now.toISOString()}] 🧹 Iniciando limpieza semanal de reservas...`);
+  console.log(`[${now.toISOString()}] 🧹 Iniciando limpieza nocturna de reservas...`);
 
   try {
-    // Cancelar todas las reservas PENDING y CONFIRMED
+    // Calculate "yesterday" in Bogota timezone
+    const bogotaNow = new Date(now.toLocaleString('en-US', { timeZone: TIMEZONE }));
+    const yesterday = new Date(bogotaNow);
+    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setHours(0, 0, 0, 0);
+
     const result = await prisma.reservation.updateMany({
       where: {
+        reservationDate: yesterday,
         status: {
           in: ['PENDING', 'CONFIRMED'] as ReservationStatus[],
         },
       },
       data: {
-        status: 'CANCELLED',
+        status: 'COMPLETED',
       },
     });
 
-    console.log(`[${new Date().toISOString()}] ✅ Limpieza completada: ${result.count} reservas canceladas`);
+    console.log(
+      `[${new Date().toISOString()}] ✅ Limpieza nocturna completada: ${result.count} reservas completadas ` +
+      `(fecha: ${yesterday.toISOString().split('T')[0]})`
+    );
   } catch (error) {
-    console.error(`[${new Date().toISOString()}] ❌ Error durante la limpieza de reservas:`, error);
+    console.error(`[${new Date().toISOString()}] ❌ Error durante la limpieza nocturna:`, error);
   }
 }
 
 /**
- * Inicia el cron job de limpieza de reservas
- * Se ejecuta todos los domingos a las 12:00 PM (mediodía)
- * Formato cron: 0 12 * * 0
- * 
- * Minuto 0, Hora 12, Todos los días del mes, Todos los meses, Domingo (0)
+ * Inicia el cron job de limpieza nocturna.
+ * Se ejecuta a las 3:00 AM los Viernes, Sábados y Domingos.
+ * Limpia las reservas de Jueves, Viernes y Sábado respectivamente.
  */
 export function startReservationCleanup(): void {
   if (task) {
@@ -57,14 +66,13 @@ export function startReservationCleanup(): void {
     return;
   }
 
-  // Ejecutar todos los domingos a las 12:00 PM
   task = cron.schedule(CLEANUP_SCHEDULE, () => {
-    cleanupReservations().catch((error: unknown) => {
+    cleanupNightReservations().catch((error: unknown) => {
       console.error('❌ Reservation cleanup cron error:', error);
     });
   }, { timezone: TIMEZONE });
 
-  console.log('✅ Reservation cleanup job started (Domingos 12:00 PM America/Bogota)');
+  console.log('✅ Reservation cleanup job started (Vie/Sáb/Dom 3:00 AM America/Bogota)');
 }
 
 /**
@@ -83,5 +91,5 @@ export function stopReservationCleanup(): void {
  */
 export async function runCleanupNow(): Promise<void> {
   console.log('🧹 Ejecutando limpieza manual...');
-  await cleanupReservations();
+  await cleanupNightReservations();
 }

@@ -240,7 +240,7 @@ export class ReservationService {
     tableId: string,
     partySize: number,
     reservationDate: Date,
-    reservationTime: string,
+    _reservationTime: string,
   ): Promise<void> {
     const table = await tx.table.findUnique({ where: { id: tableId } });
 
@@ -254,18 +254,17 @@ export class ReservationService {
       throw new AppError(`La capacidad de la mesa (${table.capacity}) es menor que el grupo (${partySize})`, 400);
     }
 
-    // Verificar si la mesa ya está reservada (PENDING o CONFIRMED)
+    // Verificar si la mesa ya está reservada para TODA LA NOCHE (cualquier hora)
     const existingReservation = await tx.reservation.findFirst({
       where: { 
         tableId, 
         reservationDate, 
-        reservationTime, 
         status: { in: ['CONFIRMED', 'PENDING'] } 
       },
     });
 
     if (existingReservation) {
-      throw new AppError('Esta mesa ya está reservada para esa fecha y hora', 409);
+      throw new AppError('Esta mesa ya está reservada para esta fecha. Elige otra', 409);
     }
   }
 
@@ -283,7 +282,6 @@ export class ReservationService {
   ): Promise<void> {
     const tableId = data.tableId ?? existing.tableId;
     const reservationDate = data.reservationDate ? new Date(data.reservationDate) : existing.reservationDate;
-    const reservationTime = data.reservationTime ?? existing.reservationTime;
 
     if (!tableId) return;
 
@@ -292,13 +290,12 @@ export class ReservationService {
         id: { not: reservationId },
         tableId,
         reservationDate,
-        reservationTime,
         status: { in: ['CONFIRMED', 'PENDING'] },
       },
     });
 
     if (conflict) {
-      throw new AppError('La mesa ya está reservada para esa fecha y hora', 409);
+      throw new AppError('La mesa ya está reservada para esa fecha', 409);
     }
   }
 

@@ -46,11 +46,11 @@ export class TableService {
     });
   }
 
-  async getMap(date?: string, time?: string): Promise<TableMapResponse> {
+  async getMap(date?: string, _time?: string): Promise<TableMapResponse> {
     const tables = await this.getAll();
 
-    const reservedTableIds = date && time
-      ? await this.getReservedTableIds(new Date(date), time, ['CONFIRMED', 'PENDING'])
+    const reservedTableIds = date
+      ? await this.getReservedTableIds(new Date(date), ['CONFIRMED', 'PENDING'])
       : [];
 
     const tablesWithAvailability = tables.map(table => ({
@@ -66,8 +66,8 @@ export class TableService {
     };
   }
 
-  async getAvailable(date: string, time: string, partySize?: number): Promise<Table[]> {
-    const reservedIds = await this.getReservedTableIds(new Date(date), time, ['CONFIRMED']);
+  async getAvailable(date: string, _time: string, partySize?: number): Promise<Table[]> {
+    const reservedIds = await this.getReservedTableIds(new Date(date), ['CONFIRMED']);
 
     const where: Prisma.TableWhereInput = {
       isActive: true,
@@ -127,16 +127,14 @@ export class TableService {
 
   private async getReservedTableIds(
     date: Date,
-    time: string,
     statuses: ReservationStatus[],
   ): Promise<string[]> {
-    // Por defecto, siempre incluir PENDING y CONFIRMED para bloquear mesas no disponibles
+    // Block tables for the ENTIRE NIGHT — ignore time, match only by date
     const effectiveStatuses = statuses.length === 0 ? ['CONFIRMED', 'PENDING'] as ReservationStatus[] : statuses;
     
     const reserved = await prisma.reservation.findMany({
       where: {
         reservationDate: date,
-        reservationTime: time,
         status: { in: effectiveStatuses },
         tableId: { not: null },
       },

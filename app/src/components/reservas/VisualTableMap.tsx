@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import type { TableSummary, FloorMap } from '@/types';
 import { TableTooltip } from './TableTooltip';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface VisualTableMapProps {
   floorData: FloorMap;
@@ -77,6 +78,10 @@ export function VisualTableMap({
   const handleTableClick = (table: TableSummary) => {
     if (table.isAvailable) {
       onSelectTable(table.id);
+    } else {
+      toast.error('Esta mesa ya está reservada para esta fecha. Elige otra', {
+        duration: 3000,
+      });
     }
   };
 
@@ -183,7 +188,7 @@ export function VisualTableMap({
             onClick={() => handleTableClick(table)}
             onMouseEnter={() => setHoveredTable(table)}
             onMouseLeave={() => setHoveredTable(null)}
-            disabled={!table.isAvailable}
+            disabled={false}
             whileHover={{ scale: table.isAvailable ? 1.15 : 1 }}
             whileTap={{ scale: table.isAvailable ? 0.95 : 1 }}
             className={cn(
