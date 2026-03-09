@@ -206,6 +206,8 @@ export function ReservasPage() {
                     mapData?.floor2.tables.find((t) => t.id === selectedTableId)?.name
                   : undefined
                 }
+                selectedDate={date}
+                selectedTime={time}
                 onSubmit={handleSubmit}
                 isLoading={isCreating}
                 error={createError}

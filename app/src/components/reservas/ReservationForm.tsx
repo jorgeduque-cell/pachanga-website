@@ -1,15 +1,10 @@
 import { useState, useEffect } from 'react';
-
-// DEBUG VERSION - verificar que se cargó el código actualizado
-console.log('[ReservationForm] Component loaded - v2026.03.09-debug');
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { 
-  Calendar, 
-  Clock, 
   Users, 
   User, 
   Phone, 
@@ -18,18 +13,10 @@ import {
   AlertCircle,
   Armchair,
   Info,
-  ChevronDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CreateReservationDTO } from '@/types';
 
-// Horas disponibles para reservas: 7, 8, 9, 10 PM
-const AVAILABLE_HOURS = [
-  { value: '19:00', label: '7:00 PM' },
-  { value: '20:00', label: '8:00 PM' },
-  { value: '21:00', label: '9:00 PM' },
-  { value: '22:00', label: '10:00 PM' },
-];
 
 const reservationSchema = z.object({
   customerName: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
@@ -45,6 +32,8 @@ type ReservationFormData = z.infer<typeof reservationSchema>;
 interface ReservationFormProps {
   selectedTableId: string | null;
   selectedTableName?: string;
+  selectedDate: string;
+  selectedTime: string;
   onSubmit: (data: CreateReservationDTO) => void;
   isLoading: boolean;
   error: Error | null;
@@ -53,6 +42,8 @@ interface ReservationFormProps {
 export function ReservationForm({
   selectedTableId,
   selectedTableName,
+  selectedDate,
+  selectedTime,
   onSubmit,
   isLoading,
   error,
@@ -67,16 +58,12 @@ export function ReservationForm({
     resolver: zodResolver(reservationSchema),
     defaultValues: {
       partySize: 2,
+      reservationDate: selectedDate,
+      reservationTime: selectedTime,
     },
   });
 
-  // Log errors for debugging
   useEffect(() => {
-    console.log('[ReservationForm] Validation errors:', errors);
-  }, [errors]);
-
-  useEffect(() => {
-    console.log('[ReservationForm] External error:', error);
     if (error) {
       let errorMessage = 'Error al crear la reserva';
 
@@ -93,15 +80,15 @@ export function ReservationForm({
   }, [error]);
 
   const handleFormSubmit = (data: ReservationFormData) => {
-    console.log('[ReservationForm] handleFormSubmit called with:', data);
     setSubmitError(null);
 
     const reservationData: CreateReservationDTO = {
       ...data,
+      reservationDate: selectedDate,
+      reservationTime: selectedTime,
       tableId: selectedTableId ?? undefined,
     };
 
-    console.log('[ReservationForm] Calling onSubmit with:', reservationData);
     onSubmit(reservationData);
   };
 
@@ -215,10 +202,7 @@ export function ReservationForm({
         )}
       </AnimatePresence>
 
-      <form onSubmit={handleSubmit(
-        handleFormSubmit,
-        (errors) => console.log('[ReservationForm] Form validation failed:', errors)
-      )} className="space-y-5">
+      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-5">
         {/* Name & Phone */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <FormField label="Nombre completo" icon={User} error={errors.customerName?.message}>
@@ -244,52 +228,23 @@ export function ReservationForm({
           </FormField>
         </div>
 
-        {/* Date, Time & Party Size */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <FormField label="Fecha" icon={Calendar} error={errors.reservationDate?.message}>
-            <input
-              type="date"
-              {...register('reservationDate')}
-              className={cn(
-                'glass-input w-full px-4 py-3 rounded-lg text-white [color-scheme:dark]',
-                errors.reservationDate && 'border-[var(--accent-red)]'
-              )}
-            />
-          </FormField>
+        {/* Hidden fields for date and time (already selected in top selector) */}
+        <input type="hidden" {...register('reservationDate')} value={selectedDate} />
+        <input type="hidden" {...register('reservationTime')} value={selectedTime} />
 
-          <FormField label="Hora" icon={Clock} error={errors.reservationTime?.message}>
-            <div className="relative">
-              <select
-                {...register('reservationTime')}
-                className={cn(
-                  'glass-input w-full px-4 py-3 rounded-lg text-white appearance-none cursor-pointer',
-                  errors.reservationTime && 'border-[var(--accent-red)]'
-                )}
-              >
-                <option value="" className="bg-[#1a1a1a]">Seleccionar hora</option>
-                {AVAILABLE_HOURS.map((hour) => (
-                  <option key={hour.value} value={hour.value} className="bg-[#1a1a1a]">
-                    {hour.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50 pointer-events-none" />
-            </div>
-          </FormField>
-
-          <FormField label="Personas" icon={Users} error={errors.partySize?.message}>
-            <input
-              type="number"
-              min={1}
-              max={50}
-              {...register('partySize', { valueAsNumber: true })}
-              className={cn(
-                'glass-input w-full px-4 py-3 rounded-lg text-white [color-scheme:dark]',
-                errors.partySize && 'border-[var(--accent-red)]'
-              )}
-            />
-          </FormField>
-        </div>
+        {/* Party Size */}
+        <FormField label="Personas" icon={Users} error={errors.partySize?.message}>
+          <input
+            type="number"
+            min={1}
+            max={50}
+            {...register('partySize', { valueAsNumber: true })}
+            className={cn(
+              'glass-input w-full px-4 py-3 rounded-lg text-white [color-scheme:dark]',
+              errors.partySize && 'border-[var(--accent-red)]'
+            )}
+          />
+        </FormField>
 
         {/* Message */}
         <FormField label="Mensaje (opcional)" icon={MessageSquare}>
