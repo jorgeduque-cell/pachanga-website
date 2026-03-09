@@ -13,7 +13,8 @@ import {
   Phone,
   Users,
   MessageSquare,
-  MapPin
+  MapPin,
+  Armchair
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -38,6 +39,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useReservations, useUpdateReservation, useCancelReservation, useCreateReservation } from '@/hooks/useReservations';
+import { useTables } from '@/hooks/useTableMap';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from 'sonner';
 import type { ReservationStatus, CreateReservationDTO, Reservation } from '@/types';
@@ -90,6 +92,7 @@ export function AdminReservations() {
 
   const updateMutation = useUpdateReservation();
   const cancelMutation = useCancelReservation();
+  const { data: allTables } = useTables();
 
   const handleConfirm = async (id: string) => {
     await updateMutation.mutateAsync({ id, data: { status: 'CONFIRMED' } });
@@ -494,7 +497,69 @@ export function AdminReservations() {
                     <MapPin size={16} className="text-white/40 flex-shrink-0" />
                     <div>
                       <p className="text-white/40 text-xs uppercase">Mesa Asignada</p>
-                      <p className="text-white">{selectedReservation.table.name}</p>
+                      <p className="text-white">{selectedReservation.table.name} (Piso {selectedReservation.table.floor})</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Table Assignment Selector */}
+                {selectedReservation.status !== 'CANCELLED' && selectedReservation.status !== 'COMPLETED' && (
+                  <div className="flex items-start gap-3 pt-2 border-t border-[#333]">
+                    <Armchair size={16} className="text-[var(--accent-gold)] flex-shrink-0 mt-2" />
+                    <div className="flex-1">
+                      <p className="text-[var(--accent-gold)] text-xs uppercase font-heading mb-2">
+                        {selectedReservation.table ? 'Cambiar Mesa' : 'Asignar Mesa'}
+                      </p>
+                      <div className="relative">
+                        <select
+                          value={selectedReservation.tableId || ''}
+                          onChange={async (e) => {
+                            const newTableId = e.target.value || null;
+                            try {
+                              await updateMutation.mutateAsync({
+                                id: selectedReservation.id,
+                                data: { tableId: newTableId },
+                              });
+                              const tableName = newTableId && allTables
+                                ? (allTables as any[]).find((t: any) => t.id === newTableId)?.name
+                                : null;
+                              toast.success(tableName ? `Mesa ${tableName} asignada` : 'Mesa desasignada');
+                              setSelectedReservation(null);
+                              refetch();
+                            } catch {
+                              toast.error('Error al asignar mesa');
+                            }
+                          }}
+                          className="w-full h-10 px-3 rounded-md bg-[#0a0a0a] border border-[#333] text-white appearance-none cursor-pointer text-sm"
+                        >
+                          <option value="">— Sin mesa asignada —</option>
+                          {allTables && (() => {
+                            const tables = allTables as any;
+                            const tableList = Array.isArray(tables) ? tables : (tables?.data || []);
+                            const floor1 = tableList.filter((t: any) => t.floor === 1).sort((a: any, b: any) => a.name.localeCompare(b.name));
+                            const floor2 = tableList.filter((t: any) => t.floor === 2).sort((a: any, b: any) => a.name.localeCompare(b.name));
+                            return (
+                              <>
+                                <optgroup label="━━ Piso 1 ━━">
+                                  {floor1.map((t: any) => (
+                                    <option key={t.id} value={t.id}>
+                                      Mesa {t.name} — Cap. {t.capacity} ({t.zone === 'BARRA' ? 'Barra' : 'Salón'})
+                                    </option>
+                                  ))}
+                                </optgroup>
+                                <optgroup label="━━ Piso 2 ━━">
+                                  {floor2.map((t: any) => (
+                                    <option key={t.id} value={t.id}>
+                                      Mesa {t.name} — Cap. {t.capacity} ({t.zone === 'BARRA' ? 'Barra' : 'Salón'})
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              </>
+                            );
+                          })()}
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
+                      </div>
                     </div>
                   </div>
                 )}
