@@ -36,33 +36,33 @@ export function VisualTableMap({
 
     const name = table.name;
     // Mesas P (Premium) - dorado
-    if (name.startsWith('P')) {
+    if (name.startsWith('P') && name.length > 1) {
       return 'bg-[var(--accent-gold)]/20 hover:bg-[var(--accent-gold)]/30 border-[var(--accent-gold)]/50 cursor-pointer text-[var(--accent-gold)] hover:shadow-[0_0_20px_rgba(255,215,0,0.3)]';
     }
     // Mesas V (Visitante) - rojo
     if (name.startsWith('V')) {
       return 'bg-[var(--accent-red)]/20 hover:bg-[var(--accent-red)]/30 border-[var(--accent-red)]/50 cursor-pointer text-white hover:shadow-[0_0_20px_rgba(227,27,35,0.3)]';
     }
-    // Mesas R (Regular) - verde
-    if (name.startsWith('R')) {
+    // Mesas R1, R2 (Regular) - verde (NOT single 'R' which is barra)
+    if (name.startsWith('R') && name.length > 1) {
       return 'bg-emerald-500/20 hover:bg-emerald-500/30 border-emerald-500/50 cursor-pointer text-emerald-300 hover:shadow-[0_0_20px_rgba(16,185,129,0.3)]';
     }
-    // Letras (Barra: O, Q, U, Ñ, W, etc.) - cyan
+    // Single letters (Barra: A-N, O, Q, R, S, T, U, Ñ, W, X, Y, Z) - cyan
     return 'bg-cyan-500/20 hover:bg-cyan-500/30 border-cyan-500/50 cursor-pointer text-cyan-300 hover:shadow-[0_0_20px_rgba(6,182,212,0.3)]';
   };
 
   const getTableSize = (name: string, floor: number) => {
-    // Mesas P (Premium) - grandes rectangulares
-    if (name.startsWith('P')) {
+    // Mesas P (Premium) - grandes rectangulares (P1, P2... not single 'P')
+    if (name.startsWith('P') && name.length > 1) {
       return 'w-16 h-12 text-sm';
     }
-    // Mesas V (Visitantes) y R - redondas medianas
-    if (name.startsWith('V') || name.startsWith('R')) {
+    // Mesas V (Visitantes) y R1/R2 - redondas medianas
+    if (name.startsWith('V') || (name.startsWith('R') && name.length > 1)) {
       return 'w-11 h-11 text-xs';
     }
     // BARRA PRINCIPAL (O, Ñ, Q, R, S, T, U, W en piso 1) - MÁS PEQUEÑAS
-    if (floor === 1 && ['O','Ñ','Q','S','T','U','W'].includes(name)) {
-      return 'w-7 h-7 text-[9px]'; // ← MÁS PEQUEÑO: 28px para barra principal
+    if (floor === 1 && ['O','Ñ','Q','R','S','T','U','W'].includes(name)) {
+      return 'w-7 h-7 text-[9px]';
     }
     // Barra lateral (A-J, K-N) y otras letras
     return 'w-8 h-8 text-[10px]';

@@ -74,23 +74,23 @@ async function main() {
     { name: 'F', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 6, posY: 58 },
     { name: 'G', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 6, posY: 68 },
     { name: 'H', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 6, posY: 78 },
-    { name: 'I', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 10, posY: 85 },
-    { name: 'J', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 10, posY: 93 },
+    { name: 'I', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 10, posY: 76 },
+    { name: 'J', capacity: 2, zone: TableZone.BARRA, floor: 1, posX: 10, posY: 84 },
 
     // ─── MESAS V1-V6 (Lado izquierdo vertical, separadas de la barra) ───
     { name: 'V1', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 16, posY: 25 },
     { name: 'V2', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 16, posY: 40 },
     { name: 'V3', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 16, posY: 55 },
     { name: 'V4', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 16, posY: 70 },
-    { name: 'V5', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 16, posY: 85 },
-    { name: 'V6', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 16, posY: 98 },
+    { name: 'V5', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 16, posY: 76 },
+    { name: 'V6', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 16, posY: 84 },
 
     // ─── MESAS PREMIUM P1-P5 (Columna izquierda del centro, más separadas) ───
     { name: 'P1', capacity: 10, zone: TableZone.SALON, floor: 1, posX: 30, posY: 12 },
     { name: 'P2', capacity: 10, zone: TableZone.SALON, floor: 1, posX: 30, posY: 32 },
     { name: 'P3', capacity: 10, zone: TableZone.SALON, floor: 1, posX: 30, posY: 52 },
     { name: 'P4', capacity: 10, zone: TableZone.SALON, floor: 1, posX: 30, posY: 72 },
-    { name: 'P5', capacity: 10, zone: TableZone.SALON, floor: 1, posX: 30, posY: 92 },
+    { name: 'P5', capacity: 10, zone: TableZone.SALON, floor: 1, posX: 28, posY: 78 },
 
     // ─── MESAS V7-V9 (Fila superior centro) ───
     { name: 'V7', capacity: 4, zone: TableZone.SALON, floor: 1, posX: 46, posY: 20 },
