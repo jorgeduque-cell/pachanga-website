@@ -5,7 +5,9 @@ export const CreateReservationSchema = z.object({
   customerName: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').max(100, 'El nombre no puede exceder 100 caracteres'),
   customerPhone: z.string().min(5, 'Teléfono inválido').max(20, 'Teléfono demasiado largo'),
   reservationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida (formato: YYYY-MM-DD)'),
-  reservationTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Hora inválida (formato: HH:MM)'),
+  reservationTime: z.enum(['19:00', '20:00', '21:00', '22:00'], {
+    errorMap: () => ({ message: 'Hora no disponible. Horarios: 7PM, 8PM, 9PM, 10PM' }),
+  }),
   partySize: z.number().int().min(1, 'Debe haber al menos 1 persona').max(50, 'El grupo no puede exceder 50 personas'),
   tableId: z.string().uuid('ID de mesa inválido').optional(),
   message: z.string().max(500, 'El mensaje no puede exceder 500 caracteres').optional(),

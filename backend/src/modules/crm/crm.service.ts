@@ -34,6 +34,7 @@ export class CrmService {
         const customer = await prisma.customer.upsert({
             where: { phone },
             update: {
+                name: data.name, // Always update name (fix typos, accents)
                 totalVisits: { increment: 1 },
                 lastVisitAt: new Date(),
                 rating: data.rating,
@@ -72,33 +73,33 @@ export class CrmService {
         reservationId: string,
     ): Promise<void> {
         try {
-            const normalizedPhone = normalizePhone(phone);
+            // Normalize phone with fallback for international numbers
+            let normalizedPhone: string;
+            try {
+                normalizedPhone = normalizePhone(phone);
+            } catch {
+                // Fallback: strip spaces/dashes, keep as-is for non-Colombian phones
+                normalizedPhone = phone.replace(/[\s-()]/g, '');
+            }
 
-            const existing = await prisma.customer.findUnique({
+            // Atomic upsert prevents race condition duplicates
+            const customer = await prisma.customer.upsert({
                 where: { phone: normalizedPhone },
+                update: {
+                    name: customerName,
+                    totalVisits: { increment: 1 },
+                    lastVisitAt: new Date(),
+                },
+                create: {
+                    name: customerName,
+                    phone: normalizedPhone,
+                    source: 'RESERVATION',
+                    totalVisits: 1,
+                    lastVisitAt: new Date(),
+                },
             });
 
-            if (existing) {
-                await prisma.customer.update({
-                    where: { id: existing.id },
-                    data: {
-                        totalVisits: { increment: 1 },
-                        lastVisitAt: new Date(),
-                    },
-                });
-
-                await this.createInteraction(existing.id, 'reservation', { reservationId });
-            } else {
-                const customer = await prisma.customer.create({
-                    data: {
-                        name: customerName,
-                        phone: normalizedPhone,
-                        source: 'RESERVATION',
-                    },
-                });
-
-                await this.createInteraction(customer.id, 'reservation', { reservationId });
-            }
+            await this.createInteraction(customer.id, 'reservation', { reservationId });
         } catch (err) {
             // Non-critical: CRM link failure should NOT block reservation creation
             const errorMessage = err instanceof Error ? err.message : String(err);

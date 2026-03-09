@@ -3,6 +3,7 @@ import { prisma } from '../../lib/prisma.js';
 import { AppError } from '../../middleware/error.middleware.js';
 import { socketService } from '../../services/socket.service.js';
 import { crmService } from '../crm/crm.service.js';
+import { normalizePhone } from '../../lib/phone-utils.js';
 
 // ─── Constants ───────────────────────────────────────────────
 const DEFAULT_PAGE = 1;
@@ -53,25 +54,27 @@ interface PaginatedResult {
 // ─── Service ─────────────────────────────────────────────────
 export class ReservationService {
   async create(data: CreateReservationData): Promise<ReservationWithTable> {
-    console.log(`[ReservationService] Creating reservation for: ${data.customerName}, date: ${data.reservationDate}, time: ${data.reservationTime}`);
-    
     const reservationDate = new Date(data.reservationDate);
     this.validateFutureDate(reservationDate);
 
+    // Normalize phone for consistency with CRM customers table
+    let normalizedPhone: string;
     try {
-      // Count before
-      const countBefore = await prisma.reservation.count();
-      console.log(`[ReservationService] Count before: ${countBefore}`);
-      
+      normalizedPhone = normalizePhone(data.customerPhone);
+    } catch {
+      normalizedPhone = data.customerPhone.replace(/[\s-()]/g, '');
+    }
+
+    try {
       const reservation = await prisma.$transaction(async (tx) => {
         if (data.tableId) {
           await this.validateTableForReservation(tx, data.tableId, data.partySize, reservationDate, data.reservationTime);
         }
 
-        const created = await tx.reservation.create({
+        return tx.reservation.create({
           data: {
             customerName: data.customerName,
-            customerPhone: data.customerPhone,
+            customerPhone: normalizedPhone,
             reservationDate,
             reservationTime: data.reservationTime,
             partySize: data.partySize,
@@ -81,24 +84,13 @@ export class ReservationService {
           },
           include: { table: true },
         });
-        
-        console.log(`[ReservationService] Reservation created with ID: ${created.id}`);
-        return created;
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-      
-      // Count after and verify
-      const countAfter = await prisma.reservation.count();
-      console.log(`[ReservationService] Count after: ${countAfter}`);
-      
-      // Try to read it back
-      const verify = await prisma.reservation.findUnique({ where: { id: reservation.id } });
-      console.log(`[ReservationService] Verified in DB: ${verify ? 'YES' : 'NO'}`);
 
       socketService.emitNewReservation(reservation);
 
       // CRM: link reservation to customer (fire-and-forget, non-blocking)
       crmService.linkToReservation(
-        data.customerPhone,
+        normalizedPhone,
         data.customerName,
         reservation.id,
       ).catch((err) => {
@@ -107,7 +99,7 @@ export class ReservationService {
 
       return reservation;
     } catch (error) {
-      console.error(`[ReservationService] Error creating reservation:`, error);
+      console.error('[ReservationService] Error creating reservation:', error);
       throw error;
     }
   }
@@ -163,8 +155,11 @@ export class ReservationService {
   async cancel(id: string): Promise<ReservationWithTable> {
     const reservation = await this.findReservationOrThrow(id);
 
-    if (reservation.status === 'CANCELLED') {
-      throw new AppError('La reserva ya está cancelada', 400);
+    if (reservation.status === 'CANCELLED' || reservation.status === 'COMPLETED') {
+      const msg = reservation.status === 'CANCELLED'
+        ? 'La reserva ya está cancelada'
+        : 'No se puede cancelar una reserva completada';
+      throw new AppError(msg, 400);
     }
 
     const cancelledReservation = await prisma.reservation.update({
@@ -214,10 +209,13 @@ export class ReservationService {
   // ─── Private Helpers ─────────────────────────────────────────
 
   private validateFutureDate(date: Date): void {
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
+    // Use Bogota timezone (UTC-5) for date validation
+    const UTC_OFFSET_BOGOTA_MS = -5 * 60 * 60 * 1000;
+    const nowInBogota = new Date(Date.now() + UTC_OFFSET_BOGOTA_MS);
+    const startOfTodayBogota = new Date(nowInBogota);
+    startOfTodayBogota.setUTCHours(0, 0, 0, 0);
 
-    if (date < startOfToday) {
+    if (date < startOfTodayBogota) {
       throw new AppError('No se pueden crear reservas para fechas pasadas', 400);
     }
   }
@@ -269,9 +267,8 @@ export class ReservationService {
   }
 
   private requiresConflictCheck(data: UpdateReservationData): boolean {
-    return data.status === 'CONFIRMED' && (
-      data.tableId !== undefined || !!data.reservationDate || !!data.reservationTime
-    );
+    // Always check conflicts when table or date changes, regardless of status
+    return data.tableId !== undefined || !!data.reservationDate;
   }
 
   private async validateNoConflict(

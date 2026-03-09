@@ -28,11 +28,14 @@ async function cleanupNightReservations(): Promise<void> {
   console.log(`[${now.toISOString()}] 🧹 Iniciando limpieza nocturna de reservas...`);
 
   try {
-    // Calculate "yesterday" in Bogota timezone
-    const bogotaNow = new Date(now.toLocaleString('en-US', { timeZone: TIMEZONE }));
-    const yesterday = new Date(bogotaNow);
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
+    // Calculate "yesterday" in Bogota timezone (UTC-5) using reliable UTC arithmetic
+    const UTC_OFFSET_BOGOTA_HOURS = -5;
+    const bogotaNow = new Date(now.getTime() + (UTC_OFFSET_BOGOTA_HOURS * 60 * 60 * 1000));
+    const yesterday = new Date(Date.UTC(
+      bogotaNow.getUTCFullYear(),
+      bogotaNow.getUTCMonth(),
+      bogotaNow.getUTCDate() - 1,
+    ));
 
     const result = await prisma.reservation.updateMany({
       where: {
