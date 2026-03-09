@@ -180,8 +180,8 @@ export function VisualTableMap({
           }}
           className="absolute transform -translate-x-1/2 -translate-y-1/2"
           style={{
-            left: `${table.posX}%`,
-            top: `${table.posY}%`,
+            left: `${Math.min(Math.max(table.posX, 3), 97)}%`,
+            top: `${Math.min(Math.max(table.posY, 3), 97)}%`,
           }}
         >
           <motion.button
@@ -220,13 +220,15 @@ export function VisualTableMap({
       {/* Tooltip */}
       {hoveredTable && (
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: hoveredTable.posY < 20 ? -10 : 10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 5 }}
           className="absolute z-50 pointer-events-none"
           style={{
-            left: `${hoveredTable.posX}%`,
-            top: `${hoveredTable.posY - 10}%`,
+            left: `${Math.min(Math.max(hoveredTable.posX, 15), 85)}%`,
+            top: hoveredTable.posY < 20
+              ? `${Math.min(Math.max(hoveredTable.posY, 3), 97) + 8}%`
+              : `${Math.min(Math.max(hoveredTable.posY, 3), 97) - 10}%`,
             transform: 'translateX(-50%)',
           }}
         >
