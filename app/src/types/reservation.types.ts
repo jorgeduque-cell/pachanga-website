@@ -24,6 +24,7 @@ export interface CreateReservationDTO {
   reservationTime: string;
   partySize: number;
   tableId?: string;
+  zone?: 'PALCO' | 'VISITANTE' | 'BARRA';
   message?: string;
 }
 

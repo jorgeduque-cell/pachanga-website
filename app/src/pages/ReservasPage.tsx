@@ -1,15 +1,11 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useTableMap } from '@/hooks/useTableMap';
 import { useCreateReservation } from '@/hooks/useReservations';
-import { TableMap } from '@/components/reservas/TableMap';
+import { ZoneSelector, type ZoneType } from '@/components/reservas/ZoneSelector';
 import { ReservationForm } from '@/components/reservas/ReservationForm';
 import { ReservationSuccessModal } from '@/components/reservas/ReservationSuccessModal';
-import { Button } from '@/components/ui/button';
-import { Calendar, Clock, MapPin, Loader2, ChevronDown } from 'lucide-react';
+import { Calendar, Clock, MapPin, ChevronDown, Crown, CheckCircle } from 'lucide-react';
 import type { CreateReservationDTO } from '@/types';
-
-
 
 // Horas disponibles para reservas: 7, 8, 9, 10 PM
 const AVAILABLE_HOURS = [
@@ -19,10 +15,16 @@ const AVAILABLE_HOURS = [
   { value: '22:00', label: '10:00 PM' },
 ];
 
+const ZONE_LABELS: Record<ZoneType, string> = {
+  PALCO: 'Palco VIP',
+  VISITANTE: 'Mesa Visitante',
+  BARRA: 'Mesa Barra',
+};
+
 export function ReservasPage() {
   const [date, setDate] = useState<string>('');
   const [time, setTime] = useState<string>('');
-  const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
+  const [selectedZone, setSelectedZone] = useState<ZoneType | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [lastReservation, setLastReservation] = useState<{
     tableName?: string;
@@ -32,42 +34,23 @@ export function ReservasPage() {
     customerName: string;
   } | null>(null);
 
-  const { 
-    data: mapData, 
-    isLoading: isLoadingMap, 
-    isFetching: isFetchingMap,
-    error: mapError, 
-    refetch: refetchMap 
-  } = useTableMap(date, time);
   const { mutate: createReservation, isPending: isCreating, error: createError } = useCreateReservation();
 
-  const handleSelectTable = (id: string) => {
-    setSelectedTableId(id);
-  };
-
   const handleSubmit = (data: CreateReservationDTO) => {
-    const tableName = selectedTableId
-      ? mapData?.floor1.tables.find((t) => t.id === selectedTableId)?.name ||
-        mapData?.floor2.tables.find((t) => t.id === selectedTableId)?.name
-      : undefined;
-
     setLastReservation({
-      tableName,
+      tableName: selectedZone ? ZONE_LABELS[selectedZone] : undefined,
       date: data.reservationDate,
       time: data.reservationTime,
       partySize: data.partySize,
       customerName: data.customerName,
     });
 
-    console.log('[ReservasPage] Submitting reservation:', data);
     createReservation(data, {
-      onSuccess: (result) => {
-        console.log('[ReservasPage] Reservation success:', result);
-        setSelectedTableId(null);
+      onSuccess: () => {
+        setSelectedZone(null);
         setShowSuccessModal(true);
       },
       onError: (error) => {
-        console.error('[ReservasPage] Reservation error:', error);
         alert('Error al crear la reserva: ' + error.message);
       },
     });
@@ -80,9 +63,11 @@ export function ReservasPage() {
     setLastReservation(null);
   };
 
+  const showContent = date && time;
+
   return (
     <div className="min-h-screen bg-[var(--bg-base)] pt-28 pb-16 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -93,7 +78,7 @@ export function ReservasPage() {
             Reserva tu Mesa
           </h1>
           <p className="mt-4 text-white/60 text-lg max-w-2xl mx-auto">
-            Selecciona una fecha y hora, elige una mesa del mapa y completa tu reserva
+            Selecciona fecha, hora y tipo de mesa para vivir la experiencia Pachanga
           </p>
         </motion.div>
 
@@ -148,64 +133,33 @@ export function ReservasPage() {
               className="mt-4 text-center text-white/40 flex items-center justify-center gap-2"
             >
               <MapPin className="w-4 h-4" />
-              Selecciona fecha y hora para ver el mapa de disponibilidad
+              Selecciona fecha y hora para ver las zonas disponibles
             </motion.div>
           )}
         </motion.div>
 
-        {/* Main Content */}
-        {date && time && (
+        {/* Main Content: Zone Selector + Form */}
+        {showContent && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
             className="grid grid-cols-1 lg:grid-cols-2 gap-8"
           >
-            {/* Table Map */}
-            <div>
-              {isLoadingMap || (isFetchingMap && !mapData) ? (
-                <div className="glass-card-heavy p-12 flex flex-col items-center justify-center min-h-[400px]">
-                  <Loader2 className="w-8 h-8 animate-spin text-[var(--accent-red)] mb-4" />
-                  <p className="text-white/60">
-                    {isFetchingMap && !isLoadingMap 
-                      ? 'Reintentando conexión...' 
-                      : 'Cargando mapa de mesas...'}
-                  </p>
-                </div>
-              ) : mapError ? (
-                <div className="glass-card-heavy p-12 text-center min-h-[400px] flex flex-col items-center justify-center">
-                  <p className="text-[var(--accent-red)] font-medium mb-2">Error al cargar el mapa</p>
-                  <p className="text-white/50 text-sm mb-4 max-w-xs">
-                    {mapError instanceof Error ? mapError.message : 'Error de conexión con el servidor'}
-                  </p>
-                  <Button
-                    onClick={() => refetchMap()}
-                    className="mt-2 btn-primary"
-                  >
-                    Reintentar
-                  </Button>
-                </div>
-              ) : mapData ? (
-                <TableMap
-                  floor1={mapData.floor1}
-                  floor2={mapData.floor2}
-                  selectedTableId={selectedTableId}
-                  onSelectTable={handleSelectTable}
-                  totalTables={mapData.totalTables}
-                  availableTables={mapData.availableTables}
-                />
-              ) : null}
+            {/* Zone Selector */}
+            <div className="glass-card-heavy p-6">
+              <ZoneSelector
+                selectedZone={selectedZone}
+                onSelectZone={setSelectedZone}
+              />
             </div>
 
             {/* Reservation Form */}
             <div>
               <ReservationForm
-                selectedTableId={selectedTableId}
-                selectedTableName={selectedTableId
-                  ? mapData?.floor1.tables.find((t) => t.id === selectedTableId)?.name ||
-                    mapData?.floor2.tables.find((t) => t.id === selectedTableId)?.name
-                  : undefined
-                }
+                selectedTableId={null}
+                selectedTableName={selectedZone ? ZONE_LABELS[selectedZone] : undefined}
+                selectedZone={selectedZone}
                 selectedDate={date}
                 selectedTime={time}
                 onSubmit={handleSubmit}
@@ -234,14 +188,14 @@ export function ReservasPage() {
                 desc: 'Selecciona cuándo quieres visitarnos',
               },
               {
-                icon: MapPin,
-                title: '2. Selecciona tu mesa',
-                desc: 'Haz clic en una mesa disponible del mapa',
+                icon: Crown,
+                title: '2. Elige tu zona',
+                desc: 'Palco VIP, Mesa Visitante o Barra',
               },
               {
-                icon: Clock,
-                title: '3. Completa tu reserva',
-                desc: 'Llena tus datos y confirma la reserva',
+                icon: CheckCircle,
+                title: '3. Confirma tu reserva',
+                desc: 'Llena tus datos y listo, ¡te esperamos!',
               },
             ].map((step, index) => (
               <motion.div

@@ -19,6 +19,7 @@ export interface CreateReservationData {
   reservationTime: string;
   partySize: number;
   tableId?: string;
+  zone?: 'PALCO' | 'VISITANTE' | 'BARRA';
   message?: string;
 }
 

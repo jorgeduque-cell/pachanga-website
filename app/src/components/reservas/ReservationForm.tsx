@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CreateReservationDTO } from '@/types';
+import type { ZoneType } from './ZoneSelector';
 
 
 const reservationSchema = z.object({
@@ -32,6 +33,7 @@ type ReservationFormData = z.infer<typeof reservationSchema>;
 interface ReservationFormProps {
   selectedTableId: string | null;
   selectedTableName?: string;
+  selectedZone?: ZoneType | null;
   selectedDate: string;
   selectedTime: string;
   onSubmit: (data: CreateReservationDTO) => void;
@@ -42,6 +44,7 @@ interface ReservationFormProps {
 export function ReservationForm({
   selectedTableId,
   selectedTableName,
+  selectedZone,
   selectedDate,
   selectedTime,
   onSubmit,
@@ -87,6 +90,7 @@ export function ReservationForm({
       reservationDate: selectedDate,
       reservationTime: selectedTime,
       tableId: selectedTableId ?? undefined,
+      zone: selectedZone ?? undefined,
     };
 
     onSubmit(reservationData);
@@ -155,7 +159,7 @@ export function ReservationForm({
 
       {/* Table selection indicator */}
       <AnimatePresence mode="wait">
-        {selectedTableId ? (
+        {selectedZone || selectedTableId ? (
           <motion.div
             key="selected"
             initial={{ opacity: 0, y: -10 }}
@@ -173,7 +177,7 @@ export function ReservationForm({
               </div>
               <div>
                 <p className="text-[var(--accent-gold)] font-heading text-lg">
-                  Mesa {selectedTableName}
+                  {selectedTableName || 'Zona seleccionada'}
                 </p>
                 <p className="text-white/60 text-sm">Seleccionada</p>
               </div>
@@ -191,10 +195,10 @@ export function ReservationForm({
               <Info className="w-5 h-5 text-white/50 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-white/80 text-sm font-medium">
-                  Sin mesa seleccionada
+                  Sin zona seleccionada
                 </p>
                 <p className="text-white/50 text-sm">
-                  Puede hacer una reserva general o seleccionar una mesa del mapa
+                  Selecciona una zona del panel izquierdo para tu reserva
                 </p>
               </div>
             </div>

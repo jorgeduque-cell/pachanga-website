@@ -10,6 +10,7 @@ export const CreateReservationSchema = z.object({
   }),
   partySize: z.number().int().min(1, 'Debe haber al menos 1 persona').max(50, 'El grupo no puede exceder 50 personas'),
   tableId: z.string().uuid('ID de mesa inválido').optional(),
+  zone: z.enum(['PALCO', 'VISITANTE', 'BARRA']).optional(),
   message: z.string().max(500, 'El mensaje no puede exceder 500 caracteres').optional(),
 });
 
