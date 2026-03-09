@@ -9,6 +9,32 @@ import { Button } from '@/components/ui/button';
 import { Calendar, Clock, MapPin, Loader2, ChevronDown } from 'lucide-react';
 import type { CreateReservationDTO } from '@/types';
 
+// DEBUG: Función directa para probar el backend
+async function testDirectReservation() {
+  console.log('[TEST DIRECTO] Iniciando prueba...');
+  try {
+    const response = await fetch('https://pachanga-api.onrender.com/api/reservations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customerName: 'Test Directo',
+        customerPhone: '1234567890',
+        reservationDate: '2026-03-25',
+        reservationTime: '20:00',
+        partySize: 2,
+        message: 'Prueba directa desde botón'
+      })
+    });
+    const data = await response.json();
+    console.log('[TEST DIRECTO] Respuesta:', data);
+    alert('Reserva creada! ID: ' + data.data?.id);
+    return data;
+  } catch (error) {
+    console.error('[TEST DIRECTO] Error:', error);
+    alert('Error: ' + error.message);
+  }
+}
+
 // Horas disponibles para reservas: 7, 8, 9, 10 PM
 const AVAILABLE_HOURS = [
   { value: '19:00', label: '7:00 PM' },
@@ -93,6 +119,13 @@ export function ReservasPage() {
           <p className="mt-4 text-white/60 text-lg max-w-2xl mx-auto">
             Selecciona una fecha y hora, elige una mesa del mapa y completa tu reserva
           </p>
+          {/* DEBUG BUTTON - Prueba directa al backend */}
+          <button 
+            onClick={testDirectReservation}
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+          >
+            🧪 TEST: Crear reserva directa
+          </button>
         </motion.div>
 
         {/* Date & Time Selector */}
