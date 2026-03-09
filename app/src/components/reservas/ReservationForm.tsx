@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+
+// DEBUG VERSION - verificar que se cargó el código actualizado
+console.log('[ReservationForm] Component loaded - v2026.03.09-debug');
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -67,7 +70,13 @@ export function ReservationForm({
     },
   });
 
+  // Log errors for debugging
   useEffect(() => {
+    console.log('[ReservationForm] Validation errors:', errors);
+  }, [errors]);
+
+  useEffect(() => {
+    console.log('[ReservationForm] External error:', error);
     if (error) {
       let errorMessage = 'Error al crear la reserva';
 
@@ -206,7 +215,10 @@ export function ReservationForm({
         )}
       </AnimatePresence>
 
-      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-5">
+      <form onSubmit={handleSubmit(
+        handleFormSubmit,
+        (errors) => console.log('[ReservationForm] Form validation failed:', errors)
+      )} className="space-y-5">
         {/* Name & Phone */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <FormField label="Nombre completo" icon={User} error={errors.customerName?.message}>
