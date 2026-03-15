@@ -48,13 +48,15 @@ export class WhatsAppService {
 
     /**
      * Sends a birthday message to a customer.
+     * Body {{1}} = customer name, Button {{1}} = ref param (Meta appends to base URL).
      */
     async sendBirthday(customer: Customer): Promise<string> {
         return this.sendTemplate(
             customer.phone,
             'cumpleanos_pachanga',
-            [customer.name, `${env.FRONTEND_URL}/reservas`],
+            [customer.name],
             customer.id,
+            [{ type: 'url', index: 0, text: 'birthday' }],
         );
     }
 
