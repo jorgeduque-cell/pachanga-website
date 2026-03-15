@@ -1,3 +1,4 @@
+import { logger } from '../lib/logger.js';
 import { tokenService } from './token.service.js';
 
 // Intervalo de limpieza: cada hora
@@ -8,7 +9,7 @@ export class TokenCleanupService {
 
   start(): void {
     if (this.intervalId) {
-      console.log('⚠️ Token cleanup service ya está corriendo');
+      logger.warn('Token cleanup service already running');
       return;
     }
 
@@ -20,23 +21,23 @@ export class TokenCleanupService {
       this.cleanup();
     }, CLEANUP_INTERVAL_MS);
 
-    console.log('🧹 Token cleanup service iniciado (cada 1 hora)');
+    logger.info('Token cleanup service started (every 1 hour)');
   }
 
   stop(): void {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
-      console.log('🛑 Token cleanup service detenido');
+      logger.info('Token cleanup service stopped');
     }
   }
 
   private async cleanup(): Promise<void> {
     try {
       await tokenService.cleanupExpiredTokens();
-      console.log('🧹 Limpieza de tokens expirados completada');
+      logger.debug('Expired token cleanup completed');
     } catch (error) {
-      console.error('❌ Error durante limpieza de tokens:', error);
+      logger.error({ err: error }, 'Token cleanup failed');
     }
   }
 }

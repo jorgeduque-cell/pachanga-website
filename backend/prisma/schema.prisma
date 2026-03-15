@@ -122,6 +122,7 @@ enum MessageType {
   BIRTHDAY
   PROMO
   REACTIVATION
+  SURVEY
 }
 
 model Customer {
@@ -141,6 +142,7 @@ model Customer {
 
   messages     WhatsAppMessage[]
   interactions Interaction[]
+  surveys      SatisfactionSurvey[]
 
   @@index([phone])
   @@index([birthDate])
@@ -188,4 +190,24 @@ model CrmConfig {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("crm_config")
+}
+
+// ═══════════════════════════════════════════════════════════
+// ENCUESTAS DE SATISFACCIÓN
+// ═══════════════════════════════════════════════════════════
+
+model SatisfactionSurvey {
+  id             String   @id @default(uuid())
+  customerId     String   @map("customer_id")
+  customer       Customer @relation(fields: [customerId], references: [id])
+  musicRating    Int      @map("music_rating")
+  serviceRating  Int      @map("service_rating")
+  ambienceRating Int      @map("ambience_rating")
+  hygieneRating  Int      @map("hygiene_rating")
+  qrTable        String?  @map("qr_table")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([customerId])
+  @@index([createdAt])
+  @@map("satisfaction_surveys")
 }

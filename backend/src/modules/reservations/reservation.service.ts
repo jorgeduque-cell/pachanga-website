@@ -1,13 +1,13 @@
-import { ReservationStatus, Prisma, Reservation, Table } from '@prisma/client';
+import { ReservationStatus, Prisma, Reservation, Table, TableZone } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { AppError } from '../../middleware/error.middleware.js';
 import { socketService } from '../../services/socket.service.js';
 import { crmService } from '../crm/crm.service.js';
 import { normalizePhone } from '../../lib/phone-utils.js';
+import { logger } from '../../lib/logger.js';
+import { buildPagination, paginatedResponse, type PaginatedResult } from '../../lib/pagination.js';
 
-// ─── Constants ───────────────────────────────────────────────
-const DEFAULT_PAGE = 1;
-const DEFAULT_LIMIT = 10;
+
 
 // ─── Public Interfaces ──────────────────────────────────────
 type ReservationWithTable = Reservation & { table: Table | null };
@@ -19,7 +19,7 @@ export interface CreateReservationData {
   reservationTime: string;
   partySize: number;
   tableId?: string;
-  zone?: 'PALCO' | 'VISITANTE' | 'BARRA';
+  zone?: TableZone;
   message?: string;
 }
 
@@ -42,15 +42,7 @@ export interface ReservationFilters {
   limit?: number;
 }
 
-interface PaginatedResult {
-  data: ReservationWithTable[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
+
 
 // ─── Service ─────────────────────────────────────────────────
 export class ReservationService {
@@ -69,9 +61,11 @@ export class ReservationService {
     try {
       // Persist zone preference in the message field
       const ZONE_LABELS: Record<string, string> = {
-        PALCO: 'Palco VIP',
-        VISITANTE: 'Mesa Visitante',
-        BARRA: 'Mesa Barra',
+        SALON: 'Salón',
+        TERRAZA: 'Terraza',
+        VIP: 'VIP',
+        BARRA: 'Barra',
+        PISTA: 'Pista',
       };
       let finalMessage = data.message || '';
       if (data.zone) {
@@ -107,20 +101,18 @@ export class ReservationService {
         data.customerName,
         reservation.id,
       ).catch((err) => {
-        console.error('[ReservationService] CRM link failed:', err instanceof Error ? err.message : err);
+        logger.error({ err: err instanceof Error ? err.message : err }, '[ReservationService] CRM link failed');
       });
 
       return reservation;
     } catch (error) {
-      console.error('[ReservationService] Error creating reservation:', error);
+      logger.error({ err: error }, '[ReservationService] Error creating reservation');
       throw error;
     }
   }
 
-  async getAll(filters: ReservationFilters): Promise<PaginatedResult> {
-    const page = filters.page ?? DEFAULT_PAGE;
-    const limit = filters.limit ?? DEFAULT_LIMIT;
-    const skip = (page - 1) * limit;
+  async getAll(filters: ReservationFilters): Promise<PaginatedResult<ReservationWithTable>> {
+    const { page, limit, skip, take } = buildPagination(filters);
     const where = this.buildFiltersWhereClause(filters);
 
     const [reservations, total] = await Promise.all([
@@ -129,15 +121,12 @@ export class ReservationService {
         include: { table: true },
         orderBy: [{ reservationDate: 'asc' }, { reservationTime: 'asc' }],
         skip,
-        take: limit,
+        take,
       }),
       prisma.reservation.count({ where }),
     ]);
 
-    return {
-      data: reservations,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
-    };
+    return paginatedResponse(reservations, total, page, limit);
   }
 
   async getById(id: string): Promise<ReservationWithTable> {

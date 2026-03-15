@@ -1,0 +1,9 @@
+{
+  "devDependencies": {
+    "@types/pino": "^7.0.4",
+    "qrcode": "^1.5.4"
+  },
+  "dependencies": {
+    "pino": "^10.3.1"
+  }
+}

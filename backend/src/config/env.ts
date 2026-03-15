@@ -20,7 +20,6 @@ const envSchema = z.object({
 
   // Frontend URL (for QR generation and CORS)
   FRONTEND_URL: z.string().url().optional().default('https://pachanga-frontend.vercel.app'),
-  CORS_ORIGIN: z.string().optional().default('*'),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

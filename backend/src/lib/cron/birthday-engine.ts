@@ -3,6 +3,7 @@ import type { ScheduledTask } from 'node-cron';
 import { prisma } from '../prisma.js';
 import { whatsappService } from '../../modules/whatsapp/whatsapp.service.js';
 import { Customer } from '@prisma/client';
+import { logger } from '../logger.js';
 
 const BIRTHDAY_CRON_SCHEDULE = '0 11 * * *'; // 11:00 AM diario
 const TIMEZONE = 'America/Bogota';
@@ -22,11 +23,11 @@ export class BirthdayEngine {
 
     this.task = cron.schedule(BIRTHDAY_CRON_SCHEDULE, () => {
       this.run().catch((error: unknown) => {
-        console.error('❌ Birthday cron error:', error);
+        logger.error({ err: error }, 'Birthday cron error');
       });
     }, { timezone: TIMEZONE });
 
-    console.log('🎂 Birthday engine started (11:00 AM America/Bogota)');
+    logger.info('Birthday engine started (11:00 AM America/Bogota)');
   }
 
   stop(): void {
@@ -39,7 +40,7 @@ export class BirthdayEngine {
 
     const isEnabled = await this.isCronEnabled();
     if (!isEnabled) {
-      console.log('🎂 Birthday cron disabled via config');
+      logger.info('Birthday cron disabled via config');
       return result;
     }
 
@@ -47,7 +48,7 @@ export class BirthdayEngine {
     result.found = customers.length;
 
     if (customers.length === 0) {
-      console.log('🎂 No birthdays today');
+      logger.info('No birthdays today');
       return result;
     }
 
@@ -61,7 +62,7 @@ export class BirthdayEngine {
       }
     }
 
-    console.log(`🎂 Birthday run: found=${result.found} sent=${result.sent} failed=${result.failed}`);
+    logger.info({ found: result.found, sent: result.sent, failed: result.failed }, 'Birthday run completed');
     return result;
   }
 

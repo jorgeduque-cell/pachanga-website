@@ -3,9 +3,9 @@ import type { LoginCredentials, AuthResponse, User } from '@/types';
 
 export const authService = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await apiClient.post<AuthResponse>('/auth/login', credentials);
+    const response = await apiClient.post<{ data: AuthResponse }>('/auth/login', credentials);
     console.log('Login response:', response.data);
-    return response.data;
+    return response.data.data;
   },
 
   async getProfile(): Promise<User> {

@@ -3,6 +3,14 @@ import { Customer, Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { env } from '../../config/env.js';
 import { getTemplateConfig, type TemplateConfig } from './whatsapp.templates.js';
+import { logger } from '../../lib/logger.js';
+
+// ─── Types ───────────────────────────────────────────────────
+export interface ButtonParam {
+    type: 'url';
+    index: number;
+    text: string;   // dynamic suffix for the URL
+}
 
 // ─── Constants ───────────────────────────────────────────────
 const GRAPH_API_URL = 'https://graph.facebook.com';
@@ -51,6 +59,20 @@ export class WhatsAppService {
     }
 
     /**
+     * Sends a satisfaction survey link to a customer.
+     * Body {{1}} = customer name, Button {{1}} = JWT token (Meta appends to base URL).
+     */
+    async sendSurvey(customer: Pick<Customer, 'id' | 'name' | 'phone'>, surveyToken: string): Promise<string> {
+        return this.sendTemplate(
+            customer.phone,
+            'encuesta_pachanga',
+            [customer.name],
+            customer.id,
+            [{ type: 'url', index: 0, text: surveyToken }],
+        );
+    }
+
+    /**
      * Generic template sender. Supports dry-run mode.
      * Returns the created WhatsAppMessage ID.
      */
@@ -59,15 +81,16 @@ export class WhatsAppService {
         templateName: string,
         variables: string[],
         customerId: string,
+        buttonParams?: ButtonParam[],
     ): Promise<string> {
         const templateConfig = getTemplateConfig(templateName);
         const message = await this.createQueuedMessage(customerId, templateConfig, templateName);
 
         if (this.isDryRun) {
-            return this.handleDryRun(message.id, phone, templateName, variables);
+            return this.handleDryRun(message.id, phone, templateName, variables, buttonParams);
         }
 
-        return this.sendViaCloudApi(message.id, phone, templateConfig, variables);
+        return this.sendViaCloudApi(message.id, phone, templateConfig, variables, buttonParams);
     }
 
     // ─── Private Helpers ─────────────────────────────────────────
@@ -92,8 +115,9 @@ export class WhatsAppService {
         phone: string,
         templateName: string,
         variables: string[],
+        buttonParams?: ButtonParam[],
     ): Promise<string> {
-        console.log(`[DRY-RUN] 📱 WhatsApp → ${phone}: template ${templateName} | vars: ${variables.join(', ')}`);
+        logger.info({ phone, templateName, variables, buttonParams }, '[DRY-RUN] WhatsApp message simulated');
 
         await prisma.whatsAppMessage.update({
             where: { id: messageId },
@@ -108,6 +132,7 @@ export class WhatsAppService {
         phone: string,
         config: TemplateConfig,
         variables: string[],
+        buttonParams?: ButtonParam[],
     ): Promise<string> {
         try {
             const response = await axios.post(
@@ -119,12 +144,7 @@ export class WhatsAppService {
                     template: {
                         name: config.name,
                         language: { code: config.language },
-                        components: variables.length > 0
-                            ? [{
-                                type: 'body',
-                                parameters: variables.map((v) => ({ type: 'text', text: v })),
-                            }]
-                            : [],
+                        components: this.buildTemplateComponents(variables, buttonParams),
                     },
                 },
                 {
@@ -158,9 +178,40 @@ export class WhatsAppService {
                 data: { status: 'FAILED', errorCode },
             });
 
-            console.error(`❌ WhatsApp send failed for ${phone}:`, errorCode);
+            logger.error({ phone, errorCode }, '[WhatsApp] Send failed');
             return messageId;
         }
+    }
+
+    /**
+     * Builds the `components` array for the WhatsApp Cloud API template payload.
+     * Supports body text parameters and optional CTA URL buttons.
+     */
+    private buildTemplateComponents(
+        variables: string[],
+        buttonParams?: ButtonParam[],
+    ): Record<string, unknown>[] {
+        const components: Record<string, unknown>[] = [];
+
+        if (variables.length > 0) {
+            components.push({
+                type: 'body',
+                parameters: variables.map((v) => ({ type: 'text', text: v })),
+            });
+        }
+
+        if (buttonParams && buttonParams.length > 0) {
+            for (const btn of buttonParams) {
+                components.push({
+                    type: 'button',
+                    sub_type: btn.type,
+                    index: String(btn.index),
+                    parameters: [{ type: 'text', text: btn.text }],
+                });
+            }
+        }
+
+        return components;
     }
 
     /**

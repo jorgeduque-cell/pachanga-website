@@ -22,6 +22,12 @@ export const WHATSAPP_TEMPLATES: Record<string, TemplateConfig> = {
         language: 'es',
         type: 'BIRTHDAY',
     },
+    encuesta_pachanga: {
+        name: 'encuesta_pachanga',
+        category: 'UTILITY',
+        language: 'es',
+        type: 'SURVEY',
+    },
 };
 
 /**

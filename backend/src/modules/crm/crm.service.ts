@@ -3,16 +3,12 @@ import { prisma } from '../../lib/prisma.js';
 import { AppError } from '../../middleware/error.middleware.js';
 import { normalizePhone } from '../../lib/phone-utils.js';
 import type { CaptureInput, UpdateCustomerInput, CustomerFilters, MessageFilters } from '../../schemas/crm.schema.js';
+import { logger } from '../../lib/logger.js';
+import { buildPagination, paginatedResponse, type PaginatedResult } from '../../lib/pagination.js';
 
-// ─── Constants ───────────────────────────────────────────────
-const DEFAULT_PAGE = 1;
-const DEFAULT_LIMIT = 20;
 
-// ─── Types ───────────────────────────────────────────────────
-interface PaginatedCustomers {
-    data: Customer[];
-    pagination: { page: number; limit: number; total: number; totalPages: number };
-}
+
+
 
 interface CaptureResult {
     customer: Customer;
@@ -103,17 +99,15 @@ export class CrmService {
         } catch (err) {
             // Non-critical: CRM link failure should NOT block reservation creation
             const errorMessage = err instanceof Error ? err.message : String(err);
-            console.error(`⚠️ CRM link failed for phone ${phone}: ${errorMessage}`);
+            logger.error({ phone, err: errorMessage }, 'CRM link failed for phone');
         }
     }
 
     /**
      * Returns paginated, filterable list of customers.
      */
-    async findAll(filters: CustomerFilters): Promise<PaginatedCustomers> {
-        const page = filters.page ?? DEFAULT_PAGE;
-        const limit = filters.limit ?? DEFAULT_LIMIT;
-        const skip = (page - 1) * limit;
+    async findAll(filters: CustomerFilters): Promise<PaginatedResult<Customer>> {
+        const { page, limit, skip, take } = buildPagination(filters);
         const where = this.buildCustomerWhereClause(filters);
 
         const [customers, total] = await Promise.all([
@@ -121,15 +115,12 @@ export class CrmService {
                 where,
                 orderBy: [{ lastVisitAt: 'desc' }],
                 skip,
-                take: limit,
+                take,
             }),
             prisma.customer.count({ where }),
         ]);
 
-        return {
-            data: customers,
-            pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
-        };
+        return paginatedResponse(customers, total, page, limit);
     }
 
     /**
@@ -181,9 +172,7 @@ export class CrmService {
      * Returns paginated message log with filters.
      */
     async getMessages(filters: MessageFilters) {
-        const page = filters.page ?? DEFAULT_PAGE;
-        const limit = filters.limit ?? DEFAULT_LIMIT;
-        const skip = (page - 1) * limit;
+        const { page, limit, skip, take } = buildPagination(filters);
 
         const where: Prisma.WhatsAppMessageWhereInput = {};
         if (filters.type) where.type = filters.type as MessageType;
@@ -195,15 +184,12 @@ export class CrmService {
                 include: { customer: { select: { name: true, phone: true } } },
                 orderBy: { createdAt: 'desc' },
                 skip,
-                take: limit,
+                take,
             }),
             prisma.whatsAppMessage.count({ where }),
         ]);
 
-        return {
-            data: messages,
-            pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
-        };
+        return paginatedResponse(messages, total, page, limit);
     }
 
     /**

@@ -3,6 +3,7 @@ import { env } from '../../config/env.js';
 import { whatsappService } from './whatsapp.service.js';
 import { crmService } from '../crm/crm.service.js';
 import { prisma } from '../../lib/prisma.js';
+import { logger } from '../../lib/logger.js';
 
 // ─── Types ───────────────────────────────────────────────────
 interface WebhookStatus {
@@ -46,7 +47,7 @@ export class WhatsAppController {
         }
       }
     } catch (error: unknown) {
-      console.error('❌ Webhook processing error:', error);
+      logger.error({ err: error }, 'Webhook processing error');
     }
   }
 

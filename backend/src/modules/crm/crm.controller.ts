@@ -6,6 +6,7 @@ import { asyncHandler } from '../../middleware/async-handler.js';
 import { validatedQuery, validatedBody } from '../../middleware/validate.middleware.js';
 import type { CustomerFilters, MessageFilters, SendMessageInput } from '../../schemas/crm.schema.js';
 import { env } from '../../config/env.js';
+import { logger } from '../../lib/logger.js';
 
 
 export class CrmController {
@@ -14,8 +15,8 @@ export class CrmController {
 
         // Fire-and-forget: send welcome WhatsApp (non-blocking)
         if (isNew) {
-            whatsappService.sendWelcome(customer).catch(() => {
-                // Non-blocking: welcome message failure should not affect capture flow
+            whatsappService.sendWelcome(customer).catch((err) => {
+                logger.warn({ err, customerId: customer.id }, 'WhatsApp welcome message failed (non-blocking)');
             });
         }
 

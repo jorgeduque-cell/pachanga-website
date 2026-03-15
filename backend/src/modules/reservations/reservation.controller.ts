@@ -1,14 +1,15 @@
-import { Request, Response } from 'express';
+import { logger } from '../../lib/logger.js';
 import { reservationService } from './reservation.service.js';
+import { Request, Response } from 'express';
 import { asyncHandler } from '../../middleware/async-handler.js';
 import { validatedQuery } from '../../middleware/validate.middleware.js';
 import type { ReservationFilters } from '../../schemas/reservation.schema.js';
 
 export class ReservationController {
   create = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    console.log(`[POST /reservations] Creating reservation for: ${req.body.customerName}`);
+    logger.info({ customerName: req.body.customerName }, '[POST /reservations] Creating reservation');
     const reservation = await reservationService.create(req.body);
-    console.log(`[POST /reservations] Reservation created: ${reservation.id}`);
+    logger.info({ reservationId: reservation.id }, '[POST /reservations] Reservation created');
     res.status(201).json({ data: reservation });
   });
 

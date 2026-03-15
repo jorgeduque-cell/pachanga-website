@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ReservationStatus } from '@prisma/client';
+import { ReservationStatus, TableZone } from '@prisma/client';
 
 export const CreateReservationSchema = z.object({
   customerName: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').max(100, 'El nombre no puede exceder 100 caracteres'),
@@ -10,7 +10,7 @@ export const CreateReservationSchema = z.object({
   }),
   partySize: z.number().int().min(1, 'Debe haber al menos 1 persona').max(50, 'El grupo no puede exceder 50 personas'),
   tableId: z.string().uuid('ID de mesa inválido').optional(),
-  zone: z.enum(['PALCO', 'VISITANTE', 'BARRA']).optional(),
+  zone: z.nativeEnum(TableZone).optional(),
   message: z.string().max(500, 'El mensaje no puede exceder 500 caracteres').optional(),
 });
 

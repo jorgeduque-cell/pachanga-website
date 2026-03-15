@@ -4,6 +4,7 @@ import {
   LayoutDashboard, 
   CalendarDays, 
   Users,
+  BarChart3,
   LogOut, 
   Menu, 
   X,
@@ -28,6 +29,7 @@ export function AdminLayout() {
     { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/admin/reservas', label: 'Reservas', icon: CalendarDays },
     { path: '/admin/clientes', label: 'Clientes', icon: Users },
+    { path: '/admin/encuestas', label: 'Encuestas', icon: BarChart3 },
   ];
 
   return (

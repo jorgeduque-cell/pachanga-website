@@ -6,12 +6,12 @@ import { asyncHandler } from '../../middleware/async-handler.js';
 export class AuthController {
   login = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const result = await authService.login(req.body);
-    res.json(result);
+    res.json({ data: result });
   });
 
   register = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const result = await authService.register(req.body);
-    res.status(201).json(result);
+    res.status(201).json({ data: result });
   });
 
   me = asyncHandler(async (req: Request, res: Response): Promise<void> => {
@@ -21,7 +21,7 @@ export class AuthController {
     }
 
     const user = await authService.getCurrentUser(req.user.id);
-    res.json(user);
+    res.json({ data: user });
   });
 
   refresh = asyncHandler(async (req: Request, res: Response): Promise<void> => {
@@ -33,7 +33,7 @@ export class AuthController {
       return;
     }
 
-    res.json(result);
+    res.json({ data: result });
   });
 
   logout = asyncHandler(async (req: Request, res: Response): Promise<void> => {

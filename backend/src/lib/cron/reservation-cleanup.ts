@@ -2,6 +2,7 @@ import { ReservationStatus } from '@prisma/client';
 import cron from 'node-cron';
 import type { ScheduledTask } from 'node-cron';
 import { prisma } from '../prisma.js';
+import { logger } from '../logger.js';
 
 /**
  * Cron job para completar las reservas de la noche anterior.
@@ -25,7 +26,7 @@ let task: ScheduledTask | null = null;
  */
 async function cleanupNightReservations(): Promise<void> {
   const now = new Date();
-  console.log(`[${now.toISOString()}] 🧹 Iniciando limpieza nocturna de reservas...`);
+  logger.info('Starting nightly reservation cleanup...');
 
   try {
     // Calculate "yesterday" in Bogota timezone (UTC-5) using reliable UTC arithmetic
@@ -49,12 +50,12 @@ async function cleanupNightReservations(): Promise<void> {
       },
     });
 
-    console.log(
-      `[${new Date().toISOString()}] ✅ Limpieza nocturna completada: ${result.count} reservas completadas ` +
-      `(fecha: ${yesterday.toISOString().split('T')[0]})`
+    logger.info(
+      { count: result.count, date: yesterday.toISOString().split('T')[0] },
+      'Nightly reservation cleanup completed',
     );
   } catch (error) {
-    console.error(`[${new Date().toISOString()}] ❌ Error durante la limpieza nocturna:`, error);
+    logger.error({ err: error }, 'Nightly reservation cleanup failed');
   }
 }
 
@@ -65,17 +66,17 @@ async function cleanupNightReservations(): Promise<void> {
  */
 export function startReservationCleanup(): void {
   if (task) {
-    console.log('⚠️ Reservation cleanup job already running');
+    logger.warn('Reservation cleanup job already running');
     return;
   }
 
   task = cron.schedule(CLEANUP_SCHEDULE, () => {
     cleanupNightReservations().catch((error: unknown) => {
-      console.error('❌ Reservation cleanup cron error:', error);
+      logger.error({ err: error }, 'Reservation cleanup cron error');
     });
   }, { timezone: TIMEZONE });
 
-  console.log('✅ Reservation cleanup job started (Vie/Sáb/Dom 3:00 AM America/Bogota)');
+  logger.info('Reservation cleanup job started (Fri/Sat/Sun 3:00 AM America/Bogota)');
 }
 
 /**
@@ -85,7 +86,7 @@ export function stopReservationCleanup(): void {
   if (task) {
     task.stop();
     task = null;
-    console.log('✅ Reservation cleanup job stopped');
+    logger.info('Reservation cleanup job stopped');
   }
 }
 
@@ -93,6 +94,6 @@ export function stopReservationCleanup(): void {
  * Ejecuta la limpieza manualmente (para pruebas)
  */
 export async function runCleanupNow(): Promise<void> {
-  console.log('🧹 Ejecutando limpieza manual...');
+  logger.info('Running manual reservation cleanup...');
   await cleanupNightReservations();
 }

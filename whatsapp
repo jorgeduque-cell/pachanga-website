@@ -1,0 +1,157 @@
+# 📋 Sprint Backlog — Configuración WhatsApp Cloud API
+
+## Épica: Activar envío de mensajes WhatsApp a clientes de Pachanga
+
+> **Estado actual:** El backend ya tiene TODO el código construido —[WhatsAppService](file:///c:/Users/LENOVO%20CORP/Proyecto%20Pachanga/backend/src/modules/whatsapp/whatsapp.service.ts#12-201), templates, webhook con HMAC, cron de cumpleaños. Actualmente opera en **modo DRY-RUN** (`WHATSAPP_DRY_RUN=true`). Este sprint activa la integración real con Meta Cloud API.
+
+---
+
+## Historias de Usuario
+
+### TSK-01: Crear App y configurar WhatsApp Business en Meta 🧑‍💻 *Manual (Scrum Master)*
+
+> [!IMPORTANT]
+> Esta es una tarea 100% manual en el portal de Meta. No requiere código.
+
+**Pasos:**
+1. Ir a [Meta for Developers](https://developers.facebook.com)
+2. Crear una **App** tipo "Business" → nombre: `Pachanga WhatsApp`
+3. Agregar el producto **WhatsApp** a la app
+4. En WhatsApp → **Configuración de la API** anotar:
+   - `Phone Number ID` → será `WHATSAPP_PHONE_ID`
+   - `WhatsApp Business Account ID` → será `WHATSAPP_BUSINESS_ID`
+   - `Permanent Token` → será `WHATSAPP_TOKEN`
+
+**Criterios de Aceptación:**
+- **Given** una cuenta Meta Business verificada
+- **When** creo la App y agrego WhatsApp
+- **Then** obtengo los 3 valores: `PHONE_ID`, `BUSINESS_ID`, y `TOKEN`
+
+**Asignación:** 🧑 Scrum Master (manual)
+**Bloquea:** TSK-02, TSK-03, TSK-04
+
+---
+
+### TSK-02: Crear Message Templates en Meta Business Suite 🧑‍💻 *Manual (Scrum Master)*
+
+El backend espera **2 templates** ya registrados en la plataforma de Meta:
+
+| Template Name | Categoría | Variables | Uso |
+|---|---|---|---|
+| `bienvenida_pachanga` | UTILITY | `{{1}}` = nombre del cliente | Bienvenida automática al escanear QR |
+| `cumpleanos_pachanga` | MARKETING | `{{1}}` = nombre, `{{2}}` = URL reservas | Felicitación automática vía cron |
+
+**Pasos:**
+1. Ir a [Meta Business Suite](https://business.facebook.com) → WhatsApp → Message Templates
+2. Crear template `bienvenida_pachanga`:
+   - Idioma: [es](file:///c:/Users/LENOVO%20CORP/Proyecto%20Pachanga/backend/src/types/express.d.ts#12-15) (Español)
+   - Categoría: `UTILITY`
+   - Body: `¡Hola {{1}}! 🎶 Bienvenido/a a Pachanga y Pochola. Gracias por visitarnos. ¡Tu regalo te espera!`
+3. Crear template `cumpleanos_pachanga`:
+   - Idioma: [es](file:///c:/Users/LENOVO%20CORP/Proyecto%20Pachanga/backend/src/types/express.d.ts#12-15) (Español)
+   - Categoría: `MARKETING`
+   - Body: `¡Feliz cumpleaños {{1}}! 🎂🎉 Pachanga y Pochola te celebra. Reserva tu mesa con descuento especial: {{2}}`
+4. Esperar aprobación de Meta (puede tardar 24-48h)
+
+**Criterios de Aceptación:**
+- **Given** la App de WhatsApp creada (TSK-01)
+- **When** creo ambos templates con el nombre y variables exactos
+- **Then** Meta los aprueba y aparecen con status `APPROVED`
+
+**Asignación:** 🧑 Scrum Master (manual)
+**Depende de:** TSK-01
+**Bloquea:** TSK-04
+
+---
+
+### TSK-03: Configurar variables de entorno en el servidor 🤖 *Antigravity Core (Backend)*
+
+Setear las variables en Render (o el hosting elegido):
+
+```env
+# ── Activar WhatsApp (cambiar de dry-run a real) ──
+WHATSAPP_TOKEN=EAAxxxxxxx              # Token permanente de TSK-01
+WHATSAPP_PHONE_ID=123456789            # Phone Number ID de TSK-01
+WHATSAPP_BUSINESS_ID=987654321         # Business Account ID de TSK-01
+WHATSAPP_VERIFY_TOKEN=pachanga_webhook_2026  # Token custom para verificar webhook
+WHATSAPP_API_VERSION=v21.0             # Versión actual de Graph API
+WHATSAPP_DRY_RUN=false                 # ← CLAVE: desactiva modo simulación
+```
+
+**Criterios de Aceptación:**
+- **Given** los valores obtenidos en TSK-01
+- **When** configuro las 6 variables en el panel de Render y redeploy
+- **Then** el servicio arranca sin error y `WHATSAPP_DRY_RUN` es `false`
+
+**Asignación:** 🤖 Antigravity Core / 🧑 Scrum Master
+**Depende de:** TSK-01
+
+---
+
+### TSK-04: Configurar Webhook en Meta para recibir eventos 🧑‍💻 *Manual (Scrum Master)*
+
+Meta necesita una URL pública para enviar eventos de status (sent, delivered, read).
+
+**Pasos:**
+1. En Meta Developers → WhatsApp → Configuration → Webhook
+2. **Callback URL:** `https://pachanga-api.onrender.com/api/whatsapp/webhook`
+3. **Verify Token:** `pachanga_webhook_2026` (debe coincidir con `WHATSAPP_VERIFY_TOKEN`)
+4. Click **Verify and Save** — Meta hará un `GET` al endpoint y el backend responderá con el `challenge`
+5. **Suscribirse a campos:** `messages`, `message_status`
+
+**Criterios de Aceptación:**
+- **Given** el backend desplegado con las variables correctas (TSK-03)
+- **When** Meta envía la verificación GET al webhook
+- **Then** el backend responde con el `challenge` y Meta confirma ✅
+- **And** al enviar un mensaje, los status updates (delivered/read) llegan al webhook
+
+**Asignación:** 🧑 Scrum Master (manual)
+**Depende de:** TSK-01, TSK-03
+
+---
+
+### TSK-05: Verificación end-to-end 🧪 *QA (Scrum Master + Antigravity)*
+
+**Pruebas:**
+
+| Test | Cómo verificar | Resultado esperado |
+|---|---|---|
+| Bienvenida QR | Escanear QR de mesa → llenar formulario con tu número | Llega WhatsApp de bienvenida |
+| Cumpleaños | Crear cliente con `birthDate` = hoy → esperar cron 11 AM | Llega WhatsApp de cumpleaños |
+| Envío manual | Panel admin → CRM → Seleccionar cliente → Enviar mensaje | Llega WhatsApp del template elegido |
+| Status tracking | Después de recibir mensaje, abrirlo | El status en DB cambia a `DELIVERED` → `READ` |
+
+**Criterios de Aceptación:**
+- **Given** WhatsApp configurado y templates aprobados
+- **When** ejecuto las 4 pruebas anteriores
+- **Then** los mensajes llegan al WhatsApp del cliente y los status se actualizan en DB
+
+**Asignación:** 🧑 Scrum Master + 🤖 Antigravity (debugging si falla)
+**Depende de:** TSK-02, TSK-03, TSK-04
+
+---
+
+## 🗺️ Mapa de Dependencias
+
+```mermaid
+graph LR
+    TSK01["TSK-01<br>Crear App Meta"] --> TSK02["TSK-02<br>Crear Templates"]
+    TSK01 --> TSK03["TSK-03<br>Env Variables"]
+    TSK01 --> TSK04["TSK-04<br>Configurar Webhook"]
+    TSK03 --> TSK04
+    TSK02 --> TSK05["TSK-05<br>Verificación E2E"]
+    TSK03 --> TSK05
+    TSK04 --> TSK05
+```
+
+## ⏱️ Estimación
+
+| Tarea | Tiempo estimado | Bloqueante |
+|---|---|---|
+| TSK-01 | 30 min | Requiere cuenta Business verificada |
+| TSK-02 | 20 min + 24-48h aprobación Meta | Templates deben coincidir exactamente |
+| TSK-03 | 10 min | Solo copiar y pegar en Render |
+| TSK-04 | 15 min | Backend debe estar desplegado primero |
+| TSK-05 | 30 min | Todo lo anterior completado |
+
+> **Total activo:** ~2 horas | **Espera pasiva:** 24-48h (aprobación de templates por Meta)

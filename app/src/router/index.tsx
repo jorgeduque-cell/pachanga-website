@@ -14,12 +14,14 @@ import { ContactoPage } from '@/pages/ContactoPage';
 import { HistoriaPage } from '@/pages/HistoriaPage';
 import { ReservasPage } from '@/pages/ReservasPage';
 import { QrCapturePage } from '@/pages/QrCapturePage';
+import { SurveyPage } from '@/pages/SurveyPage';
 
 // Admin Pages
 import { AdminLogin } from '@/pages/AdminLogin';
 import { AdminDashboard } from '@/pages/AdminDashboard';
 import { AdminReservations } from '@/pages/AdminReservations';
 import { AdminCustomers } from '@/pages/AdminCustomers';
+import { AdminSurveys } from '@/pages/AdminSurveys';
 
 // Wrapper para transiciones de página
 function AnimatedOutlet() {
@@ -48,6 +50,7 @@ export const router = createBrowserRouter([
           { path: 'contacto', element: <ContactoPage /> },
           { path: 'reservas', element: <ReservasPage /> },
           { path: 'qr', element: <QrCapturePage /> },
+          { path: 'encuesta', element: <SurveyPage /> },
         ],
       },
     ],
@@ -68,6 +71,7 @@ export const router = createBrowserRouter([
       { path: 'dashboard', element: <AdminDashboard /> },
       { path: 'reservas', element: <AdminReservations /> },
       { path: 'clientes', element: <AdminCustomers /> },
+      { path: 'encuestas', element: <AdminSurveys /> },
     ],
   },
   {

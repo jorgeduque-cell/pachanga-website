@@ -10,12 +10,14 @@ import { globalLimiter } from './middleware/rate-limit.middleware.js';
 import { tokenCleanupService } from './services/token-cleanup.service.js';
 import { socketService } from './services/socket.service.js';
 import { startCronJobs, stopCronJobs } from './lib/cron/index.js';
+import { logger } from './lib/logger.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import tableRoutes from './modules/tables/table.routes.js';
 import reservationRoutes from './modules/reservations/reservation.routes.js';
 import crmRoutes from './modules/crm/crm.routes.js';
 import whatsappRoutes from './modules/whatsapp/whatsapp.routes.js';
 import analyticsRoutes from './modules/analytics/analytics.routes.js';
+import surveyRoutes from './modules/survey/survey.routes.js';
 
 
 // ─── Constants ───────────────────────────────────────────────
@@ -39,7 +41,7 @@ app.use(cors({
     if (!origin || ALLOWED_ORIGINS.includes(origin) || ALLOWED_ORIGINS.includes('*')) {
       callback(null, true);
     } else {
-      console.log('CORS bloqueado para origen:', origin);
+      logger.warn({ origin }, 'CORS blocked origin');
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -59,25 +61,7 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), version: '1.0.1' });
 });
 
-// DEBUG: Verificar conexión a base de datos
-app.get('/api/debug/db', async (_req, res) => {
-  try {
-    const count = await prisma.reservation.count();
-    const recent = await prisma.reservation.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 5,
-      select: { id: true, customerName: true, createdAt: true }
-    });
-    res.json({
-      databaseUrl: env.DATABASE_URL?.replace(/:([^:@]+)@/, ':***@'), // Oculta password
-      reservationCount: count,
-      recentReservations: recent,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    res.status(500).json({ error: String(error) });
-  }
-});
+
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -85,6 +69,7 @@ app.use('/api/tables', tableRoutes);
 app.use('/api/reservations', reservationRoutes);
 app.use('/api/crm', crmRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/surveys', surveyRoutes);
 
 
 // Error handlers
@@ -94,23 +79,21 @@ app.use(errorHandler);
 // ─── Server Lifecycle ────────────────────────────────────────
 const startServer = async (): Promise<void> => {
   try {
-    await prisma.$connect();
-
     tokenCleanupService.start();
 
     httpServer.listen(env.PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${env.PORT}`);
+      logger.info({ port: env.PORT }, 'Server running');
       startCronJobs();
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    logger.fatal({ err: error }, 'Failed to start server');
     await prisma.$disconnect();
     process.exit(1);
   }
 };
 
 const gracefulShutdown = async (signal: string): Promise<void> => {
-  console.log(`${signal} received, shutting down gracefully`);
+  logger.info({ signal }, 'Graceful shutdown initiated');
   tokenCleanupService.stop();
   stopCronJobs();
   await prisma.$disconnect();
