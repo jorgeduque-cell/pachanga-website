@@ -20,7 +20,7 @@ export function initSentry(): void {
     dsn: env.SENTRY_DSN,
     environment: env.NODE_ENV,
     tracesSampleRate: IS_PRODUCTION ? 0.1 : 1.0, // 10% in prod, 100% in dev
-    beforeSend(event) {
+    beforeSend(event: Sentry.ErrorEvent) {
       // Strip sensitive data from error reports
       if (event.request?.headers) {
         delete event.request.headers['authorization'];
