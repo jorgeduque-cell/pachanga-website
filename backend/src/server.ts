@@ -3,6 +3,11 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { createServer } from 'http';
 import { env } from './config/env.js';
+import { initSentry } from './lib/sentry.js';
+
+// Initialize Sentry FIRST (before any other imports that might throw)
+initSentry();
+
 import { ALLOWED_ORIGINS, CORS_MAX_AGE_SECONDS } from './config/cors.js';
 import { prisma } from './lib/prisma.js';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware.js';
@@ -22,6 +27,7 @@ import surveyRoutes from './modules/survey/survey.routes.js';
 
 // ─── Constants ───────────────────────────────────────────────
 const JSON_BODY_LIMIT = '10kb';
+const serverStartTime = Date.now();
 
 // ─── App Setup ───────────────────────────────────────────────
 const app = express();
@@ -56,14 +62,40 @@ app.use('/api/whatsapp', whatsappRoutes);
 app.use(express.json({ limit: JSON_BODY_LIMIT }));
 app.use(express.urlencoded({ extended: true, limit: JSON_BODY_LIMIT }));
 
-// Health check — read version from package.json (CommonJS-compatible)
+// ─── Health Checks ───────────────────────────────────────────
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 const pkgPath = resolve(dirname(__filename), '..', 'package.json');
 const { version } = JSON.parse(readFileSync(pkgPath, 'utf-8'));
 
+/** Basic health — status, version, uptime, memory */
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), version });
+  const mem = process.memoryUsage();
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    version,
+    uptime: Math.floor((Date.now() - serverStartTime) / 1000),
+    memory: {
+      rss: `${Math.round(mem.rss / 1024 / 1024)}MB`,
+      heap: `${Math.round(mem.heapUsed / 1024 / 1024)}MB`,
+    },
+  });
+});
+
+/** Readiness — verifies DB connection (use for Render health check) */
+app.get('/api/health/ready', async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: 'ready', database: 'connected' });
+  } catch {
+    res.status(503).json({ status: 'not_ready', database: 'disconnected' });
+  }
+});
+
+/** Liveness — always 200 (for restart detection only) */
+app.get('/api/health/live', (_req, res) => {
+  res.json({ status: 'alive' });
 });
 
 

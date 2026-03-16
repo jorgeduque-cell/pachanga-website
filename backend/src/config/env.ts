@@ -24,6 +24,9 @@ const envSchema = z.object({
 
   // Frontend URL (for QR generation and CORS)
   FRONTEND_URL: z.string().url().optional().default('https://pachanga-frontend.vercel.app'),
+
+  // Sentry (optional — error tracking)
+  SENTRY_DSN: z.string().url().optional(),
 }).superRefine((data, ctx) => {
   // In production, WHATSAPP_VERIFY_TOKEN MUST be explicitly set and strong
   if (data.NODE_ENV === 'production' && (!data.WHATSAPP_VERIFY_TOKEN || data.WHATSAPP_VERIFY_TOKEN.length < 16)) {

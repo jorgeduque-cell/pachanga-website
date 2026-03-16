@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
 import { prisma } from '../lib/prisma.js';
 import { tokenService } from '../services/token.service.js';
+import { Sentry } from '../lib/sentry.js';
 
 interface JwtPayload {
   userId: string;
@@ -68,6 +69,9 @@ export const authenticate = async (
       res.status(401).json({ error: 'Usuario no encontrado' });
       return;
     }
+
+    // Attach user context to Sentry for error reports
+    Sentry.setUser({ id: user.id, email: user.email });
 
     req.user = user;
     next();
