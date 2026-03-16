@@ -18,7 +18,6 @@ import crmRoutes from './modules/crm/crm.routes.js';
 import whatsappRoutes from './modules/whatsapp/whatsapp.routes.js';
 import analyticsRoutes from './modules/analytics/analytics.routes.js';
 import surveyRoutes from './modules/survey/survey.routes.js';
-import { createRequire } from 'node:module';
 
 
 // ─── Constants ───────────────────────────────────────────────
@@ -57,9 +56,11 @@ app.use('/api/whatsapp', whatsappRoutes);
 app.use(express.json({ limit: JSON_BODY_LIMIT }));
 app.use(express.urlencoded({ extended: true, limit: JSON_BODY_LIMIT }));
 
-// Health check
-const _require = createRequire(import.meta.url);
-const { version } = _require('../package.json');
+// Health check — read version from package.json (CommonJS-compatible)
+import { readFileSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+const pkgPath = resolve(dirname(__filename), '..', 'package.json');
+const { version } = JSON.parse(readFileSync(pkgPath, 'utf-8'));
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), version });

@@ -152,7 +152,6 @@ export class CrmService {
         const today = new Date();
         const month = today.getMonth() + 1;
         const day = today.getDate();
-        const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
         return prisma.$queryRaw<Customer[]>`
       SELECT * FROM customers
