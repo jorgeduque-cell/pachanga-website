@@ -115,6 +115,7 @@ enum MessageStatus {
   DELIVERED
   READ
   FAILED
+  DEAD_LETTER
 }
 
 enum MessageType {
@@ -175,6 +176,8 @@ model WhatsAppMessage {
   deliveredAt  DateTime?     @map("delivered_at")
   readAt       DateTime?     @map("read_at")
   errorCode    String?       @map("error_code")
+  retryCount   Int           @default(0) @map("retry_count")
+  lastRetryAt  DateTime?     @map("last_retry_at")
   createdAt    DateTime      @default(now()) @map("created_at")
 
   @@index([customerId])
