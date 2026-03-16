@@ -17,7 +17,7 @@ const BACKOFF_DELAYS_MS = [
   30 * 60 * 1000,  // 30 minutes
 ];
 
-let cronTask: cron.ScheduledTask | null = null;
+let cronTask: ReturnType<typeof cron.schedule> | null = null;
 
 // ─── Core Logic ──────────────────────────────────────────────
 
