@@ -25,48 +25,29 @@ describe('Tables API', () => {
     }
   });
 
-  describe('GET /api/tables', () => {
-    it('should return all active tables', async () => {
+  describe('GET /api/tables (Admin — requires auth)', () => {
+    it('should return 401 without authentication', async () => {
       const response = await request(app).get('/api/tables');
 
-      expect(response.status).toBe(200);
-      expect(response.body.data).toBeDefined();
-      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.status).toBe(401);
     });
   });
 
-  describe('GET /api/tables/:id', () => {
-    it('should return a table by id', async () => {
-      // First get all tables
-      const tablesResponse = await request(app).get('/api/tables');
-      const tableId = tablesResponse.body.data[0]?.id;
-
-      if (!tableId) {
-        console.log('No tables found, skipping test');
-        return;
-      }
-
-      const response = await request(app).get(`/api/tables/${tableId}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.data).toBeDefined();
-      expect(response.body.data.id).toBe(tableId);
-    });
-
-    it('should return 400 for invalid UUID', async () => {
-      const response = await request(app).get('/api/tables/invalid-uuid');
-
-      expect(response.status).toBe(400);
-    });
-
-    it('should return 404 for non-existent table', async () => {
+  describe('GET /api/tables/:id (Admin — requires auth)', () => {
+    it('should return 401 without authentication for valid UUID', async () => {
       const response = await request(app).get('/api/tables/00000000-0000-0000-0000-000000000000');
 
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(401);
+    });
+
+    it('should return 401 without authentication for invalid UUID', async () => {
+      const response = await request(app).get('/api/tables/invalid-uuid');
+
+      expect(response.status).toBe(401);
     });
   });
 
-  describe('GET /api/tables/available', () => {
+  describe('GET /api/tables/available (Public)', () => {
     it('should return available tables for a date/time', async () => {
       const response = await request(app)
         .get('/api/tables/available')

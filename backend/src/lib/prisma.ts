@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { logger } from './logger.js';
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -16,8 +17,11 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Single connection point — called from server.ts startServer()
 prisma.$connect()
-  .then(() => console.log('[Prisma] Connected to database'))
+  .then(() => logger.info('[Prisma] Connected to database'))
   .catch((err) => {
-    console.error('[Prisma] Connection error:', err);
-    process.exit(1);
+    logger.fatal({ err }, '[Prisma] Connection error');
+    // Skip process.exit in test — vitest workers handle transient connection failures
+    if (process.env.NODE_ENV !== 'test') {
+      process.exit(1);
+    }
   });

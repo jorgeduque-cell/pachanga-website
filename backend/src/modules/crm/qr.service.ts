@@ -31,16 +31,16 @@ export class QrService {
       select: { name: true },
     });
 
-    const results: QRResult[] = [];
-    for (const table of tables) {
-      const dataUrl = await QRCode.toDataURL(this.buildQrUrl(table.name), { ...QR_STYLE });
-      results.push({ tableName: table.name, qrBase64: dataUrl });
-    }
-    return results;
+    return Promise.all(
+      tables.map(async (table) => {
+        const dataUrl = await QRCode.toDataURL(this.buildQrUrl(table.name), { ...QR_STYLE });
+        return { tableName: table.name, qrBase64: dataUrl };
+      }),
+    );
   }
 
   private buildQrUrl(tableName: string): string {
-    return `${BASE_URL}/qr?table=${tableName}`;
+    return `${BASE_URL}/qr?table=${encodeURIComponent(tableName)}`;
   }
 }
 

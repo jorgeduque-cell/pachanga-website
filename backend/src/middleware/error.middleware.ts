@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { Prisma } from '@prisma/client';
 import { env } from '../config/env.js';
+import { logger } from '../lib/logger.js';
 
 export class AppError extends Error {
   constructor(
@@ -60,7 +61,7 @@ export const errorHandler = (
   }
 
   // Default error
-  console.error('Error no manejado:', err);
+  logger.error({ err }, 'Error no manejado');
   res.status(500).json({
     error: 'Error interno del servidor',
     ...(env.NODE_ENV === 'development' && {

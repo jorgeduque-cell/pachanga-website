@@ -67,8 +67,9 @@ describe('Reservations API', () => {
     });
 
     it('should return 400 for past date', async () => {
+      // Use a date far in the past to avoid timezone edge cases
       const pastDate = new Date();
-      pastDate.setDate(pastDate.getDate() - 1);
+      pastDate.setDate(pastDate.getDate() - 7);
       const dateStr = pastDate.toISOString().split('T')[0];
 
       const response = await request(app)

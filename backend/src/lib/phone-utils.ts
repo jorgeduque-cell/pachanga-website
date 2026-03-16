@@ -43,3 +43,16 @@ export function normalizePhone(rawPhone: string): string {
 export function validateE164(phone: string): boolean {
     return E164_REGEX.test(phone);
 }
+
+/**
+ * Safe wrapper around normalizePhone(). Falls back to basic cleanup
+ * (strip whitespace, dashes, parens) for international numbers that
+ * don't match Colombian format.
+ */
+export function normalizePhoneSafe(rawPhone: string): string {
+    try {
+        return normalizePhone(rawPhone);
+    } catch {
+        return rawPhone.replace(/[\s-()]/g, '');
+    }
+}

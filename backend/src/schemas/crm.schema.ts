@@ -66,7 +66,7 @@ export const UpdateConfigSchema = z.object({
 
 // ─── Message Filters (Admin) ────────────────────────────────
 export const MessageFiltersSchema = z.object({
-    type: z.enum(['WELCOME', 'BIRTHDAY', 'PROMO', 'REACTIVATION']).optional(),
+    type: z.enum(['WELCOME', 'BIRTHDAY', 'PROMO', 'REACTIVATION', 'SURVEY']).optional(),
     status: z.enum(['QUEUED', 'SENT', 'DELIVERED', 'READ', 'FAILED']).optional(),
     page: z.string().regex(/^\d+$/).optional().transform((val) => {
         const num = val ? parseInt(val, 10) : 1;

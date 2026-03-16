@@ -4,7 +4,7 @@ import { qrService } from './qr.service.js';
 import { whatsappService } from '../whatsapp/whatsapp.service.js';
 import { asyncHandler } from '../../middleware/async-handler.js';
 import { validatedQuery, validatedBody } from '../../middleware/validate.middleware.js';
-import type { CustomerFilters, MessageFilters, SendMessageInput } from '../../schemas/crm.schema.js';
+import type { CustomerFilters, MessageFilters, SendMessageInput, UpdateConfigInput } from '../../schemas/crm.schema.js';
 import { env } from '../../config/env.js';
 import { logger } from '../../lib/logger.js';
 
@@ -74,7 +74,7 @@ export class CrmController {
     });
 
     updateConfig = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-        const { key, value } = req.body;
+        const { key, value } = validatedBody<UpdateConfigInput>(req);
         await crmService.updateConfig(key, value);
         res.json({ success: true });
     });

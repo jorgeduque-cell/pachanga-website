@@ -1,7 +1,11 @@
 import { z } from 'zod';
+import { randomBytes } from 'node:crypto';
 import dotenv from 'dotenv';
 
 dotenv.config();
+
+// Generate a random verify token for dev/test if not provided
+const devFallbackToken = randomBytes(24).toString('hex');
 
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
@@ -13,13 +17,22 @@ const envSchema = z.object({
   WHATSAPP_TOKEN: z.string().optional().default(''),
   WHATSAPP_PHONE_ID: z.string().optional().default(''),
   WHATSAPP_BUSINESS_ID: z.string().optional().default(''),
-  WHATSAPP_VERIFY_TOKEN: z.string().optional().default('pachanga_webhook_2026'),
+  WHATSAPP_VERIFY_TOKEN: z.string().optional().default(''),
   WHATSAPP_API_VERSION: z.string().optional().default('v21.0'),
   WHATSAPP_DRY_RUN: z.string().optional().default('true'),
   WHATSAPP_APP_SECRET: z.string().optional().default(''),
 
   // Frontend URL (for QR generation and CORS)
   FRONTEND_URL: z.string().url().optional().default('https://pachanga-frontend.vercel.app'),
+}).superRefine((data, ctx) => {
+  // In production, WHATSAPP_VERIFY_TOKEN MUST be explicitly set and strong
+  if (data.NODE_ENV === 'production' && (!data.WHATSAPP_VERIFY_TOKEN || data.WHATSAPP_VERIFY_TOKEN.length < 16)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['WHATSAPP_VERIFY_TOKEN'],
+      message: 'WHATSAPP_VERIFY_TOKEN must be at least 16 characters in production',
+    });
+  }
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
@@ -30,6 +43,11 @@ if (!parsedEnv.success) {
     console.error(`  - ${issue.path.join('.')}: ${issue.message}`);
   });
   process.exit(1);
+}
+
+// In dev/test: if token is empty, use random fallback and warn
+if (parsedEnv.data.NODE_ENV !== 'production' && !parsedEnv.data.WHATSAPP_VERIFY_TOKEN) {
+  parsedEnv.data.WHATSAPP_VERIFY_TOKEN = devFallbackToken;
 }
 
 export const env = parsedEnv.data;

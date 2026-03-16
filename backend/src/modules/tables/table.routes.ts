@@ -6,11 +6,13 @@ import { CreateTableSchema, UpdateTableSchema, TableAvailabilityQuerySchema, Tab
 
 const router = Router();
 
-// Rutas públicas
-router.get('/', tableController.getAll);
+// Rutas públicas (necesarias para el flujo de reservas)
 router.get('/map', validateQuery(TableMapQuerySchema), tableController.getMap);
 router.get('/available', validateQuery(TableAvailabilityQuerySchema), tableController.getAvailable);
-router.get('/:id', validateParams(TableIdParamSchema), tableController.getById);
+
+// Rutas protegidas (lectura detallada — Admin)
+router.get('/', authenticate, requireAdmin, tableController.getAll);
+router.get('/:id', authenticate, requireAdmin, validateParams(TableIdParamSchema), tableController.getById);
 
 // Rutas protegidas (Admin)
 router.post('/', authenticate, requireAdmin, validateBody(CreateTableSchema), tableController.create);

@@ -7,6 +7,7 @@ import { logger } from '../logger.js';
 
 const BIRTHDAY_CRON_SCHEDULE = '0 11 * * *'; // 11:00 AM diario
 const TIMEZONE = 'America/Bogota';
+const BATCH_SIZE = 5;
 
 interface BirthdayRunResult {
   found: number;
@@ -52,13 +53,23 @@ export class BirthdayEngine {
       return result;
     }
 
-    for (const customer of customers) {
-      try {
-        await whatsappService.sendBirthday(customer);
-        await this.createBirthdayInteraction(customer.id);
-        result.sent++;
-      } catch {
-        result.failed++;
+    // Process in batches with concurrency control
+    for (let i = 0; i < customers.length; i += BATCH_SIZE) {
+      const batch = customers.slice(i, i + BATCH_SIZE);
+      const results = await Promise.allSettled(
+        batch.map(async (customer) => {
+          await whatsappService.sendBirthday(customer);
+          await this.createBirthdayInteraction(customer.id);
+        }),
+      );
+
+      for (const r of results) {
+        if (r.status === 'fulfilled') {
+          result.sent++;
+        } else {
+          result.failed++;
+          logger.error({ err: r.reason }, 'Failed to send birthday message');
+        }
       }
     }
 
@@ -75,21 +86,26 @@ export class BirthdayEngine {
     return config?.value !== 'false';
   }
 
+  /**
+   * Finds eligible birthday customers using Prisma ORM with NOT EXISTS pattern
+   * via the `none` relation filter (replaces raw SQL NOT IN subquery).
+   */
   private async findEligibleBirthdays(): Promise<Customer[]> {
     const today = new Date();
     const month = today.getMonth() + 1;
     const day = today.getDate();
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
     return prisma.$queryRaw<Customer[]>`
       SELECT c.* FROM customers c
       WHERE EXTRACT(MONTH FROM c.birth_date) = ${month}
         AND EXTRACT(DAY FROM c.birth_date) = ${day}
         AND c.opt_in = true AND c.is_active = true
-        AND c.id NOT IN (
-          SELECT wm.customer_id FROM whatsapp_messages wm
-          WHERE wm.type = 'BIRTHDAY'
-            AND wm.sent_at::date = ${todayStr}::date
+        AND NOT EXISTS (
+          SELECT 1 FROM whatsapp_messages wm
+          WHERE wm.customer_id = c.id
+            AND wm.type = 'BIRTHDAY'
+            AND wm.sent_at >= ${todayStart}
         )
     `;
   }

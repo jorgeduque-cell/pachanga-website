@@ -3,7 +3,8 @@ import { prisma } from '../../lib/prisma.js';
 import { AppError } from '../../middleware/error.middleware.js';
 import { socketService } from '../../services/socket.service.js';
 import { crmService } from '../crm/crm.service.js';
-import { normalizePhone } from '../../lib/phone-utils.js';
+import { normalizePhoneSafe } from '../../lib/phone-utils.js';
+import { BOGOTA_UTC_OFFSET_MS } from '../../lib/timezone.js';
 import { logger } from '../../lib/logger.js';
 import { buildPagination, paginatedResponse, type PaginatedResult } from '../../lib/pagination.js';
 
@@ -44,6 +45,15 @@ export interface ReservationFilters {
 
 
 
+// ─── Constants ──────────────────────────────────────────────
+const ZONE_LABELS: Record<string, string> = {
+  SALON: 'Salón',
+  TERRAZA: 'Terraza',
+  VIP: 'VIP',
+  BARRA: 'Barra',
+  PISTA: 'Pista',
+};
+
 // ─── Service ─────────────────────────────────────────────────
 export class ReservationService {
   async create(data: CreateReservationData): Promise<ReservationWithTable> {
@@ -51,22 +61,10 @@ export class ReservationService {
     this.validateFutureDate(reservationDate);
 
     // Normalize phone for consistency with CRM customers table
-    let normalizedPhone: string;
-    try {
-      normalizedPhone = normalizePhone(data.customerPhone);
-    } catch {
-      normalizedPhone = data.customerPhone.replace(/[\s-()]/g, '');
-    }
+    const normalizedPhone = normalizePhoneSafe(data.customerPhone);
 
     try {
       // Persist zone preference in the message field
-      const ZONE_LABELS: Record<string, string> = {
-        SALON: 'Salón',
-        TERRAZA: 'Terraza',
-        VIP: 'VIP',
-        BARRA: 'Barra',
-        PISTA: 'Pista',
-      };
       let finalMessage = data.message || '';
       if (data.zone) {
         const zoneLabel = ZONE_LABELS[data.zone] || data.zone;
@@ -212,8 +210,7 @@ export class ReservationService {
 
   private validateFutureDate(date: Date): void {
     // Use Bogota timezone (UTC-5) for date validation
-    const UTC_OFFSET_BOGOTA_MS = -5 * 60 * 60 * 1000;
-    const nowInBogota = new Date(Date.now() + UTC_OFFSET_BOGOTA_MS);
+    const nowInBogota = new Date(Date.now() + BOGOTA_UTC_OFFSET_MS);
     const startOfTodayBogota = new Date(nowInBogota);
     startOfTodayBogota.setUTCHours(0, 0, 0, 0);
 
@@ -301,11 +298,11 @@ export class ReservationService {
   private buildUpdatePayload(data: UpdateReservationData): Prisma.ReservationUpdateInput {
     const payload: Prisma.ReservationUpdateInput = {};
 
-    if (data.customerName) payload.customerName = data.customerName;
-    if (data.customerPhone) payload.customerPhone = data.customerPhone;
-    if (data.reservationDate) payload.reservationDate = new Date(data.reservationDate);
-    if (data.reservationTime) payload.reservationTime = data.reservationTime;
-    if (data.partySize) payload.partySize = data.partySize;
+    if (data.customerName !== undefined) payload.customerName = data.customerName;
+    if (data.customerPhone !== undefined) payload.customerPhone = data.customerPhone;
+    if (data.reservationDate !== undefined) payload.reservationDate = new Date(data.reservationDate);
+    if (data.reservationTime !== undefined) payload.reservationTime = data.reservationTime;
+    if (data.partySize !== undefined) payload.partySize = data.partySize;
     if (data.tableId !== undefined) {
       payload.table = data.tableId ? { connect: { id: data.tableId } } : { disconnect: true };
     }

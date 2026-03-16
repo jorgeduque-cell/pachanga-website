@@ -1,7 +1,7 @@
 import { CustomerSource, MessageType, MessageStatus, Prisma, Customer } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { AppError } from '../../middleware/error.middleware.js';
-import { normalizePhone } from '../../lib/phone-utils.js';
+import { normalizePhone, normalizePhoneSafe } from '../../lib/phone-utils.js';
 import type { CaptureInput, UpdateCustomerInput, CustomerFilters, MessageFilters } from '../../schemas/crm.schema.js';
 import { logger } from '../../lib/logger.js';
 import { buildPagination, paginatedResponse, type PaginatedResult } from '../../lib/pagination.js';
@@ -70,13 +70,7 @@ export class CrmService {
     ): Promise<void> {
         try {
             // Normalize phone with fallback for international numbers
-            let normalizedPhone: string;
-            try {
-                normalizedPhone = normalizePhone(phone);
-            } catch {
-                // Fallback: strip spaces/dashes, keep as-is for non-Colombian phones
-                normalizedPhone = phone.replace(/[\s-()]/g, '');
-            }
+            const normalizedPhone = normalizePhoneSafe(phone);
 
             // Atomic upsert prevents race condition duplicates
             const customer = await prisma.customer.upsert({
@@ -158,6 +152,7 @@ export class CrmService {
         const today = new Date();
         const month = today.getMonth() + 1;
         const day = today.getDate();
+        const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
         return prisma.$queryRaw<Customer[]>`
       SELECT * FROM customers

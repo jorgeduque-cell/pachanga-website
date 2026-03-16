@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import cron from 'node-cron';
 import type { ScheduledTask } from 'node-cron';
 import { prisma } from '../prisma.js';
@@ -14,6 +15,8 @@ interface SurveySendResult {
     skipped: number;
     failed: number;
 }
+
+const BATCH_SIZE = 5;
 
 export class SurveySender {
     private task: ScheduledTask | null = null;
@@ -52,27 +55,32 @@ export class SurveySender {
             return result;
         }
 
-        for (const customer of customers) {
-            try {
-                // Generate survey token (Meta constructs full URL via CTA button)
-                const surveyToken = surveyService.generateSurveyToken(customer.id);
+        // Process in batches with concurrency control
+        for (let i = 0; i < customers.length; i += BATCH_SIZE) {
+            const batch = customers.slice(i, i + BATCH_SIZE);
+            const results = await Promise.allSettled(
+                batch.map(async (customer) => {
+                    const surveyToken = surveyService.generateSurveyToken(customer.id);
 
-                // Send via WhatsApp (body: name, button: token)
-                await whatsappService.sendSurvey(customer, surveyToken);
+                    await whatsappService.sendSurvey(customer, surveyToken);
 
-                // Log CRM interaction
-                await prisma.interaction.create({
-                    data: {
-                        customerId: customer.id,
-                        type: 'survey_sent',
-                        metadata: { surveyToken },
-                    },
-                });
+                    await prisma.interaction.create({
+                        data: {
+                            customerId: customer.id,
+                            type: 'survey_sent',
+                            metadata: { surveyTokenHash: createHash('sha256').update(surveyToken).digest('hex').slice(0, 16) },
+                        },
+                    });
+                }),
+            );
 
-                result.sent++;
-            } catch (error) {
-                logger.error({ err: error, customerId: customer.id }, 'Failed to send survey');
-                result.failed++;
+            for (const r of results) {
+                if (r.status === 'fulfilled') {
+                    result.sent++;
+                } else {
+                    logger.error({ err: r.reason }, 'Failed to send survey');
+                    result.failed++;
+                }
             }
         }
 

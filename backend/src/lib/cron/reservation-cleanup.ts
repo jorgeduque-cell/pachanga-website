@@ -29,9 +29,9 @@ async function cleanupNightReservations(): Promise<void> {
   logger.info('Starting nightly reservation cleanup...');
 
   try {
-    // Calculate "yesterday" in Bogota timezone (UTC-5) using reliable UTC arithmetic
-    const UTC_OFFSET_BOGOTA_HOURS = -5;
-    const bogotaNow = new Date(now.getTime() + (UTC_OFFSET_BOGOTA_HOURS * 60 * 60 * 1000));
+    // Calculate "yesterday" in Bogota timezone using shared constant
+    const { BOGOTA_UTC_OFFSET_HOURS } = await import('../timezone.js');
+    const bogotaNow = new Date(now.getTime() + (BOGOTA_UTC_OFFSET_HOURS * 60 * 60 * 1000));
     const yesterday = new Date(Date.UTC(
       bogotaNow.getUTCFullYear(),
       bogotaNow.getUTCMonth(),

@@ -1,23 +1,39 @@
 import { Request, Response, NextFunction } from 'express';
+import { z } from 'zod';
 import { env } from '../../config/env.js';
 import { whatsappService } from './whatsapp.service.js';
 import { crmService } from '../crm/crm.service.js';
 import { prisma } from '../../lib/prisma.js';
 import { logger } from '../../lib/logger.js';
 
-// ─── Types ───────────────────────────────────────────────────
-interface WebhookStatus {
-  id: string;
-  status: string;
-  timestamp: string;
-}
+// ─── Webhook Payload Schema ─────────────────────────────────
+const WebhookStatusSchema = z.object({
+  id: z.string(),
+  status: z.string(),
+  timestamp: z.string(),
+});
 
-interface WebhookMessage {
-  from: string;
-  type: string;
-  text?: { body: string };
-  timestamp: string;
-}
+const WebhookMessageSchema = z.object({
+  from: z.string(),
+  type: z.string(),
+  text: z.object({ body: z.string() }).optional(),
+  timestamp: z.string(),
+});
+
+const WebhookPayloadSchema = z.object({
+  entry: z.array(z.object({
+    changes: z.array(z.object({
+      value: z.object({
+        statuses: z.array(WebhookStatusSchema).optional(),
+        messages: z.array(WebhookMessageSchema).optional(),
+      }).passthrough(),
+    })).optional(),
+  })).optional(),
+});
+
+// ─── Types ───────────────────────────────────────────────────
+type WebhookStatus = z.infer<typeof WebhookStatusSchema>;
+type WebhookMessage = z.infer<typeof WebhookMessageSchema>;
 
 // ─── Controller ─────────────────────────────────────────────
 export class WhatsAppController {
@@ -38,7 +54,13 @@ export class WhatsAppController {
     res.status(200).send('OK');
 
     try {
-      const entries = req.body?.entry ?? [];
+      const parsed = WebhookPayloadSchema.safeParse(req.body);
+      if (!parsed.success) {
+        logger.warn({ errors: parsed.error.issues }, 'Webhook payload validation failed — ignoring');
+        return;
+      }
+
+      const entries = parsed.data.entry ?? [];
       for (const entry of entries) {
         for (const change of entry.changes ?? []) {
           const value = change.value;
