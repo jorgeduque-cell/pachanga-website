@@ -36,7 +36,7 @@ export function ReservasPage() {
 
   const { mutate: createReservation, isPending: isCreating, error: createError } = useCreateReservation();
 
-  // Static urgency counts
+  // Static urgency counts (intencional — UX)
   const zoneAvailability: Record<ZoneType, number> = { PALCO: 5, VISITANTE: 15, BARRA: 15 };
 
   const handleSubmit = (data: CreateReservationDTO) => {

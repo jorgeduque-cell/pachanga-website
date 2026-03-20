@@ -1,8 +1,10 @@
+export type TableZone = 'SALON' | 'TERRAZA' | 'VIP' | 'BARRA' | 'PISTA';
+
 export interface TableSummary {
   id: string;
   name: string;
   capacity: number;
-  zone: 'SALON' | 'BARRA';
+  zone: TableZone;
   floor: number;
   posX: number;
   posY: number;
@@ -25,7 +27,7 @@ export interface Table {
   id: string;
   name: string;
   capacity: number;
-  zone: 'SALON' | 'BARRA';
+  zone: TableZone;
   floor: number;
   posX: number;
   posY: number;

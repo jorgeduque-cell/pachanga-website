@@ -71,7 +71,7 @@ export function AdminSurveys() {
       ]);
       setStats(statsRes.data);
       setSurveys(surveysRes.data);
-      setTotalPages(surveysRes.meta?.totalPages ?? 1);
+      setTotalPages(surveysRes.pagination?.totalPages ?? 1);
     } catch {
       toast.error('Error al cargar datos de encuestas');
     } finally {

@@ -31,7 +31,7 @@ export interface SurveyItem {
 
 export interface SurveyListResponse {
   data: SurveyItem[];
-  meta: {
+  pagination: {
     total: number;
     page: number;
     limit: number;

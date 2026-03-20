@@ -24,20 +24,11 @@ export function useCreateReservation() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (data: CreateReservationDTO) => {
-      console.log('[useCreateReservation] Calling service with:', data);
-      const result = await reservationService.create(data);
-      console.log('[useCreateReservation] Service returned:', result);
-      return result;
-    },
-    onSuccess: (data) => {
-      console.log('[useCreateReservation] onSuccess:', data);
+    mutationFn: (data: CreateReservationDTO) => reservationService.create(data),
+    onSuccess: () => {
       // Invalidar reservas y mapa de mesas tras crear reserva
       queryClient.invalidateQueries({ queryKey: [RESERVATIONS_KEY] });
       queryClient.invalidateQueries({ queryKey: [TABLE_MAP_KEY] });
-    },
-    onError: (error) => {
-      console.error('[useCreateReservation] onError:', error);
     },
   });
 }

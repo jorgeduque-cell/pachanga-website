@@ -27,7 +27,7 @@ describe('WhatsAppService', () => {
         id: 'msg-1',
         customerId: 'cust-1',
         type: 'WELCOME',
-        templateName: 'bienvenida_pachanga',
+        templateName: 'pachanga_bienvenida',
         status: 'QUEUED',
         waMessageId: null,
         sentAt: null,
@@ -41,7 +41,7 @@ describe('WhatsAppService', () => {
 
       const messageId = await waService.sendTemplate(
         '+573001234567',
-        'bienvenida_pachanga',
+        'pachanga_bienvenida',
         ['Juan'],
         'cust-1',
       );
@@ -63,7 +63,7 @@ describe('WhatsAppService', () => {
         id: 'msg-2',
         customerId: 'cust-1',
         type: 'WELCOME',
-        templateName: 'bienvenida_pachanga',
+        templateName: 'pachanga_bienvenida',
         status: 'QUEUED',
         waMessageId: null,
         sentAt: null,

@@ -14,15 +14,15 @@ export interface ButtonParam {
 
 export interface HeaderMedia {
     type: 'image' | 'video';
-    url: string;
+    url?: string;
+    mediaId?: string;
 }
 
 // ─── Constants ───────────────────────────────────────────────
 const GRAPH_API_URL = 'https://graph.facebook.com';
 
-// Default images/videos for template headers (hosted on your Vercel deployment)
-// Header image for welcome template — Pachanga logo hosted on Vercel
-const DEFAULT_WELCOME_IMAGE = 'https://pachanga-website.vercel.app/welcome-header.jpg';
+// Media IDs for template headers (uploaded to Meta's servers — permanent)
+const WELCOME_IMAGE_MEDIA_ID = '1221474213303119';
 
 
 // ─── Service ─────────────────────────────────────────────────
@@ -53,7 +53,7 @@ export class WhatsAppService {
             [customer.name],
             customer.id,
             undefined,
-            { type: 'image', url: DEFAULT_WELCOME_IMAGE },
+            { type: 'image', mediaId: WELCOME_IMAGE_MEDIA_ID },
         );
     }
 
@@ -225,7 +225,12 @@ export class WhatsAppService {
         // Header media (image or video)
         if (headerMedia) {
             const mediaParam: Record<string, unknown> = { type: headerMedia.type };
-            mediaParam[headerMedia.type] = { link: headerMedia.url };
+            // Support both Media ID (preferred) and URL fallback
+            if (headerMedia.mediaId) {
+                mediaParam[headerMedia.type] = { id: headerMedia.mediaId };
+            } else if (headerMedia.url) {
+                mediaParam[headerMedia.type] = { link: headerMedia.url };
+            }
             components.push({
                 type: 'header',
                 parameters: [mediaParam],

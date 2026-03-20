@@ -3,12 +3,9 @@ import axios from 'axios';
 // URL por defecto para desarrollo local
 const DEV_API_URL = 'http://localhost:3001/api';
 
-// URL de producción (Render)
-const PROD_API_URL = 'https://pachanga-api.onrender.com/api';
-
 // Determinar la URL base según el entorno
-const API_BASE_URL = import.meta.env.VITE_API_URL ||
-  (import.meta.env.PROD ? PROD_API_URL : DEV_API_URL);
+// Production URL MUST be set via VITE_API_URL environment variable
+const API_BASE_URL = import.meta.env.VITE_API_URL || DEV_API_URL;
 
 // Helper para extraer data anidada del backend
 export function extractData<T>(response: { data: { data: T } }): T {
@@ -26,7 +23,6 @@ export const apiClient = axios.create({
 // Request interceptor para agregar token y logging
 apiClient.interceptors.request.use(
   (config) => {
-    console.log(`[API Request] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
     const token = localStorage.getItem('auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

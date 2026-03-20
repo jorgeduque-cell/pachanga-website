@@ -31,7 +31,7 @@ describe('MessageRetry — processRetryQueue', () => {
     const recentMessage = {
       id: 'msg-1',
       customerId: 'cust-1',
-      templateName: 'bienvenida_pachanga',
+      templateName: 'pachanga_bienvenida',
       status: 'FAILED',
       retryCount: 0,
       lastRetryAt: null,
@@ -51,7 +51,7 @@ describe('MessageRetry — processRetryQueue', () => {
     const oldMessage = {
       id: 'msg-2',
       customerId: 'cust-2',
-      templateName: 'bienvenida_pachanga',
+      templateName: 'pachanga_bienvenida',
       status: 'FAILED',
       retryCount: 0,
       lastRetryAt: null,
@@ -70,7 +70,7 @@ describe('MessageRetry — processRetryQueue', () => {
     expect(result.retried).toBe(1);
     expect(sendSpy).toHaveBeenCalledWith(
       '+573009876543',
-      'bienvenida_pachanga',
+      'pachanga_bienvenida',
       ['Retry Test'],
       'cust-2',
     );

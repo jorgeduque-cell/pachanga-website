@@ -540,8 +540,8 @@ export function AdminReservations() {
                                 id: selectedReservation.id,
                                 data: { tableId: newTableId },
                               });
-                              const tableName = newTableId && allTables
-                                ? (allTables as any[]).find((t: any) => t.id === newTableId)?.name
+                              const tableName = newTableId && allTables && Array.isArray(allTables)
+                                ? allTables.find((t) => t.id === newTableId)?.name
                                 : null;
                               toast.success(tableName ? `Mesa ${tableName} asignada` : 'Mesa desasignada');
                               setSelectedReservation(null);
@@ -554,23 +554,26 @@ export function AdminReservations() {
                         >
                           <option value="">— Sin mesa asignada —</option>
                           {allTables && (() => {
-                            const tables = allTables as any;
-                            const tableList = Array.isArray(tables) ? tables : (tables?.data || []);
-                            const floor1 = tableList.filter((t: any) => t.floor === 1).sort((a: any, b: any) => a.name.localeCompare(b.name));
-                            const floor2 = tableList.filter((t: any) => t.floor === 2).sort((a: any, b: any) => a.name.localeCompare(b.name));
+                            const tableList = Array.isArray(allTables) ? allTables : [];
+                            const floor1 = tableList.filter((t) => t.floor === 1).sort((a, b) => a.name.localeCompare(b.name));
+                            const floor2 = tableList.filter((t) => t.floor === 2).sort((a, b) => a.name.localeCompare(b.name));
+                            const getZoneLabel = (zone: string) => {
+                              const labels: Record<string, string> = { SALON: 'Salón', TERRAZA: 'Terraza', VIP: 'VIP', BARRA: 'Barra', PISTA: 'Pista' };
+                              return labels[zone] || zone;
+                            };
                             return (
                               <>
                                 <optgroup label="━━ Piso 1 ━━">
-                                  {floor1.map((t: any) => (
+                                  {floor1.map((t) => (
                                     <option key={t.id} value={t.id}>
-                                      Mesa {t.name} — Cap. {t.capacity} ({t.zone === 'BARRA' ? 'Barra' : 'Salón'})
+                                      Mesa {t.name} — Cap. {t.capacity} ({getZoneLabel(t.zone)})
                                     </option>
                                   ))}
                                 </optgroup>
                                 <optgroup label="━━ Piso 2 ━━">
-                                  {floor2.map((t: any) => (
+                                  {floor2.map((t) => (
                                     <option key={t.id} value={t.id}>
-                                      Mesa {t.name} — Cap. {t.capacity} ({t.zone === 'BARRA' ? 'Barra' : 'Salón'})
+                                      Mesa {t.name} — Cap. {t.capacity} ({getZoneLabel(t.zone)})
                                     </option>
                                   ))}
                                 </optgroup>

@@ -1,0 +1,342 @@
+# 🎉 PROYECTO PACHANGA — Descripción Completa del Sistema
+
+## ¿Qué es Pachanga?
+
+**Pachanga** es una plataforma web full-stack para un bar/discoteca que integra tres sistemas en uno:
+
+1. **🌐 Sitio Web Público** — Página web del establecimiento con información, menú, galería, eventos y reservas online.
+2. **📊 Panel de Administración** — Dashboard privado para gestionar reservas en tiempo real, clientes (CRM) y encuestas de satisfacción.
+3. **📱 Sistema de Fidelización con WhatsApp** — Motor automatizado que envía mensajes de bienvenida, felicitaciones de cumpleaños y encuestas de satisfacción vía WhatsApp Business API.
+
+---
+
+## Arquitectura General
+
+```
+┌─────────────────────────────────────────────────┐
+│            FRONTEND (React + Vite)              │
+│         Desplegado en Vercel                    │
+├──────────────┬──────────────┬───────────────────┤
+│  Sitio Público│  Panel Admin │  Páginas Públicas │
+│  (Home, Menú, │  (Dashboard, │  (QR Captura,     │
+│  Galería,     │  Reservas,   │  Encuesta de      │
+│  Eventos,     │  Clientes,   │  Satisfacción)    │
+│  Contacto)    │  Encuestas)  │                   │
+└──────┬───────┴──────┬───────┴────────┬──────────┘
+       │              │                │
+       ▼              ▼                ▼
+┌─────────────────────────────────────────────────┐
+│            BACKEND (Express + TypeScript)        │
+│            Desplegado en Render                  │
+├─────────────────────────────────────────────────┤
+│  API REST + WebSockets (Socket.IO)              │
+│  Autenticación JWT (Access + Refresh Tokens)    │
+│  Rate Limiting + CORS + Helmet                  │
+├─────────────────────────────────────────────────┤
+│  Módulos:                                       │
+│  ├── Auth (login, registro, tokens)             │
+│  ├── Mesas (CRUD, mapa interactivo)             │
+│  ├── Reservas (crear, confirmar, cancelar)      │
+│  ├── CRM (clientes, mensajes, estadísticas)     │
+│  ├── WhatsApp (Cloud API, templates, webhooks)  │
+│  ├── Encuestas (tokens JWT, ratings, promedios) │
+│  └── Analytics (gráficas, tendencias)           │
+├─────────────────────────────────────────────────┤
+│  Cron Jobs:                                     │
+│  ├── Birthday Engine (11 AM — felicitaciones)   │
+│  ├── Survey Sender (11 AM — encuestas post-visita)│
+│  └── Reservation Cleanup (3 AM — completar)     │
+├─────────────────────────────────────────────────┤
+│  Prisma ORM → PostgreSQL (Supabase)             │
+└─────────────────────────────────────────────────┘
+```
+
+---
+
+## Stack Tecnológico
+
+| Capa | Tecnología | Propósito |
+|:-----|:-----------|:----------|
+| **Frontend** | React 18 + TypeScript | SPA con múltiples páginas |
+| **Build Tool** | Vite | Compilación rápida en desarrollo |
+| **Estilos** | Tailwind CSS | Diseño responsivo y moderno |
+| **Routing** | React Router v6 | Navegación SPA |
+| **Backend** | Express.js + TypeScript | API REST |
+| **Base de Datos** | PostgreSQL (Supabase) | Datos persistentes |
+| **ORM** | Prisma | Consultas tipo seguro |
+| **Autenticación** | JWT (Access + Refresh) | Sesiones stateless |
+| **Validación** | Zod | Validación de entrada |
+| **Tiempo Real** | Socket.IO | Notificaciones de reservas |
+| **Mensajería** | WhatsApp Cloud API | Mensajes automatizados |
+| **QR** | qrcode (npm) | Generación de códigos QR |
+| **Logging** | Pino | Logs estructurados JSON |
+| **Seguridad** | Helmet + Rate Limiting + CORS | Protección HTTP |
+| **Deploy Backend** | Render.com | Hosting del API |
+| **Deploy Frontend** | Vercel | Hosting de la SPA |
+
+---
+
+## Módulos del Sistema
+
+### 1. 🌐 Sitio Web Público
+
+El frontend incluye estas páginas públicas para los clientes del bar:
+
+| Página | Archivo | Descripción |
+|:-------|:--------|:------------|
+| **Inicio** | `HomePage.tsx` | Landing page con hero, información del bar y call-to-action |
+| **Historia** | `HistoriaPage.tsx` | Historia y filosofía del establecimiento |
+| **Menú** | `MenuPage.tsx` | Carta de bebidas y comidas |
+| **Galería** | `GaleriaPage.tsx` | Fotos del establecimiento |
+| **Eventos** | `EventosPage.tsx` | Programación de eventos y fiestas |
+| **Contacto** | `ContactoPage.tsx` | Formulario de contacto e información |
+| **Reservas** | `ReservasPage.tsx` | Sistema de reservas online para clientes |
+
+### 2. 🪑 Sistema de Reservas
+
+El corazón del negocio. Permite a los clientes reservar mesas online.
+
+**Flujo del cliente:**
+1. El cliente accede a `/reservas` en la web
+2. Selecciona fecha, hora (19:00–22:00) y tamaño del grupo
+3. Opcionalmente elige una zona preferida (Salón, Terraza, VIP, Barra, Pista)
+4. Envía la reserva → estado `PENDING`
+5. El admin la confirma desde el dashboard → estado `CONFIRMED`
+
+**Flujo del administrador:**
+- Ve las reservas en tiempo real via WebSockets (Socket.IO)
+- Puede confirmar, cancelar o reasignar mesas
+- Ve estadísticas del día (pendientes, confirmadas, canceladas, completadas)
+
+**Reglas de negocio:**
+- No se permiten reservas en fechas pasadas (validación por timezone Bogotá)
+- Una mesa solo puede tener una reserva por noche (bloqueo por toda la noche)
+- Las reservas se completan automáticamente la madrugada siguiente (cron job a las 3 AM)
+- Transacciones serializables para evitar doble reserva
+
+**Modelo de datos:**
+- `Reservation` — nombre, teléfono, fecha, hora, tamaño, mesa, estado
+- `Table` — nombre, zona (SALON/TERRAZA/VIP/BARRA/PISTA), piso (1 o 2), capacidad, posición (x,y)
+
+### 3. 📋 CRM (Gestión de Clientes)
+
+Sistema de fidelización que captura y gestiona los datos de los clientes.
+
+**Captura de clientes vía QR:**
+1. Cada mesa tiene un código QR impreso
+2. El cliente escanea el QR → se abre la página `/qr?table=NombreMesa`
+3. Llena un formulario: nombre, teléfono, fecha de nacimiento, calificación (1-5)
+4. El sistema registra al cliente o incrementa sus visitas si ya existe (upsert atómico)
+5. Si es cliente nuevo → se envía automáticamente un WhatsApp de bienvenida
+
+**Vinculación automática con reservas:**
+- Cuando un cliente hace una reserva, el teléfono se normaliza y se vincula al CRM
+- Si el cliente no existe, se crea automáticamente con fuente `RESERVATION`
+
+**Panel de clientes (admin):**
+- Lista paginada y filtrable de clientes
+- Búsqueda por nombre o teléfono
+- Filtros por fuente (QR, Reserva, Manual) y estado de opt-in
+- Detalle del cliente con historial de interacciones y mensajes
+- Edición de notas, opt-in y estado activo
+
+**Estadísticas CRM:**
+- Total de clientes
+- Nuevos este mes
+- Clientes activos con opt-in
+- Rating promedio
+- Top 3 fuentes de captación
+
+### 4. 📱 WhatsApp Business (Mensajería Automatizada)
+
+Integración con la **WhatsApp Cloud API** de Meta para enviar mensajes automatizados.
+
+**Templates registrados en Meta:**
+| Template | Tipo | Descripción |
+|:---------|:-----|:------------|
+| `bienvenida_pachanga` | WELCOME | Saludo al cliente nuevo (capturado vía QR) |
+| `cumpleanos_pachanga` | BIRTHDAY | Felicitación de cumpleaños con botón CTA a reservas |
+| `encuesta_pachanga` | SURVEY | Enlace a encuesta de satisfacción con botón CTA |
+
+**Modo DRY_RUN:**
+- Si `WHATSAPP_DRY_RUN=true`, los mensajes se simulan sin enviar a Meta (para desarrollo/pruebas)
+
+**Webhook:**
+- Recibe eventos de Meta (entrega, lectura, fallo) y actualiza el estado de cada mensaje
+- Recibe respuestas de clientes y las registra como interacciones en el CRM
+- Verificación HMAC-SHA256 de la firma del webhook (timing-safe)
+
+### 5. ⏰ Cron Jobs (Tareas Automatizadas)
+
+Tres tareas programadas que corren automáticamente en el servidor:
+
+| Cron Job | Horario | Qué hace |
+|:---------|:--------|:---------|
+| **Birthday Engine** | 11:00 AM diario (Bogotá) | Busca clientes que cumplen años hoy, verifica que no se les haya enviado mensaje hoy, y envía felicitación vía WhatsApp |
+| **Survey Sender** | 11:00 AM diario (Bogotá) | Busca clientes que se registraron ayer vía QR, verifica que no hayan recibido encuesta, y envía enlace a encuesta de satisfacción |
+| **Reservation Cleanup** | 3:00 AM Vie/Sáb/Dom (Bogotá) | Marca como `COMPLETED` las reservas de la noche anterior (Jue/Vie/Sáb), liberando las mesas |
+
+Cada cron job:
+- Se puede habilitar/deshabilitar desde el CRM config (sin redeploy)
+- Procesa mensajes en lotes de 5 (`Promise.allSettled`) para no saturar la API de WhatsApp
+- Registra resultados en logs estructurados
+
+### 6. 📊 Encuestas de Satisfacción
+
+Sistema completo de encuestas post-visita:
+
+**Flujo:**
+1. El **Survey Sender** (cron) genera un JWT con el `customerId` del cliente
+2. Se envía un WhatsApp con botón CTA que lleva a `/encuesta?token=<JWT>`
+3. El cliente abre la página, se verifica el token y se muestra su nombre
+4. Califica 4 categorías (1-5 estrellas): Música, Servicio, Ambiente, Higiene
+5. Se almacena la encuesta con la mesa de origen (del último escaneo QR)
+
+**Panel admin:**
+- Lista paginada de encuestas con nombre del cliente y calificaciones
+- Promedios por categoría (música, servicio, ambiente, higiene)
+- Promedio general
+- Total de encuestas recibidas
+
+**Seguridad:**
+- Token JWT firmado con expiración de 7 días
+- Se almacena un hash SHA-256 del token (nunca el token completo)
+- Issuer separado (`pachanga-survey`) para no mezclar con tokens de autenticación
+
+### 7. 📈 Analytics
+
+Panel de gráficas para el administrador:
+
+| Endpoint | Datos |
+|:---------|:------|
+| Nuevos clientes por mes | Últimos 6 meses, agrupados por mes |
+| Mensajes por estado | QUEUED, SENT, DELIVERED, READ, FAILED |
+| Distribución de ratings | Cantidad de clientes por calificación (1-5) |
+| Tendencia de visitas | Visitas totales por mes (últimos 6 meses) |
+
+---
+
+## Seguridad del Sistema
+
+| Mecanismo | Implementación |
+|:----------|:---------------|
+| **Autenticación** | JWT con access token (15 min) + refresh token (7 días) |
+| **Autorización** | Middleware `authenticate` + `requireAdmin` en rutas admin |
+| **Revocación** | Token blacklist + rotación de refresh tokens |
+| **Rate Limiting** | Global (100/15min), Auth (5/15min), Reservas (10/min), Encuestas (10/min) |
+| **Validación** | Zod schemas en todos los endpoints (body, query, params) |
+| **CORS** | Orígenes permitidos por entorno (dev ≠ prod) |
+| **Headers HTTP** | Helmet (X-Frame-Options, CSP, HSTS, etc.) |
+| **Webhook** | HMAC-SHA256 con timing-safe compare |
+| **Contraseñas** | bcrypt con 12 salt rounds |
+| **Secretos** | Variables de entorno via `.env` (nunca hardcodeados) |
+| **Logging** | Pino estructurado, sin stack traces en producción |
+
+---
+
+## Base de Datos (10 modelos)
+
+```mermaid
+erDiagram
+    User ||--o{ RefreshToken : "tiene"
+    Table ||--o{ Reservation : "tiene"
+    Customer ||--o{ Interaction : "tiene"
+    Customer ||--o{ WhatsAppMessage : "recibe"
+    Customer ||--o{ SatisfactionSurvey : "completa"
+
+    User {
+        uuid id PK
+        string email UK
+        string name
+        string passwordHash
+        enum role "ADMIN | STAFF"
+    }
+
+    Table {
+        uuid id PK
+        string name UK
+        int capacity
+        enum zone "SALON | TERRAZA | VIP | BARRA | PISTA"
+        int floor "1 o 2"
+        int posX
+        int posY
+        boolean isActive
+    }
+
+    Reservation {
+        uuid id PK
+        string customerName
+        string customerPhone
+        date reservationDate
+        string reservationTime
+        int partySize
+        string message
+        enum status "PENDING | CONFIRMED | CANCELLED | COMPLETED"
+        uuid tableId FK
+    }
+
+    Customer {
+        uuid id PK
+        string name
+        string phone UK
+        date birthDate
+        int rating "1-5"
+        enum source "QR_SCAN | RESERVATION | MANUAL"
+        int totalVisits
+        datetime lastVisitAt
+        boolean optIn
+        boolean isActive
+    }
+
+    WhatsAppMessage {
+        uuid id PK
+        uuid customerId FK
+        enum type "WELCOME | BIRTHDAY | PROMO | SURVEY"
+        string templateName
+        enum status "QUEUED | SENT | DELIVERED | READ | FAILED"
+        string waMessageId
+        datetime sentAt
+    }
+
+    SatisfactionSurvey {
+        uuid id PK
+        uuid customerId FK
+        int musicRating "1-5"
+        int serviceRating "1-5"
+        int ambienceRating "1-5"
+        int hygieneRating "1-5"
+        string qrTable
+    }
+```
+
+Adicionalmente: `RefreshToken`, `TokenBlacklist`, `Interaction` (historial de acciones), `CrmConfig` (configuración dinámica).
+
+---
+
+## Infraestructura de Deploy
+
+| Componente | Plataforma | URL |
+|:-----------|:-----------|:----|
+| **Frontend** | Vercel | `pachanga-website.vercel.app` |
+| **Backend API** | Render.com | Auto-deploy con `git push` |
+| **Base de Datos** | Supabase (PostgreSQL) | Pool via `aws-1-us-east-2.pooler.supabase.com` |
+
+**Pipeline de deploy (backend):**
+```
+git push → Render detecta → npm install → tsc (build) → prisma generate → prisma migrate deploy → node dist/server.js
+```
+
+---
+
+## Resumen Ejecutivo
+
+Pachanga es una plataforma integral para un bar/discoteca que combina:
+
+- **Presencia web** profesional con páginas de historia, menú, galería y eventos
+- **Reservas online** con mapa interactivo de mesas y notificaciones en tiempo real
+- **CRM de fidelización** que captura clientes vía QR y los gestiona con historial completo
+- **Mensajería WhatsApp automatizada** para bienvenidas, cumpleaños y encuestas
+- **Encuestas de satisfacción** con links seguros y dashboard de promedios
+- **Analytics** con gráficas de tendencias para tomar decisiones basadas en datos
+
+Todo construido con TypeScript end-to-end, validación estricta con Zod, seguridad enterprise (JWT, HMAC, rate limiting, CORS) y deploy automatizado.
