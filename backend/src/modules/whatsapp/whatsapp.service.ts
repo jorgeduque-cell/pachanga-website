@@ -12,8 +12,17 @@ export interface ButtonParam {
     text: string;   // dynamic suffix for the URL
 }
 
+export interface HeaderMedia {
+    type: 'image' | 'video';
+    url: string;
+}
+
 // ─── Constants ───────────────────────────────────────────────
 const GRAPH_API_URL = 'https://graph.facebook.com';
+
+// Default images/videos for template headers (hosted on your Vercel deployment)
+// Header image for welcome template — Pachanga logo hosted on Vercel
+const DEFAULT_WELCOME_IMAGE = 'https://pachanga-website.vercel.app/welcome-header.jpg';
 
 
 // ─── Service ─────────────────────────────────────────────────
@@ -40,15 +49,17 @@ export class WhatsAppService {
     async sendWelcome(customer: Customer): Promise<string> {
         return this.sendTemplate(
             customer.phone,
-            'bienvenida_pachanga',
+            'pachanga_bienvenida',
             [customer.name],
             customer.id,
+            undefined,
+            { type: 'image', url: DEFAULT_WELCOME_IMAGE },
         );
     }
 
     /**
      * Sends a birthday message to a customer.
-     * Body {{1}} = customer name, Button {{1}} = ref param (Meta appends to base URL).
+     * Body {{customer_name}} = customer name, Button {{1}} = ref param.
      */
     async sendBirthday(customer: Customer): Promise<string> {
         return this.sendTemplate(
@@ -62,7 +73,7 @@ export class WhatsAppService {
 
     /**
      * Sends a satisfaction survey link to a customer.
-     * Body {{1}} = customer name, Button {{1}} = JWT token (Meta appends to base URL).
+     * Body {{customer_name}} = customer name, Button {{1}} = JWT token.
      */
     async sendSurvey(customer: Pick<Customer, 'id' | 'name' | 'phone'>, surveyToken: string): Promise<string> {
         return this.sendTemplate(
@@ -71,6 +82,8 @@ export class WhatsAppService {
             [customer.name],
             customer.id,
             [{ type: 'url', index: 0, text: surveyToken }],
+            // Note: encuesta has a VIDEO header — Meta uses the pre-uploaded video from template approval
+            // We don't send a new video; we skip the header component for pre-uploaded media
         );
     }
 
@@ -84,6 +97,7 @@ export class WhatsAppService {
         variables: string[],
         customerId: string,
         buttonParams?: ButtonParam[],
+        headerMedia?: HeaderMedia,
     ): Promise<string> {
         const templateConfig = getTemplateConfig(templateName);
         const message = await this.createQueuedMessage(customerId, templateConfig, templateName);
@@ -92,7 +106,7 @@ export class WhatsAppService {
             return this.handleDryRun(message.id, phone, templateName, variables, buttonParams);
         }
 
-        return this.sendViaCloudApi(message.id, phone, templateConfig, variables, buttonParams);
+        return this.sendViaCloudApi(message.id, phone, templateConfig, variables, buttonParams, headerMedia);
     }
 
     // ─── Private Helpers ─────────────────────────────────────────
@@ -135,8 +149,11 @@ export class WhatsAppService {
         config: TemplateConfig,
         variables: string[],
         buttonParams?: ButtonParam[],
+        headerMedia?: HeaderMedia,
     ): Promise<string> {
         try {
+            const components = this.buildTemplateComponents(config, variables, buttonParams, headerMedia);
+
             const response = await axios.post(
                 `${GRAPH_API_URL}/${this.apiVersion}/${this.phoneNumberId}/messages`,
                 {
@@ -146,7 +163,7 @@ export class WhatsAppService {
                     template: {
                         name: config.name,
                         language: { code: config.language },
-                        components: this.buildTemplateComponents(variables, buttonParams),
+                        components,
                     },
                 },
                 {
@@ -169,39 +186,65 @@ export class WhatsAppService {
                 },
             });
 
+            logger.info({ phone, templateName: config.name, waMessageId }, '[WhatsApp] Message sent');
             return messageId;
         } catch (error) {
             const errorCode = axios.isAxiosError(error)
-                ? String(error.response?.status ?? 'UNKNOWN')
+                ? String(error.response?.data?.error?.code ?? error.response?.status ?? 'UNKNOWN')
                 : 'INTERNAL';
+
+            const errorDetails = axios.isAxiosError(error)
+                ? error.response?.data?.error?.error_data?.details ?? error.response?.data?.error?.message
+                : (error instanceof Error ? error.message : 'Unknown error');
 
             await prisma.whatsAppMessage.update({
                 where: { id: messageId },
                 data: { status: 'FAILED', errorCode },
             });
 
-            logger.error({ phone, errorCode }, '[WhatsApp] Send failed');
+            logger.error({ phone, errorCode, errorDetails }, '[WhatsApp] Send failed');
             return messageId;
         }
     }
 
     /**
      * Builds the `components` array for the WhatsApp Cloud API template payload.
-     * Supports body text parameters and optional CTA URL buttons.
+     * Supports:
+     * - Named body parameters (Meta's new format)
+     * - Header media (image/video)
+     * - CTA URL buttons with dynamic suffixes
      */
     private buildTemplateComponents(
+        config: TemplateConfig,
         variables: string[],
         buttonParams?: ButtonParam[],
+        headerMedia?: HeaderMedia,
     ): Record<string, unknown>[] {
         const components: Record<string, unknown>[] = [];
 
-        if (variables.length > 0) {
+        // Header media (image or video)
+        if (headerMedia) {
+            const mediaParam: Record<string, unknown> = { type: headerMedia.type };
+            mediaParam[headerMedia.type] = { link: headerMedia.url };
             components.push({
-                type: 'body',
-                parameters: variables.map((v) => ({ type: 'text', text: v })),
+                type: 'header',
+                parameters: [mediaParam],
             });
         }
 
+        // Body parameters with named params (Meta's new format)
+        if (variables.length > 0 && config.bodyParamNames.length > 0) {
+            components.push({
+                type: 'body',
+                parameters: variables.map((value, index) => ({
+                    type: 'text',
+                    parameter_name: config.bodyParamNames[index] ?? `param_${index}`,
+                    text: value,
+                })),
+            });
+        }
+
+        // Button parameters (dynamic URL suffixes)
         if (buttonParams && buttonParams.length > 0) {
             for (const btn of buttonParams) {
                 components.push({
