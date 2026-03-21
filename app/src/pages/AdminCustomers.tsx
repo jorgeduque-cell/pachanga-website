@@ -165,7 +165,7 @@ function CustomerDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl bg-[#1a1a1a] border-[#333] text-white">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto bg-[#1a1a1a] border-[#333] text-white">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">Ficha del Cliente</DialogTitle>
         </DialogHeader>
