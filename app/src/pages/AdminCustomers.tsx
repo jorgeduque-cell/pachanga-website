@@ -165,7 +165,7 @@ function CustomerDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto bg-[#1a1a1a] border-[#333] text-white">
+      <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden bg-[#1a1a1a] border-[#333] text-white p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">Ficha del Cliente</DialogTitle>
         </DialogHeader>
@@ -177,40 +177,44 @@ function CustomerDetailModal({
         ) : customer ? (
           <div className="space-y-6">
             {/* Header del cliente */}
-            <div className="flex items-start gap-4">
-              <Avatar className="w-16 h-16 bg-[#E31B23]">
-                <AvatarFallback className="text-2xl font-heading bg-[#E31B23] text-white">
+            <div className="flex flex-col sm:flex-row items-start gap-4">
+              <Avatar className="w-14 h-14 sm:w-16 sm:h-16 bg-[#E31B23] flex-shrink-0">
+                <AvatarFallback className="text-xl sm:text-2xl font-heading bg-[#E31B23] text-white">
                   {customer.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex-1">
-                <h3 className="text-xl font-semibold text-white">{customer.name}</h3>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg sm:text-xl font-semibold text-white break-words">{customer.name}</h3>
                 <div className="flex items-center gap-2 mt-1">
-                  <Phone size={14} className="text-white/50" />
-                  <span className="text-white/70">{customer.phone}</span>
+                  <Phone size={14} className="text-white/50 flex-shrink-0" />
+                  <span className="text-white/70 text-sm break-all">{customer.phone}</span>
                 </div>
-                <div className="flex items-center gap-3 mt-2">
+                <div className="flex flex-wrap items-center gap-2 mt-2">
                   <SourceBadge source={customer.source} />
                   <CustomerStatus customer={customer} />
+                  <div className="sm:hidden flex items-center gap-1 ml-auto">
+                    <span className="text-2xl font-heading text-[#FFD700]">{customer.totalVisits}</span>
+                    <span className="text-xs text-white/50">visitas</span>
+                  </div>
                 </div>
               </div>
-              <div className="text-right">
+              <div className="text-right hidden sm:block">
                 <div className="text-3xl font-heading text-[#FFD700]">{customer.totalVisits}</div>
                 <div className="text-xs text-white/50">visitas</div>
               </div>
             </div>
 
             {/* Stats rápidas */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-2 sm:gap-4">
               <Card className="bg-[#0a0a0a] border-[#333]">
-                <CardContent className="p-4 text-center">
+                <CardContent className="p-2 sm:p-4 text-center">
                   <Star className="w-5 h-5 text-[#FFD700] mx-auto mb-1" />
                   <div className="text-xl font-heading text-white">{customer.rating || '-'}</div>
                   <div className="text-xs text-white/50">Calificación</div>
                 </CardContent>
               </Card>
               <Card className="bg-[#0a0a0a] border-[#333]">
-                <CardContent className="p-4 text-center">
+                <CardContent className="p-2 sm:p-4 text-center">
                   <Calendar className="w-5 h-5 text-[#E31B23] mx-auto mb-1" />
                   <div className="text-sm font-heading text-white">
                     {customer.birthDate ? new Date(customer.birthDate).toLocaleDateString('es-CO') : '-'}
@@ -219,7 +223,7 @@ function CustomerDetailModal({
                 </CardContent>
               </Card>
               <Card className="bg-[#0a0a0a] border-[#333]">
-                <CardContent className="p-4 text-center">
+                <CardContent className="p-2 sm:p-4 text-center">
                   <TrendingUp className="w-5 h-5 text-green-500 mx-auto mb-1" />
                   <div className="text-sm font-heading text-white">
                     {customer.lastVisitAt ? new Date(customer.lastVisitAt).toLocaleDateString('es-CO') : 'Nunca'}
@@ -230,7 +234,7 @@ function CustomerDetailModal({
             </div>
 
             {/* Acciones */}
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <Button 
                 variant="outline" 
                 className="flex-1 border-[#333] hover:bg-[#E31B23]/20"
