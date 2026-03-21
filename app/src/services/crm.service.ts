@@ -54,7 +54,7 @@ export interface SendMessageInput {
 }
 
 export interface MessageFilters {
-  type?: 'WELCOME' | 'BIRTHDAY' | 'PROMO' | 'REACTIVATION' | 'SURVEY';
+  type?: 'WELCOME' | 'BIRTHDAY' | 'PROMO' | 'REACTIVATION' | 'SURVEY' | 'MANUAL';
   status?: 'PENDING' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED';
   page?: number;
   limit?: number;
