@@ -19,6 +19,7 @@ import type { CreateReservationDTO } from '@/types';
 import type { ZoneType } from './ZoneSelector';
 
 
+
 const reservationSchema = z.object({
   customerName: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   customerPhone: z.string().min(5, 'Teléfono inválido'),

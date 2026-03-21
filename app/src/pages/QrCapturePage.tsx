@@ -1,12 +1,27 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Gift, CheckCircle, Loader2, Wine } from 'lucide-react';
+import { Star, Gift, CheckCircle, Loader2, Wine, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { captureService, type CaptureInput } from '@/services/capture.service';
+
+const COUNTRY_CODES = [
+  { code: '+57', country: 'CO', flag: '🇨🇴', name: 'Colombia' },
+  { code: '+1', country: 'US', flag: '🇺🇸', name: 'Estados Unidos' },
+  { code: '+52', country: 'MX', flag: '🇲🇽', name: 'México' },
+  { code: '+54', country: 'AR', flag: '🇦🇷', name: 'Argentina' },
+  { code: '+56', country: 'CL', flag: '🇨🇱', name: 'Chile' },
+  { code: '+51', country: 'PE', flag: '🇵🇪', name: 'Perú' },
+  { code: '+58', country: 'VE', flag: '🇻🇪', name: 'Venezuela' },
+  { code: '+593', country: 'EC', flag: '🇪🇨', name: 'Ecuador' },
+  { code: '+507', country: 'PA', flag: '🇵🇦', name: 'Panamá' },
+  { code: '+506', country: 'CR', flag: '🇨🇷', name: 'Costa Rica' },
+  { code: '+34', country: 'ES', flag: '🇪🇸', name: 'España' },
+  { code: '+55', country: 'BR', flag: '🇧🇷', name: 'Brasil' },
+] as const;
 
 // Mensaje de error amigable para teléfono duplicado
 const FRIENDLY_DUPLICATE_MESSAGE = '¡Ya te conocemos! Bienvenido de vuelta 🎶';
@@ -28,6 +43,8 @@ export function QrCapturePage() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [isDuplicate, setIsDuplicate] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [countryCode, setCountryCode] = useState('+57');
+  const [isCodeDropdownOpen, setIsCodeDropdownOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +53,9 @@ export function QrCapturePage() {
     setIsDuplicate(false);
 
     try {
-      const response = await captureService.capture(formData);
+      const cleanedPhone = formData.phone.replace(/[\s\-()]/g, '');
+      const fullPhone = `${countryCode}${cleanedPhone}`;
+      const response = await captureService.capture({ ...formData, phone: fullPhone });
       
       // Verificar si es un cliente que regresa basado en el mensaje del servidor
       if (response.message?.includes('de nuevo') || response.message?.includes('gusto verte')) {
@@ -219,20 +238,74 @@ export function QrCapturePage() {
                 Tu WhatsApp
                 <span className="text-red-500">*</span>
               </Label>
-              <Input
-                id="phone"
-                type="tel"
-                placeholder="+57 300 123 4567"
-                value={formData.phone}
-                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                required
-                minLength={5}
-                maxLength={30}
-                className="bg-white/5 border-white/10 text-white placeholder:text-white/30 h-12"
-              />
-              <p className="text-xs text-white/40">
-                Incluye el código de país (+57 para Colombia)
-              </p>
+              <div className="flex gap-2">
+                {/* Country code selector */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsCodeDropdownOpen(!isCodeDropdownOpen)}
+                    className={`flex items-center gap-1.5 px-3 h-12 rounded-md bg-white/5 border text-white whitespace-nowrap min-w-[110px] cursor-pointer transition-colors ${
+                      isCodeDropdownOpen ? 'border-[var(--accent-gold)]' : 'border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    <span className="text-base">{(COUNTRY_CODES.find(c => c.code === countryCode) ?? COUNTRY_CODES[0]).flag}</span>
+                    <span className="text-sm text-white/80">{countryCode}</span>
+                    <ChevronDown className={`w-3.5 h-3.5 text-white/50 transition-transform ml-auto ${isCodeDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  <AnimatePresence>
+                    {isCodeDropdownOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -4, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -4, scale: 0.95 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute top-full left-0 mt-1 w-56 max-h-52 overflow-y-auto rounded-lg z-50"
+                        style={{
+                          background: 'rgba(20, 20, 30, 0.97)',
+                          border: '1px solid rgba(255,215,0,0.2)',
+                          backdropFilter: 'blur(20px)',
+                          boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
+                        }}
+                      >
+                        {COUNTRY_CODES.map((c) => (
+                          <button
+                            key={c.code + c.country}
+                            type="button"
+                            onClick={() => {
+                              setCountryCode(c.code);
+                              setIsCodeDropdownOpen(false);
+                            }}
+                            className={`flex items-center gap-2.5 w-full px-3 py-2.5 text-left text-sm transition-colors cursor-pointer ${
+                              countryCode === c.code
+                                ? 'text-[var(--accent-gold)] bg-[var(--accent-gold)]/5 hover:bg-[var(--accent-gold)]/10'
+                                : 'text-white/80 hover:bg-[var(--accent-gold)]/10'
+                            }`}
+                          >
+                            <span className="text-base">{c.flag}</span>
+                            <span className="font-medium">{c.name}</span>
+                            <span className="ml-auto text-white/40 text-xs">{c.code}</span>
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Phone number input */}
+                <Input
+                  id="phone"
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="300 123 4567"
+                  value={formData.phone}
+                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                  required
+                  minLength={7}
+                  maxLength={15}
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/30 h-12 flex-1"
+                />
+              </div>
             </div>
 
             {/* Fecha de nacimiento */}
