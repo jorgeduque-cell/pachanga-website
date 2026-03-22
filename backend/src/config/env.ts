@@ -23,7 +23,7 @@ const envSchema = z.object({
   WHATSAPP_APP_SECRET: z.string().optional().default(''),
 
   // Frontend URL (for QR generation and CORS)
-  FRONTEND_URL: z.string().url().optional().default('https://pachanga-frontend.vercel.app'),
+  FRONTEND_URL: z.string().url().optional().default('https://pachanga-website.vercel.app'),
 
   // Sentry (optional — error tracking)
   SENTRY_DSN: z.string().url().optional(),

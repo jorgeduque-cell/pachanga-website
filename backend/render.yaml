@@ -15,9 +15,9 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ORIGIN
-        value: https://pachanga-frontend.vercel.app
+        value: https://pachanga-website.vercel.app
       - key: FRONTEND_URL
-        value: https://pachanga-frontend.vercel.app
+        value: https://pachanga-website.vercel.app
       # Variables opcionales para WhatsApp
       - key: WHATSAPP_ACCESS_TOKEN
         sync: false
