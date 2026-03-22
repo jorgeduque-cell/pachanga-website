@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Music, Smile, Sparkles, ShieldCheck, Star, RefreshCw, BarChart3 } from 'lucide-react';
+import { Music, Smile, Sparkles, ShieldCheck, Star, RefreshCw, BarChart3, Send, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -59,6 +59,7 @@ export function AdminSurveys() {
   const [stats, setStats] = useState<SurveyStatsResponse['data'] | null>(null);
   const [surveys, setSurveys] = useState<SurveyItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSending, setIsSending] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -88,6 +89,23 @@ export function AdminSurveys() {
     toast.success('Datos actualizados');
   };
 
+  const handleTriggerSend = async () => {
+    setIsSending(true);
+    try {
+      const result = await surveyAdminService.triggerSend();
+      if (result.data.found === 0) {
+        toast.info('No hay clientes elegibles para encuesta hoy');
+      } else {
+        toast.success(result.message);
+      }
+      await fetchData();
+    } catch {
+      toast.error('Error al enviar encuestas');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -100,15 +118,29 @@ export function AdminSurveys() {
             Analítica de satisfacción del cliente
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={handleRefresh}
-          disabled={isLoading}
-          className="border-[#333] bg-[#1a1a1a] text-white hover:bg-[#333]"
-        >
-          <RefreshCw className={`mr-2 ${isLoading ? 'animate-spin' : ''}`} size={18} />
-          Recargar
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={handleTriggerSend}
+            disabled={isSending}
+            className="bg-[#E31B23] hover:bg-[#E31B23]/80 text-white"
+          >
+            {isSending ? (
+              <Loader2 className="mr-2 animate-spin" size={18} />
+            ) : (
+              <Send className="mr-2" size={18} />
+            )}
+            {isSending ? 'Enviando...' : 'Enviar Encuestas'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={isLoading}
+            className="border-[#333] bg-[#1a1a1a] text-white hover:bg-[#333]"
+          >
+            <RefreshCw className={`mr-2 ${isLoading ? 'animate-spin' : ''}`} size={18} />
+            Recargar
+          </Button>
+        </div>
       </div>
 
       {isLoading && !stats ? (

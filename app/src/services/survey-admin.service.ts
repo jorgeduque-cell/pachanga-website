@@ -52,4 +52,9 @@ export const surveyAdminService = {
     });
     return response.data;
   },
+
+  async triggerSend(): Promise<{ success: boolean; message: string; data: { found: number; sent: number; skipped: number; failed: number } }> {
+    const response = await apiClient.post('/surveys/trigger-send');
+    return response.data;
+  },
 };
