@@ -57,4 +57,11 @@ router.get(
     surveyController.getAll,
 );
 
+// Manual trigger for survey cron
+router.post(
+    '/trigger-send',
+    authenticate, requireAdmin,
+    surveyController.triggerSend,
+);
+
 export default router;

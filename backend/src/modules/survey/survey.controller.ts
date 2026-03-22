@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { surveyService } from './survey.service.js';
+import { surveySender } from '../../lib/cron/survey-sender.js';
 import { asyncHandler } from '../../middleware/async-handler.js';
 import { validatedQuery, validatedBody } from '../../middleware/validate.middleware.js';
 import type {
@@ -62,6 +63,19 @@ export class SurveyController {
     getStats = asyncHandler(async (_req: Request, res: Response): Promise<void> => {
         const stats = await surveyService.getAverages();
         res.json({ data: stats });
+    });
+
+    /**
+     * Admin: Manually trigger the survey sender cron.
+     * POST /api/surveys/trigger-send
+     */
+    triggerSend = asyncHandler(async (_req: Request, res: Response): Promise<void> => {
+        const result = await surveySender.run();
+        res.json({
+            success: true,
+            message: `Encuestas enviadas: ${result.sent} de ${result.found} elegibles (${result.failed} fallidos)`,
+            data: result,
+        });
     });
 }
 
