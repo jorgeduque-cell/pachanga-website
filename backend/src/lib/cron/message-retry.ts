@@ -9,6 +9,16 @@ const CRON_SCHEDULE = '*/5 * * * *'; // Every 5 minutes
 const BATCH_SIZE = 10;
 
 /**
+ * Templates that need dynamic parameters (JWT tokens, video headers, etc.)
+ * and cannot be safely retried without reconstructing those params.
+ * These get immediately DEAD_LETTER'd on failure.
+ */
+const NON_RETRYABLE_TEMPLATES = new Set([
+  'encuesta_pachanga',   // Needs survey JWT token in button + video header
+  'cumpleanos_pachanga', // Template doesn't exist in Meta yet
+]);
+
+/**
  * Backoff delays in minutes: retry 1 = 1min, retry 2 = 5min, retry 3 = 30min
  */
 const BACKOFF_DELAYS_MS = [
@@ -24,6 +34,7 @@ let cronTask: ReturnType<typeof cron.schedule> | null = null;
 /**
  * Finds FAILED messages eligible for retry (backoff elapsed) and retries them.
  * After MAX_RETRIES, marks as DEAD_LETTER.
+ * Templates in NON_RETRYABLE_TEMPLATES are immediately DEAD_LETTER'd.
  */
 export async function processRetryQueue(): Promise<{ retried: number; deadLettered: number }> {
   const now = new Date();
@@ -42,6 +53,19 @@ export async function processRetryQueue(): Promise<{ retried: number; deadLetter
   });
 
   for (const msg of failedMessages) {
+    // Skip non-retryable templates — mark as DEAD_LETTER immediately
+    if (NON_RETRYABLE_TEMPLATES.has(msg.templateName)) {
+      await prisma.whatsAppMessage.update({
+        where: { id: msg.id },
+        data: { status: 'DEAD_LETTER', lastRetryAt: now },
+      });
+      deadLettered++;
+      logger.info(
+        { messageId: msg.id, templateName: msg.templateName },
+        '[MessageRetry] Non-retryable template, moved to DEAD_LETTER',
+      );
+      continue;
+    }
     // Check backoff: enough time must have passed since last retry
     const backoffMs = BACKOFF_DELAYS_MS[msg.retryCount] ?? BACKOFF_DELAYS_MS[BACKOFF_DELAYS_MS.length - 1];
     const lastAttempt = msg.lastRetryAt ?? msg.createdAt;
