@@ -106,8 +106,13 @@ export class SurveySender {
      * have optIn = true, and have NOT received a SURVEY message today.
      */
     private async findEligibleCustomers() {
+        // Calculate "today" and "yesterday" in Colombia time (UTC-5)
+        const COLOMBIA_OFFSET_MS = -5 * 60 * 60 * 1000;
         const now = new Date();
-        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const colombiaNow = new Date(now.getTime() + COLOMBIA_OFFSET_MS);
+        const todayStart = new Date(Date.UTC(colombiaNow.getUTCFullYear(), colombiaNow.getUTCMonth(), colombiaNow.getUTCDate()));
+        // Convert back to UTC for DB query
+        todayStart.setTime(todayStart.getTime() - COLOMBIA_OFFSET_MS);
         const yesterdayStart = new Date(todayStart);
         yesterdayStart.setDate(yesterdayStart.getDate() - 1);
 
