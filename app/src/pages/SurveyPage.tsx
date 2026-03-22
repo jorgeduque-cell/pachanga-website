@@ -198,7 +198,7 @@ export function SurveyPage() {
         setIsSubmitting(false);
       }
     },
-    [allRated, token, ratings],
+    [allRated, token, ratings, comments],
   );
 
   // ── Rating updater ─────────────────────────────────────────────────────
