@@ -23,6 +23,7 @@ const GRAPH_API_URL = 'https://graph.facebook.com';
 
 // Media IDs for template headers (uploaded to Meta's servers — permanent)
 const WELCOME_IMAGE_MEDIA_ID = '1221474213303119';
+const SURVEY_VIDEO_MEDIA_ID = '1448053986860172';
 
 
 // ─── Service ─────────────────────────────────────────────────
@@ -82,8 +83,7 @@ export class WhatsAppService {
             [customer.name],
             customer.id,
             [{ type: 'url', index: 0, text: surveyToken }],
-            // Note: encuesta has a VIDEO header — Meta uses the pre-uploaded video from template approval
-            // We don't send a new video; we skip the header component for pre-uploaded media
+            { type: 'video', mediaId: SURVEY_VIDEO_MEDIA_ID },
         );
     }
 
