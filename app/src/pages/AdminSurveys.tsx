@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Music, Smile, Sparkles, ShieldCheck, Star, RefreshCw, BarChart3, Send, Loader2 } from 'lucide-react';
+import { Music, Smile, Sparkles, ShieldCheck, Star, RefreshCw, BarChart3, Send, Loader2, MessageSquare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -223,6 +223,7 @@ export function AdminSurveys() {
                           <th className="text-center py-3 px-4 text-white/60 font-heading uppercase text-sm">Ambiente</th>
                           <th className="text-center py-3 px-4 text-white/60 font-heading uppercase text-sm">Higiene</th>
                           <th className="text-left py-3 px-4 text-white/60 font-heading uppercase text-sm">Fecha</th>
+                          <th className="text-left py-3 px-4 text-white/60 font-heading uppercase text-sm">Comentario</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -261,6 +262,20 @@ export function AdminSurveys() {
                                 month: 'short',
                                 year: 'numeric',
                               })}
+                            </td>
+                            <td className="py-4 px-4">
+                              {survey.comments ? (
+                                <div className="group relative max-w-[200px]">
+                                  <div className="flex items-start gap-1.5">
+                                    <MessageSquare size={14} className="text-[#FFD700] mt-0.5 flex-shrink-0" />
+                                    <p className="text-white/70 text-sm truncate" title={survey.comments}>
+                                      {survey.comments}
+                                    </p>
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-white/30 text-sm">—</span>
+                              )}
                             </td>
                           </tr>
                         ))}

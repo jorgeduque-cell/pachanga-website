@@ -208,6 +208,7 @@ model SatisfactionSurvey {
   ambienceRating Int      @map("ambience_rating")
   hygieneRating  Int      @map("hygiene_rating")
   qrTable        String?  @map("qr_table")
+  comments       String?
   createdAt      DateTime @default(now()) @map("created_at")
 
   @@index([customerId])

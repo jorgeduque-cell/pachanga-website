@@ -84,6 +84,7 @@ export function SurveyPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [comments, setComments] = useState('');
 
   // Derived
   const allRated =
@@ -162,7 +163,11 @@ export function SurveyPage() {
       setIsSubmitting(true);
       setSubmitError(null);
 
-      const payload: SurveySubmitPayload = { token, ...ratings };
+      const payload: SurveySubmitPayload = {
+        token,
+        ...ratings,
+        ...(comments.trim() ? { comments: comments.trim() } : {}),
+      };
 
       try {
         await surveyService.submitSurvey(payload);
@@ -367,6 +372,23 @@ export function SurveyPage() {
           value={ratings.hygieneRating}
           onChange={updateRating('hygieneRating')}
         />
+
+        {/* Suggestions textarea */}
+        <div className="space-y-2">
+          <span className="text-white/80 text-sm flex items-center gap-2">
+            <span className="text-lg">💬</span>
+            ¿Alguna sugerencia? (opcional)
+          </span>
+          <textarea
+            value={comments}
+            onChange={(e) => setComments(e.target.value)}
+            maxLength={500}
+            rows={3}
+            placeholder="Cuéntanos cómo podemos mejorar..."
+            className="w-full rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/30 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent-gold)]/50 focus:border-[var(--accent-gold)]/50 resize-none"
+          />
+          <p className="text-white/30 text-xs text-right">{comments.length}/500</p>
+        </div>
 
         {/* Submit error */}
         <AnimatePresence>

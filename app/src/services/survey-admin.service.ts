@@ -22,6 +22,7 @@ export interface SurveyItem {
   ambienceRating: number;
   hygieneRating: number;
   qrTable: string | null;
+  comments: string | null;
   createdAt: string;
   customer: {
     name: string;

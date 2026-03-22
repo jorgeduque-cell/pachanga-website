@@ -13,6 +13,7 @@ export interface SurveySubmitPayload {
   serviceRating: number;
   ambienceRating: number;
   hygieneRating: number;
+  comments?: string;
 }
 
 export interface SurveySubmitResponse {

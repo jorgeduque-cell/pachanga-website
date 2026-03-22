@@ -22,6 +22,7 @@ interface SurveyRatings {
     serviceRating: number;
     ambienceRating: number;
     hygieneRating: number;
+    comments?: string;
 }
 
 interface SurveyAverages {
@@ -140,6 +141,7 @@ export class SurveyService {
                     serviceRating: ratings.serviceRating,
                     ambienceRating: ratings.ambienceRating,
                     hygieneRating: ratings.hygieneRating,
+                    comments: ratings.comments || null,
                     qrTable,
                 },
             });
@@ -154,6 +156,7 @@ export class SurveyService {
                         serviceRating: ratings.serviceRating,
                         ambienceRating: ratings.ambienceRating,
                         hygieneRating: ratings.hygieneRating,
+                        ...(ratings.comments ? { comments: ratings.comments } : {}),
                     },
                 },
             });

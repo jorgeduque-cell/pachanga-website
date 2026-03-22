@@ -13,6 +13,7 @@ export const SubmitSurveySchema = z.object({
     serviceRating: ratingField,
     ambienceRating: ratingField,
     hygieneRating: ratingField,
+    comments: z.string().max(500, 'Máximo 500 caracteres').optional().default(''),
 });
 
 // ─── Verify Token (Public — query param) ────────────────────
