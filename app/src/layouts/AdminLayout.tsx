@@ -9,7 +9,8 @@ import {
   Menu, 
   X,
   ChevronRight,
-  User
+  User,
+  Bot
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -30,6 +31,7 @@ export function AdminLayout() {
     { path: '/admin/reservas', label: 'Reservas', icon: CalendarDays },
     { path: '/admin/clientes', label: 'Clientes', icon: Users },
     { path: '/admin/encuestas', label: 'Encuestas', icon: BarChart3 },
+    { path: '/admin/chatbot', label: 'Chatbot IA', icon: Bot },
   ];
 
   return (
