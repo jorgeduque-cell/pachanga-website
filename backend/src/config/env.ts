@@ -35,6 +35,10 @@ const envSchema = z.object({
   // Frontend URL (for QR generation and CORS)
   FRONTEND_URL: z.string().url().optional().default('https://pachanga-website.vercel.app'),
 
+  // Supabase Storage (for flyer uploads)
+  SUPABASE_URL: z.string().url().optional().default(''),
+  SUPABASE_SERVICE_KEY: z.string().optional().default(''),
+
   // Sentry (optional — error tracking)
   SENTRY_DSN: z.string().url().optional(),
 }).superRefine((data, ctx) => {

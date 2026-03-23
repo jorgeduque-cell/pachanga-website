@@ -10,6 +10,13 @@ import { whatsappService } from '../whatsapp/whatsapp.service.js';
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const MAX_MESSAGES_PER_HOUR = 20;
 
+const VENUE_LOCATION = {
+    latitude: 4.6565,
+    longitude: -74.0596,
+    name: 'Pachanga y Pochola',
+    address: 'Calle 73 #14-53, Bogotá',
+} as const;
+
 // ─── Service ────────────────────────────────────────────────
 export class ChatbotService {
 
@@ -192,12 +199,34 @@ export class ChatbotService {
                 case 'SEND_LOCATION':
                     await whatsappService.sendLocationMessage(
                         phone,
-                        4.6565,    // Calle 73 #14-53, Bogotá (approx)
-                        -74.0596,
-                        'Pachanga y Pochola',
-                        'Calle 73 #14-53, Bogotá',
+                        VENUE_LOCATION.latitude,
+                        VENUE_LOCATION.longitude,
+                        VENUE_LOCATION.name,
+                        VENUE_LOCATION.address,
                     );
                     break;
+
+                case 'SEND_EVENT_FLYER': {
+                    // Find next event with a flyer
+                    const events = await prisma.event.findMany({
+                        where: {
+                            isActive: true,
+                            status: 'ACTIVE',
+                            flyerUrl: { not: null },
+                            eventDate: { gte: new Date() },
+                        },
+                        orderBy: { eventDate: 'asc' },
+                        take: 1,
+                    });
+                    if (events[0]?.flyerUrl) {
+                        await whatsappService.sendImageMessage(
+                            phone,
+                            events[0].flyerUrl,
+                            `🎉 ${events[0].name}`,
+                        );
+                    }
+                    break;
+                }
 
                 default:
                     logger.warn({ action }, '[Chatbot] Unknown action');

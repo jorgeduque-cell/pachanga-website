@@ -24,6 +24,7 @@ import whatsappRoutes from './modules/whatsapp/whatsapp.routes.js';
 import analyticsRoutes from './modules/analytics/analytics.routes.js';
 import surveyRoutes from './modules/survey/survey.routes.js';
 import chatbotRoutes from './modules/chatbot/chatbot.routes.js';
+import { eventsRouter } from './modules/events/events.controller.js';
 
 
 // ─── Constants ───────────────────────────────────────────────
@@ -109,6 +110,7 @@ app.use('/api/crm', crmRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/surveys', surveyRoutes);
 app.use('/api/chatbot', chatbotRoutes);
+app.use('/api/events', eventsRouter);
 
 
 // Error handlers
