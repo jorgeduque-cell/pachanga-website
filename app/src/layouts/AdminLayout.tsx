@@ -10,7 +10,8 @@ import {
   X,
   ChevronRight,
   User,
-  Bot
+  Bot,
+  PartyPopper
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -30,6 +31,7 @@ export function AdminLayout() {
   const menuItems = [
     { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/admin/reservas', label: 'Reservas', icon: CalendarDays },
+    { path: '/admin/eventos', label: 'Eventos', icon: PartyPopper },
     { path: '/admin/clientes', label: 'Clientes', icon: Users },
     { path: '/admin/encuestas', label: 'Encuestas', icon: BarChart3 },
     { path: '/admin/chatbot', label: 'Chatbot IA', icon: Bot },

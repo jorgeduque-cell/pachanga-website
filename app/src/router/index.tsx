@@ -23,6 +23,7 @@ import { AdminReservations } from '@/pages/AdminReservations';
 import { AdminCustomers } from '@/pages/AdminCustomers';
 import { AdminSurveys } from '@/pages/AdminSurveys';
 import { AdminChatbot } from '@/pages/AdminChatbot';
+import { AdminEvents } from '@/pages/AdminEvents';
 
 // Wrapper para transiciones de página
 function AnimatedOutlet() {
@@ -74,6 +75,7 @@ export const router = createBrowserRouter([
       { path: 'clientes', element: <AdminCustomers /> },
       { path: 'encuestas', element: <AdminSurveys /> },
       { path: 'chatbot', element: <AdminChatbot /> },
+      { path: 'eventos', element: <AdminEvents /> },
     ],
   },
   {
