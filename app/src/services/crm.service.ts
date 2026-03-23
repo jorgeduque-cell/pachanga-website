@@ -5,7 +5,7 @@ export interface Customer {
   name: string;
   phone: string;
   birthDate: string;
-  source: 'QR_SCAN' | 'RESERVATION' | 'MANUAL';
+  source: 'QR_SCAN' | 'RESERVATION' | 'MANUAL' | 'WHATSAPP_CHAT';
   totalVisits: number;
   lastVisitAt: string | null;
   rating: number | null;
@@ -24,7 +24,7 @@ export interface CustomerInteraction {
 
 export interface CustomerFilters {
   search?: string;
-  source?: 'QR_SCAN' | 'RESERVATION' | 'MANUAL';
+  source?: 'QR_SCAN' | 'RESERVATION' | 'MANUAL' | 'WHATSAPP_CHAT';
   optIn?: boolean;
   page?: number;
   limit?: number;

@@ -90,8 +90,9 @@ function SourceBadge({ source }: { source: Customer['source'] }) {
     QR_SCAN: { icon: QrCode, label: 'QR', color: 'bg-purple-500/20 text-purple-500' },
     RESERVATION: { icon: Calendar, label: 'Reserva', color: 'bg-blue-500/20 text-blue-500' },
     MANUAL: { icon: UserPlus, label: 'Manual', color: 'bg-gray-500/20 text-gray-500' },
+    WHATSAPP_CHAT: { icon: MessageCircle, label: 'WhatsApp', color: 'bg-green-500/20 text-green-500' },
   };
-  const config = configs[source];
+  const config = configs[source] || configs.MANUAL;
   const Icon = config.icon;
   return (
     <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${config.color}`}>
@@ -659,6 +660,7 @@ export function AdminCustomers() {
                     <SelectItem value="QR_SCAN" className="text-white">Escaneo QR</SelectItem>
                     <SelectItem value="RESERVATION" className="text-white">Reservas</SelectItem>
                     <SelectItem value="MANUAL" className="text-white">Registro manual</SelectItem>
+                    <SelectItem value="WHATSAPP_CHAT" className="text-white">WhatsApp Chat</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
