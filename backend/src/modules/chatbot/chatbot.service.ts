@@ -195,6 +195,14 @@ export class ChatbotService {
         // Send escalation message to client
         await whatsappService.sendFreeformMessage(phone, escalationMessage);
 
+        // 🔔 Notify admin via WhatsApp
+        const adminPhone = env.CHATBOT_ADMIN_PHONE || '+573124183002';
+        const adminAlert = `⚠️ *ESCALADA — Chatbot IA*\n\n📱 Cliente: ${phone}\n🏷️ Tema: ${aiResponse.intent}\n📊 Confianza IA: ${(aiResponse.confidence * 100).toFixed(0)}%\n\n💬 Revisa en el panel:\npachanga-website.vercel.app/admin/chatbot`;
+
+        whatsappService.sendFreeformMessage(adminPhone, adminAlert).catch((err) => {
+            logger.error({ err }, '[Chatbot] Failed to send admin escalation alert');
+        });
+
         logger.warn({
             phone,
             intent: aiResponse.intent,

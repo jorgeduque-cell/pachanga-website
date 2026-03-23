@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
+import { useChatbotStats } from '@/hooks/useChatbot';
 
 export function AdminLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -33,6 +34,9 @@ export function AdminLayout() {
     { path: '/admin/encuestas', label: 'Encuestas', icon: BarChart3 },
     { path: '/admin/chatbot', label: 'Chatbot IA', icon: Bot },
   ];
+
+  const { data: chatbotStats } = useChatbotStats();
+  const escalatedCount = chatbotStats?.escalatedConversations || 0;
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex">
@@ -73,6 +77,11 @@ export function AdminLayout() {
                   {item.label}
                 </span>
                 {isActive && isSidebarOpen && <ChevronRight size={16} className="ml-auto" />}
+                {item.path === '/admin/chatbot' && escalatedCount > 0 && !isActive && (
+                  <span className="ml-auto bg-amber-500 text-black text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center animate-pulse">
+                    {escalatedCount}
+                  </span>
+                )}
               </Link>
             );
           })}

@@ -30,6 +30,7 @@ const envSchema = z.object({
   CHATBOT_CONTEXT_WINDOW: z.string().optional().default('5').transform(Number),
   CHATBOT_CONFIDENCE_THRESHOLD: z.string().optional().default('0.7').transform(Number),
   CHATBOT_ENABLED: z.string().optional().default('false'),
+  CHATBOT_ADMIN_PHONE: z.string().optional().default('+573124183002'),
 
   // Frontend URL (for QR generation and CORS)
   FRONTEND_URL: z.string().url().optional().default('https://pachanga-website.vercel.app'),
