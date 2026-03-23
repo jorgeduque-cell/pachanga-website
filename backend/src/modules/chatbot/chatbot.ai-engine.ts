@@ -7,6 +7,7 @@ export interface AiResponse {
     reply: string;
     intent: string;
     confidence: number;
+    customerName?: string;
 }
 
 // ─── Constants ───────────────────────────────────────────────
@@ -44,10 +45,12 @@ Responde SIEMPRE en formato JSON con esta estructura exacta:
 {
   "reply": "Tu respuesta al cliente aquí",
   "intent": "UNA de estas intenciones: GREETING, HOURS, LOCATION, PRICES, RESERVATION, EVENTS, MENU, BIRTHDAY, COMPLAINTS, UNKNOWN",
-  "confidence": 0.95
+  "confidence": 0.95,
+  "customer_name": null
 }
 
-El campo "confidence" debe ser un número entre 0 y 1 que refleje qué tan seguro estás de haber entendido correctamente la pregunta y de tener la información para responderla.`;
+El campo "confidence" debe ser un número entre 0 y 1 que refleje qué tan seguro estás de haber entendido correctamente la pregunta y de tener la información para responderla.
+El campo "customer_name" debe ser el nombre del cliente SOLO si lo menciona explícitamente (ej: "Me llamo Carlos", "Soy María", "Mi nombre es Juan"). Si no lo dice, pon null.`;
 
 // ─── Engine ─────────────────────────────────────────────────
 export class ChatbotAiEngine {
@@ -145,7 +148,11 @@ export class ChatbotAiEngine {
                 ? Math.min(1, Math.max(0, parsed.confidence))
                 : 0.5;
 
-            return { reply, intent, confidence };
+            const customerName = typeof parsed.customer_name === 'string' && parsed.customer_name.length > 1
+                ? parsed.customer_name.slice(0, 100)
+                : undefined;
+
+            return { reply, intent, confidence, customerName };
         } catch {
             logger.warn({ responseText }, '[Chatbot AI] Failed to parse JSON response');
             return {

@@ -20,7 +20,7 @@ export class ChatbotService {
     async processIncomingMessage(
         phone: string,
         text: string,
-        waMessageId?: string,
+        profileName?: string,
     ): Promise<void> {
         // Guard: chatbot must be enabled
         if (env.CHATBOT_ENABLED !== 'true') {
@@ -42,7 +42,7 @@ export class ChatbotService {
 
         try {
             // 1. Find or create customer
-            const customer = await this.getOrCreateCustomer(phone);
+            const customer = await this.getOrCreateCustomer(phone, profileName);
 
             // 2. Get or create active conversation
             const conversation = await chatbotConversationService.getOrCreateConversation(customer.id);
@@ -52,7 +52,6 @@ export class ChatbotService {
                 conversationId: conversation.id,
                 role: 'CUSTOMER',
                 content: text,
-                waMessageId,
             });
 
             // 4. Skip if conversation is escalated (human is handling it)
@@ -86,7 +85,6 @@ export class ChatbotService {
                 return;
             }
 
-            // 8. Save bot response
             await chatbotConversationService.saveMessage({
                 conversationId: conversation.id,
                 role: 'BOT',
@@ -95,7 +93,12 @@ export class ChatbotService {
                 confidence: aiResponse.confidence,
             });
 
-            // 9. Send response via WhatsApp
+            // 9. Check if AI detected a customer name
+            if (aiResponse.customerName && customer.name.startsWith('Cliente WhatsApp')) {
+                await this.updateCustomerName(customer.id, aiResponse.customerName);
+            }
+
+            // 10. Send response via WhatsApp
             await whatsappService.sendFreeformMessage(phone, aiResponse.reply);
 
         } catch (error) {
@@ -132,7 +135,7 @@ export class ChatbotService {
 
     // ─── Private Helpers ────────────────────────────────────
 
-    private async getOrCreateCustomer(phone: string) {
+    private async getOrCreateCustomer(phone: string, profileName?: string) {
         const normalizedPhone = phone.startsWith('+') ? phone : `+${phone}`;
 
         let customer = await prisma.customer.findUnique({
@@ -142,15 +145,30 @@ export class ChatbotService {
         if (!customer) {
             customer = await prisma.customer.create({
                 data: {
-                    name: 'Cliente WhatsApp',
+                    name: profileName || 'Cliente WhatsApp',
                     phone: normalizedPhone,
                     source: 'WHATSAPP_CHAT',
                 },
             });
-            logger.info({ phone: normalizedPhone }, '[Chatbot] New customer created from chat');
+            logger.info({ phone: normalizedPhone, name: profileName }, '[Chatbot] New customer created from chat');
+        } else if (profileName && customer.name === 'Cliente WhatsApp') {
+            // Update name from WhatsApp profile if still generic
+            customer = await prisma.customer.update({
+                where: { id: customer.id },
+                data: { name: profileName },
+            });
+            logger.info({ phone: normalizedPhone, name: profileName }, '[Chatbot] Customer name updated from WA profile');
         }
 
         return customer;
+    }
+
+    private async updateCustomerName(customerId: string, name: string): Promise<void> {
+        await prisma.customer.update({
+            where: { id: customerId },
+            data: { name },
+        });
+        logger.info({ customerId, name }, '[Chatbot] Customer name updated from AI detection');
     }
 
     private async handleEscalation(

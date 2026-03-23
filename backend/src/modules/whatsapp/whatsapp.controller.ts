@@ -21,12 +21,18 @@ const WebhookMessageSchema = z.object({
   timestamp: z.string(),
 });
 
+const WebhookContactSchema = z.object({
+  profile: z.object({ name: z.string() }).optional(),
+  wa_id: z.string(),
+});
+
 const WebhookPayloadSchema = z.object({
   entry: z.array(z.object({
     changes: z.array(z.object({
       value: z.object({
         statuses: z.array(WebhookStatusSchema).optional(),
         messages: z.array(WebhookMessageSchema).optional(),
+        contacts: z.array(WebhookContactSchema).optional(),
       }).passthrough(),
     })).optional(),
   })).optional(),
@@ -66,7 +72,7 @@ export class WhatsAppController {
         for (const change of entry.changes ?? []) {
           const value = change.value;
           await this.processStatuses(value?.statuses);
-          await this.processMessages(value?.messages);
+          await this.processMessages(value?.messages, value?.contacts);
         }
       }
     } catch (error: unknown) {
@@ -86,11 +92,26 @@ export class WhatsAppController {
     }
   }
 
-  private async processMessages(messages?: WebhookMessage[]): Promise<void> {
+  private async processMessages(
+    messages?: WebhookMessage[],
+    contacts?: z.infer<typeof WebhookContactSchema>[],
+  ): Promise<void> {
     if (!messages) return;
+
+    // Build phone → profile name lookup from contacts array
+    const profileNames = new Map<string, string>();
+    if (contacts) {
+      for (const contact of contacts) {
+        if (contact.profile?.name) {
+          profileNames.set(contact.wa_id, contact.profile.name);
+        }
+      }
+    }
+
     for (const msg of messages) {
       const phone = `+${msg.from}`;
       const textBody = msg.text?.body ?? '';
+      const profileName = profileNames.get(msg.from);
 
       // 1. Log to CRM (backward compatible — existing behavior)
       const customer = await prisma.customer.findUnique({
@@ -102,7 +123,7 @@ export class WhatsAppController {
 
       // 2. Forward to chatbot for AI response (async, non-blocking)
       if (msg.type === 'text' && textBody) {
-        chatbotService.processIncomingMessage(phone, textBody).catch((err) => {
+        chatbotService.processIncomingMessage(phone, textBody, profileName).catch((err) => {
           logger.error({ err, phone }, '[Webhook] Chatbot processing failed (non-blocking)');
         });
       }
