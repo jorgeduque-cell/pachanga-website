@@ -22,6 +22,15 @@ const envSchema = z.object({
   WHATSAPP_DRY_RUN: z.string().optional().default('true'),
   WHATSAPP_APP_SECRET: z.string().optional().default(''),
 
+  // Chatbot AI (OpenAI)
+  OPENAI_API_KEY: z.string().optional().default(''),
+  CHATBOT_MODEL: z.string().optional().default('gpt-4o-mini'),
+  CHATBOT_MAX_TOKENS: z.string().optional().default('500').transform(Number),
+  CHATBOT_TEMPERATURE: z.string().optional().default('0.7').transform(Number),
+  CHATBOT_CONTEXT_WINDOW: z.string().optional().default('5').transform(Number),
+  CHATBOT_CONFIDENCE_THRESHOLD: z.string().optional().default('0.7').transform(Number),
+  CHATBOT_ENABLED: z.string().optional().default('false'),
+
   // Frontend URL (for QR generation and CORS)
   FRONTEND_URL: z.string().url().optional().default('https://pachanga-website.vercel.app'),
 

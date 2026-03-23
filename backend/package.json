@@ -29,6 +29,7 @@
   "author": "Pachanga",
   "license": "ISC",
   "dependencies": {
+    "openai": "^4.85.0",
     "@prisma/client": "^6.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.17",

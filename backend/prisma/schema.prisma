@@ -107,6 +107,19 @@ enum CustomerSource {
   QR_SCAN
   RESERVATION
   MANUAL
+  WHATSAPP_CHAT
+}
+
+enum ConversationStatus {
+  ACTIVE
+  ESCALATED
+  RESOLVED
+}
+
+enum ChatMessageRole {
+  CUSTOMER
+  BOT
+  ADMIN
 }
 
 enum MessageStatus {
@@ -141,9 +154,10 @@ model Customer {
   createdAt   DateTime       @default(now()) @map("created_at")
   updatedAt   DateTime       @updatedAt @map("updated_at")
 
-  messages     WhatsAppMessage[]
-  interactions Interaction[]
-  surveys      SatisfactionSurvey[]
+  messages      WhatsAppMessage[]
+  interactions  Interaction[]
+  surveys       SatisfactionSurvey[]
+  conversations ChatConversation[]
 
   @@index([phone])
   @@index([birthDate])
@@ -214,4 +228,57 @@ model SatisfactionSurvey {
   @@index([customerId])
   @@index([createdAt])
   @@map("satisfaction_surveys")
+}
+
+// ═══════════════════════════════════════════════════════════
+// CHATBOT IA
+// ═══════════════════════════════════════════════════════════
+
+model ChatConversation {
+  id          String             @id @default(uuid())
+  customerId  String             @map("customer_id")
+  customer    Customer           @relation(fields: [customerId], references: [id])
+  status      ConversationStatus @default(ACTIVE)
+  intent      String?
+  escalatedAt DateTime?          @map("escalated_at")
+  resolvedAt  DateTime?          @map("resolved_at")
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+
+  messages    ChatMessage[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("chat_conversations")
+}
+
+model ChatMessage {
+  id              String           @id @default(uuid())
+  conversationId  String           @map("conversation_id")
+  conversation    ChatConversation @relation(fields: [conversationId], references: [id])
+  role            ChatMessageRole
+  content         String
+  intent          String?
+  confidence      Float?
+  waMessageId     String?          @map("wa_message_id")
+  metadata        Json?
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  @@index([conversationId])
+  @@index([createdAt])
+  @@map("chat_messages")
+}
+
+model ChatbotKnowledge {
+  id        String   @id @default(uuid())
+  category  String
+  key       String
+  value     String
+  isActive  Boolean  @default(true) @map("is_active")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([category, key])
+  @@index([category])
+  @@map("chatbot_knowledge")
 }

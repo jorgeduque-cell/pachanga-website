@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { env } from '../../config/env.js';
 import { whatsappService } from './whatsapp.service.js';
 import { crmService } from '../crm/crm.service.js';
+import { chatbotService } from '../chatbot/chatbot.service.js';
 import { prisma } from '../../lib/prisma.js';
 import { logger } from '../../lib/logger.js';
 
@@ -88,11 +89,22 @@ export class WhatsAppController {
   private async processMessages(messages?: WebhookMessage[]): Promise<void> {
     if (!messages) return;
     for (const msg of messages) {
+      const phone = `+${msg.from}`;
+      const textBody = msg.text?.body ?? '';
+
+      // 1. Log to CRM (backward compatible — existing behavior)
       const customer = await prisma.customer.findUnique({
-        where: { phone: `+${msg.from}` },
+        where: { phone },
       });
       if (customer) {
-        await crmService.logCustomerReply(customer.id, msg.text?.body ?? '', msg.type);
+        await crmService.logCustomerReply(customer.id, textBody, msg.type);
+      }
+
+      // 2. Forward to chatbot for AI response (async, non-blocking)
+      if (msg.type === 'text' && textBody) {
+        chatbotService.processIncomingMessage(phone, textBody).catch((err) => {
+          logger.error({ err, phone }, '[Webhook] Chatbot processing failed (non-blocking)');
+        });
       }
     }
   }

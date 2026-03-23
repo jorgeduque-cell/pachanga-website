@@ -265,6 +265,48 @@ export class WhatsAppService {
     }
 
     /**
+     * Sends a free-text message (not a template) via WhatsApp Cloud API.
+     * Used by the chatbot for AI-generated responses within the 24h session window.
+     */
+    async sendFreeformMessage(phone: string, text: string): Promise<string | null> {
+        if (this.isDryRun) {
+            logger.info({ phone, text: text.slice(0, 80) }, '[DRY-RUN] Freeform WhatsApp message simulated');
+            return null;
+        }
+
+        try {
+            const response = await axios.post(
+                `${GRAPH_API_URL}/${this.apiVersion}/${this.phoneNumberId}/messages`,
+                {
+                    messaging_product: 'whatsapp',
+                    recipient_type: 'individual',
+                    to: phone.replace('+', ''),
+                    type: 'text',
+                    text: { body: text },
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${this.token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    timeout: 10000,
+                },
+            );
+
+            const waMessageId = response.data?.messages?.[0]?.id ?? null;
+            logger.info({ phone, waMessageId }, '[WhatsApp] Freeform message sent');
+            return waMessageId;
+        } catch (error) {
+            const errorDetails = axios.isAxiosError(error)
+                ? error.response?.data?.error?.message ?? error.message
+                : (error instanceof Error ? error.message : 'Unknown error');
+
+            logger.error({ phone, errorDetails }, '[WhatsApp] Freeform send failed');
+            return null;
+        }
+    }
+
+    /**
      * Updates message status from a webhook event.
      */
     async updateMessageStatus(
