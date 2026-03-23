@@ -8,6 +8,7 @@ export interface AiResponse {
     intent: string;
     confidence: number;
     customerName?: string;
+    actions?: string[];
 }
 
 // ─── Constants ───────────────────────────────────────────────
@@ -46,11 +47,17 @@ Responde SIEMPRE en formato JSON con esta estructura exacta:
   "reply": "Tu respuesta al cliente aquí",
   "intent": "UNA de estas intenciones: GREETING, HOURS, LOCATION, PRICES, RESERVATION, EVENTS, MENU, BIRTHDAY, COMPLAINTS, UNKNOWN",
   "confidence": 0.95,
-  "customer_name": null
+  "customer_name": null,
+  "actions": []
 }
 
 El campo "confidence" debe ser un número entre 0 y 1 que refleje qué tan seguro estás de haber entendido correctamente la pregunta y de tener la información para responderla.
-El campo "customer_name" debe ser el nombre del cliente SOLO si lo menciona explícitamente (ej: "Me llamo Carlos", "Soy María", "Mi nombre es Juan"). Si no lo dice, pon null.`;
+El campo "customer_name" debe ser el nombre del cliente SOLO si lo menciona explícitamente (ej: "Me llamo Carlos", "Soy María", "Mi nombre es Juan"). Si no lo dice, pon null.
+
+## ACCIONES ESPECIALES (campo "actions"):
+- Si el cliente pregunta por PRECIOS, CARTA, LICORES, o MENÚ → agrega "SEND_MENU_IMAGE" en actions. Menciona algunos precios en tu reply pero di que le compartirás la carta completa.
+- Si el cliente pregunta por la UBICACIÓN, DIRECCIÓN, o CÓMO LLEGAR → agrega "SEND_LOCATION" en actions. Incluye la dirección en tu reply.
+- Puedes agregar ambas acciones si aplica. Si no aplica ninguna, deja actions vacío [].`;
 
 // ─── Engine ─────────────────────────────────────────────────
 export class ChatbotAiEngine {
@@ -152,7 +159,11 @@ export class ChatbotAiEngine {
                 ? parsed.customer_name.slice(0, 100)
                 : undefined;
 
-            return { reply, intent, confidence, customerName };
+            const actions = Array.isArray(parsed.actions)
+                ? parsed.actions.filter((a: unknown) => typeof a === 'string')
+                : [];
+
+            return { reply, intent, confidence, customerName, actions };
         } catch {
             logger.warn({ responseText }, '[Chatbot AI] Failed to parse JSON response');
             return {

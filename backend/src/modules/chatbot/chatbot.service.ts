@@ -101,6 +101,13 @@ export class ChatbotService {
             // 10. Send response via WhatsApp
             await whatsappService.sendFreeformMessage(phone, aiResponse.reply);
 
+            // 11. Execute AI-triggered actions (non-blocking)
+            if (aiResponse.actions?.length) {
+                this.executeActions(phone, aiResponse.actions).catch((err) => {
+                    logger.error({ err, phone }, '[Chatbot] Action execution failed');
+                });
+            }
+
         } catch (error) {
             logger.error({ err: error, phone }, '[Chatbot] Failed to process message');
         }
@@ -169,6 +176,33 @@ export class ChatbotService {
             data: { name },
         });
         logger.info({ customerId, name }, '[Chatbot] Customer name updated from AI detection');
+    }
+
+    private async executeActions(phone: string, actions: string[]): Promise<void> {
+        for (const action of actions) {
+            switch (action) {
+                case 'SEND_MENU_IMAGE':
+                    await whatsappService.sendImageMessage(
+                        phone,
+                        `${env.FRONTEND_URL}/carta-licores.jpg`,
+                        '🍸 Carta de Licores — Pachanga y Pochola',
+                    );
+                    break;
+
+                case 'SEND_LOCATION':
+                    await whatsappService.sendLocationMessage(
+                        phone,
+                        4.6565,    // Calle 73 #14-53, Bogotá (approx)
+                        -74.0596,
+                        'Pachanga y Pochola',
+                        'Calle 73 #14-53, Bogotá',
+                    );
+                    break;
+
+                default:
+                    logger.warn({ action }, '[Chatbot] Unknown action');
+            }
+        }
     }
 
     private async handleEscalation(

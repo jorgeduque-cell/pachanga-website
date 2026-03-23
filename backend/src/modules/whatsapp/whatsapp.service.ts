@@ -307,6 +307,89 @@ export class WhatsAppService {
     }
 
     /**
+     * Sends an image message via WhatsApp Cloud API.
+     * Used by the chatbot to share the menu card.
+     */
+    async sendImageMessage(phone: string, imageUrl: string, caption?: string): Promise<string | null> {
+        if (this.isDryRun) {
+            logger.info({ phone, imageUrl }, '[DRY-RUN] Image message simulated');
+            return null;
+        }
+
+        try {
+            const response = await axios.post(
+                `${GRAPH_API_URL}/${this.apiVersion}/${this.phoneNumberId}/messages`,
+                {
+                    messaging_product: 'whatsapp',
+                    recipient_type: 'individual',
+                    to: phone.replace('+', ''),
+                    type: 'image',
+                    image: { link: imageUrl, caption: caption || '' },
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${this.token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    timeout: 15000,
+                },
+            );
+
+            const waMessageId = response.data?.messages?.[0]?.id ?? null;
+            logger.info({ phone, waMessageId }, '[WhatsApp] Image message sent');
+            return waMessageId;
+        } catch (error) {
+            const errorDetails = axios.isAxiosError(error)
+                ? error.response?.data?.error?.message ?? error.message
+                : (error instanceof Error ? error.message : 'Unknown error');
+
+            logger.error({ phone, errorDetails }, '[WhatsApp] Image send failed');
+            return null;
+        }
+    }
+
+    /**
+     * Sends a location message via WhatsApp Cloud API.
+     */
+    async sendLocationMessage(phone: string, latitude: number, longitude: number, name: string, address: string): Promise<string | null> {
+        if (this.isDryRun) {
+            logger.info({ phone, name }, '[DRY-RUN] Location message simulated');
+            return null;
+        }
+
+        try {
+            const response = await axios.post(
+                `${GRAPH_API_URL}/${this.apiVersion}/${this.phoneNumberId}/messages`,
+                {
+                    messaging_product: 'whatsapp',
+                    recipient_type: 'individual',
+                    to: phone.replace('+', ''),
+                    type: 'location',
+                    location: { latitude, longitude, name, address },
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${this.token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    timeout: 10000,
+                },
+            );
+
+            const waMessageId = response.data?.messages?.[0]?.id ?? null;
+            logger.info({ phone, waMessageId }, '[WhatsApp] Location message sent');
+            return waMessageId;
+        } catch (error) {
+            const errorDetails = axios.isAxiosError(error)
+                ? error.response?.data?.error?.message ?? error.message
+                : (error instanceof Error ? error.message : 'Unknown error');
+
+            logger.error({ phone, errorDetails }, '[WhatsApp] Location send failed');
+            return null;
+        }
+    }
+
+    /**
      * Updates message status from a webhook event.
      */
     async updateMessageStatus(
