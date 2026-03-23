@@ -6,3 +6,4 @@ export * from './capture.service';
 export * from './analytics.service';
 export * from './survey.service';
 export * from './survey-admin.service';
+export * from './events.service';
