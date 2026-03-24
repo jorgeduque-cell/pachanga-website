@@ -122,7 +122,10 @@ router.patch('/:id', authenticate, requireAdmin, async (req: Request, res: Respo
 });
 
 // POST /api/events/:id/flyer — Upload flyer image (admin)
-router.post('/:id/flyer', authenticate, requireAdmin, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+import express from 'express';
+const rawBodyParser = express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '5mb' });
+
+router.post('/:id/flyer', authenticate, requireAdmin, rawBodyParser, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const id = UuidSchema.parse(req.params.id);
         const contentType = (req.headers['content-type'] || 'image/jpeg') as string;
@@ -135,34 +138,23 @@ router.post('/:id/flyer', authenticate, requireAdmin, async (req: Request, res: 
             return;
         }
 
-        // Collect body with size limit enforcement
-        const chunks: Buffer[] = [];
-        let totalSize = 0;
+        const buffer = req.body as Buffer;
+        if (!buffer || buffer.length === 0) {
+            res.status(400).json({ error: 'No se recibió ningún archivo' });
+            return;
+        }
 
-        await new Promise<void>((resolve, reject) => {
-            req.on('data', (chunk: Buffer) => {
-                totalSize += chunk.length;
-                if (totalSize > MAX_FLYER_SIZE) {
-                    reject(new Error('FILE_TOO_LARGE'));
-                    return;
-                }
-                chunks.push(chunk);
-            });
-            req.on('end', resolve);
-            req.on('error', reject);
-        });
+        if (buffer.length > MAX_FLYER_SIZE) {
+            res.status(413).json({ error: 'El archivo excede el límite de 5MB' });
+            return;
+        }
 
-        const buffer = Buffer.concat(chunks);
         const rawFileName = (req.headers['x-filename'] as string) || 'flyer.jpg';
         const safeFileName = rawFileName.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100);
 
         const event = await eventsService.uploadFlyer(id, buffer, safeFileName, contentType);
         res.json(event);
     } catch (error) {
-        if (error instanceof Error && error.message === 'FILE_TOO_LARGE') {
-            res.status(413).json({ error: 'El archivo excede el límite de 5MB' });
-            return;
-        }
         if (error instanceof z.ZodError) {
             res.status(400).json({ error: 'ID inválido' });
             return;

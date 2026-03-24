@@ -54,7 +54,7 @@ app.use(cors({
     }
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Filename'],
   credentials: true,
   maxAge: CORS_MAX_AGE_SECONDS,
 }));
