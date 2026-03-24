@@ -2,7 +2,6 @@ import { Bot } from 'grammy';
 import { env } from '../../config/env.js';
 import { logger } from '../../lib/logger.js';
 import { eventsService } from '../events/events.service.js';
-import { uploadToStorage } from '../../lib/storage.js';
 import { prisma } from '../../lib/prisma.js';
 
 // ─── Singleton ──────────────────────────────────────────────
