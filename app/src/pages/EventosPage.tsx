@@ -91,15 +91,15 @@ function MainEventCard({ event }: { event: Event }) {
             <PartyPopper size={80} className="text-[var(--accent-gold)]/30" />
           </div>
         )}
-        <div className="absolute top-3 left-3">
-          <span className={`px-2.5 py-1 text-white text-[10px] font-heading uppercase tracking-wider rounded-full ${badge.color} shadow-lg`}>
+        <div className="absolute top-4 left-4">
+          <span className={`px-4 py-1.5 text-white text-sm font-heading uppercase tracking-wider rounded-full ${badge.color} shadow-lg`}>
             {badge.label}
           </span>
         </div>
         {event.coverPrice !== null && event.coverPrice > 0 && (
-          <div className="absolute top-3 right-3">
-            <span className="px-2.5 py-1 text-white text-[10px] font-heading tracking-wider rounded-full bg-black/70 backdrop-blur-sm border border-white/20">
-              💰 ${event.coverPrice.toLocaleString('es-CO')}
+          <div className="absolute top-4 right-4">
+            <span className="px-4 py-1.5 text-white text-sm font-heading tracking-wider rounded-full bg-black/70 backdrop-blur-sm border border-[var(--accent-gold)]/30">
+              💰 Precios desde ${event.coverPrice.toLocaleString('es-CO')}
             </span>
           </div>
         )}
