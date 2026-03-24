@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Calendar, Clock, Music, PartyPopper, Sparkles, ArrowRight, Wine, Phone, Loader2, DollarSign, MapPin } from 'lucide-react';
+import { Calendar, Clock, Music, PartyPopper, Sparkles, ArrowRight, Wine, Phone, Loader2 } from 'lucide-react';
 import { ScrollReveal } from '@/components/ScrollReveal';
 import { StaggerContainer, StaggerItem } from '@/components/StaggerContainer';
 import { Button } from '@/components/ui/button';
@@ -19,10 +19,6 @@ function formatEventDate(dateStr: string): string {
   });
 }
 
-function formatShortDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
-}
 
 function truncateText(text: string, maxLen: number): string {
   if (text.length <= maxLen) return text;
