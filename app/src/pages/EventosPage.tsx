@@ -1,22 +1,15 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Calendar, Clock, Music, PartyPopper, Sparkles, ArrowRight, Wine, Phone, Loader2, DollarSign } from 'lucide-react';
+import { Calendar, Clock, Music, PartyPopper, Sparkles, ArrowRight, Wine, Phone, Loader2, DollarSign, MapPin } from 'lucide-react';
 import { ScrollReveal } from '@/components/ScrollReveal';
 import { StaggerContainer, StaggerItem } from '@/components/StaggerContainer';
 import { Button } from '@/components/ui/button';
 import { useUpcomingEvents } from '@/hooks/useEvents';
 import type { Event } from '@/types/events.types';
+import { useState } from 'react';
 
 // ─── Helpers ────────────────────────────────────────────────
 function formatEventDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('es-CO', {
-    day: 'numeric',
-    month: 'long',
-  });
-}
-
-function formatEventDateFull(dateStr: string): string {
   const date = new Date(dateStr);
   return date.toLocaleDateString('es-CO', {
     weekday: 'long',
@@ -26,8 +19,22 @@ function formatEventDateFull(dateStr: string): string {
   });
 }
 
-function getEventImage(event: Event): string {
-  return event.flyerUrl || '/fondo pyp.png';
+function formatShortDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
+}
+
+function truncateText(text: string, maxLen: number): string {
+  if (text.length <= maxLen) return text;
+  return text.slice(0, maxLen).trimEnd() + '...';
+}
+
+function getStatusLabel(status: string): { label: string; color: string } {
+  switch (status) {
+    case 'SOLD_OUT': return { label: '¡AGOTADO!', color: 'bg-orange-500' };
+    case 'CANCELLED': return { label: 'CANCELADO', color: 'bg-red-600' };
+    default: return { label: 'DISPONIBLE', color: 'bg-emerald-500' };
+  }
 }
 
 // ─── Static Services Data ───────────────────────────────────
@@ -52,30 +59,143 @@ const services = [
   },
 ];
 
-// ─── Component ──────────────────────────────────────────────
+// ─── Event Card Component ───────────────────────────────────
+function EventCard({ event, featured = false }: { event: Event; featured?: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  const statusInfo = getStatusLabel(event.status);
+  const hasFlyer = !!event.flyerUrl;
+  const descriptionPreview = event.description ? truncateText(event.description, 120) : null;
+  const hasMore = event.description ? event.description.length > 120 : false;
+
+  return (
+    <motion.div
+      whileHover={{ y: -6, scale: 1.01 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+      className={`group rounded-2xl overflow-hidden transition-all duration-300 ${
+        featured
+          ? 'glass-card-heavy border-[var(--accent-gold)]/20 hover:border-[var(--accent-gold)]/50'
+          : 'glass-card hover:border-[var(--accent-red)]/30'
+      }`}
+    >
+      {/* Flyer Image — Full, no overlay */}
+      <div className={`relative w-full overflow-hidden ${featured ? 'max-h-[600px]' : 'max-h-[480px]'}`}>
+        {hasFlyer ? (
+          <img
+            src={event.flyerUrl!}
+            alt={event.name}
+            className="w-full h-full object-contain bg-black/40"
+          />
+        ) : (
+          <div className="w-full aspect-video bg-gradient-to-br from-[var(--accent-red)]/20 to-[var(--accent-gold)]/10 flex items-center justify-center">
+            <PartyPopper size={64} className="text-[var(--accent-gold)]/40" />
+          </div>
+        )}
+
+        {/* Status Badge */}
+        <div className="absolute top-4 left-4">
+          <span className={`px-3 py-1.5 text-white text-xs font-heading uppercase tracking-wider rounded-full ${statusInfo.color} shadow-lg`}>
+            {statusInfo.label}
+          </span>
+        </div>
+
+        {/* Cover Price Badge */}
+        {event.coverPrice !== null && event.coverPrice > 0 && (
+          <div className="absolute top-4 right-4">
+            <span className="px-3 py-1.5 text-white text-xs font-heading tracking-wider rounded-full bg-black/70 backdrop-blur-sm border border-white/20 shadow-lg">
+              💰 ${event.coverPrice.toLocaleString('es-CO')} COP
+            </span>
+          </div>
+        )}
+
+        {/* Date overlay at bottom */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-12 pb-4 px-6">
+          <h3 className={`font-heading text-white mb-1 ${featured ? 'text-3xl md:text-4xl' : 'text-2xl'}`}>
+            {event.name}
+          </h3>
+        </div>
+      </div>
+
+      {/* Event Info */}
+      <div className="p-6 space-y-4">
+        {/* Date, Time, Location */}
+        <div className="flex flex-wrap gap-3">
+          <span className="flex items-center gap-2 text-white/80 text-sm glass-card px-3 py-1.5 rounded-full">
+            <Calendar size={14} className="text-[var(--accent-gold)]" />
+            {formatEventDate(event.eventDate)}
+          </span>
+          <span className="flex items-center gap-2 text-white/80 text-sm glass-card px-3 py-1.5 rounded-full">
+            <Clock size={14} className="text-[var(--accent-gold)]" />
+            {event.eventTime}
+          </span>
+          {event.coverPrice === 0 || event.coverPrice === null ? (
+            <span className="flex items-center gap-2 text-emerald-400 text-sm glass-card px-3 py-1.5 rounded-full">
+              🆓 Entrada libre
+            </span>
+          ) : null}
+        </div>
+
+        {/* Description — truncated, expandable */}
+        {event.description && (
+          <div className="text-white/60 font-body text-sm leading-relaxed">
+            <p>{expanded ? event.description : descriptionPreview}</p>
+            {hasMore && (
+              <button
+                onClick={() => setExpanded(!expanded)}
+                className="text-[var(--accent-gold)] hover:text-white text-xs mt-1 font-heading uppercase tracking-wider transition-colors"
+              >
+                {expanded ? 'Ver menos' : 'Ver más'}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* CTA */}
+        <Link to="/reservas" className="block">
+          <Button
+            className={`w-full ${
+              featured
+                ? 'btn-gold text-lg'
+                : 'btn-outline-gold hover:bg-[var(--accent-gold)] hover:text-black'
+            } transition-all`}
+            size={featured ? 'lg' : 'default'}
+            disabled={event.status === 'SOLD_OUT'}
+          >
+            {event.status === 'SOLD_OUT' ? (
+              'Agotado — Lista de espera'
+            ) : (
+              <>
+                Reservar para este evento
+                <ArrowRight size={16} className="ml-2" />
+              </>
+            )}
+          </Button>
+        </Link>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Main Page ──────────────────────────────────────────────
 export function EventosPage() {
   const { data: eventsData, isLoading, error } = useUpcomingEvents();
 
-  // Extract events array — handle both { data: Event[] } and Event[] responses
   const events: Event[] = Array.isArray(eventsData)
     ? eventsData
     : (eventsData as { data?: Event[] })?.data ?? [];
 
-  // First event = featured (closest upcoming), rest = cards
   const featuredEvent = events[0];
   const otherEvents = events.slice(1);
 
   return (
     <div className="min-h-screen bg-[var(--bg-base)] pt-24">
-      {/* Hero with Featured Event */}
-      <section className="relative py-20 px-4 overflow-hidden">
-        {/* Background glow */}
+      {/* Header */}
+      <section className="relative py-16 px-4 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-[var(--accent-red)]/10 to-transparent" />
         <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-[var(--accent-gold)]/5 rounded-full blur-[150px]" />
 
         <div className="max-w-6xl mx-auto relative z-10">
           <ScrollReveal>
-            <div className="text-center mb-16">
+            <div className="text-center mb-12">
               <span className="text-[var(--accent-red)] uppercase tracking-[0.3em] text-sm font-heading mb-4 block">
                 Vive la Experiencia
               </span>
@@ -105,148 +225,45 @@ export function EventosPage() {
             </div>
           )}
 
-          {/* No Events State */}
+          {/* No Events */}
           {!isLoading && !error && events.length === 0 && (
-            <div className="text-center py-12 glass-card p-8 rounded-xl">
-              <PartyPopper size={48} className="text-[var(--accent-gold)] mx-auto mb-4" />
-              <p className="text-white/60 text-lg">¡Próximamente nuevos eventos!</p>
-              <p className="text-white/40 mt-2">Síguenos en redes para enterarte primero.</p>
+            <div className="text-center py-16 glass-card p-10 rounded-xl">
+              <PartyPopper size={56} className="text-[var(--accent-gold)] mx-auto mb-6" />
+              <p className="text-white text-xl font-heading mb-2">¡Próximamente nuevos eventos!</p>
+              <p className="text-white/40">Síguenos en redes para enterarte primero.</p>
             </div>
           )}
 
-          {/* Featured Event - Hero Style */}
+          {/* Featured Event — Full flyer card */}
           {featuredEvent && (
             <ScrollReveal delay={0.2}>
-              <div className="relative rounded-2xl overflow-hidden glass-card-heavy p-2">
-                <div className="aspect-[21/9] md:aspect-[3/1] relative rounded-xl overflow-hidden">
-                  <img
-                    src={getEventImage(featuredEvent)}
-                    alt={featuredEvent.name}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent" />
+              <div className="max-w-2xl mx-auto">
+                <div className="text-center mb-6">
+                  <span className="inline-block px-5 py-2 bg-[var(--accent-gold)] text-black font-heading text-sm uppercase tracking-wider rounded-full">
+                    🔥 Próximo Evento
+                  </span>
                 </div>
-
-                <div className="absolute inset-0 flex items-center p-8 md:p-16">
-                  <div className="max-w-xl">
-                    <motion.span
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="inline-block px-4 py-1.5 bg-[var(--accent-gold)] text-black font-heading text-sm uppercase tracking-wider rounded-full mb-4"
-                    >
-                      {featuredEvent.status === 'SOLD_OUT' ? '🔥 Agotado' : 'Próximo Evento'}
-                    </motion.span>
-                    <h2 className="text-4xl md:text-6xl font-heading text-white mb-4">
-                      {featuredEvent.name}
-                    </h2>
-                    <div className="flex flex-wrap gap-4 mb-6 text-white/80">
-                      <span className="flex items-center gap-2 glass-card px-3 py-1 rounded-full">
-                        <Calendar size={18} className="text-[var(--accent-gold)]" />
-                        {formatEventDateFull(featuredEvent.eventDate)}
-                      </span>
-                      <span className="flex items-center gap-2 glass-card px-3 py-1 rounded-full">
-                        <Clock size={18} className="text-[var(--accent-gold)]" />
-                        {featuredEvent.eventTime}
-                      </span>
-                      {featuredEvent.coverPrice !== null && featuredEvent.coverPrice > 0 && (
-                        <span className="flex items-center gap-2 glass-card px-3 py-1 rounded-full">
-                          <DollarSign size={18} className="text-[var(--accent-gold)]" />
-                          Cover: ${featuredEvent.coverPrice.toLocaleString('es-CO')}
-                        </span>
-                      )}
-                    </div>
-                    {featuredEvent.description && (
-                      <p className="text-white/70 font-body mb-8 text-lg">
-                        {featuredEvent.description}
-                      </p>
-                    )}
-                    <Link to="/reservas">
-                      <Button size="lg" className="btn-primary">
-                        Reservar para este evento
-                        <ArrowRight size={18} className="ml-2" />
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
+                <EventCard event={featuredEvent} featured />
               </div>
             </ScrollReveal>
           )}
         </div>
       </section>
 
-      {/* Other Upcoming Events */}
+      {/* Other Events Grid */}
       {otherEvents.length > 0 && (
         <section className="py-20 px-4 bg-[var(--bg-surface)]">
           <div className="max-w-6xl mx-auto">
             <ScrollReveal>
               <h2 className="text-4xl md:text-5xl font-heading text-white text-center mb-12">
-                PRÓXIMOS <span className="text-[var(--accent-red)]">EVENTOS</span>
+                MÁS <span className="text-[var(--accent-red)]">EVENTOS</span>
               </h2>
             </ScrollReveal>
 
-            <StaggerContainer className="grid md:grid-cols-2 gap-6">
+            <StaggerContainer className={`grid gap-8 ${otherEvents.length === 1 ? 'max-w-2xl mx-auto' : 'md:grid-cols-2'}`}>
               {otherEvents.map((event) => (
                 <StaggerItem key={event.id}>
-                  <motion.div
-                    whileHover={{ y: -8 }}
-                    className="group glass-card overflow-hidden hover:border-[var(--accent-red)]/30 transition-all"
-                  >
-                    <div className="aspect-video relative">
-                      <img
-                        src={getEventImage(event)}
-                        alt={event.name}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                      <div className="absolute top-4 left-4">
-                        <span
-                          className="px-3 py-1 text-white text-xs font-heading uppercase tracking-wider rounded-full"
-                          style={{
-                            background: event.status === 'SOLD_OUT'
-                              ? 'linear-gradient(135deg, #f97316, #ea580c)'
-                              : 'linear-gradient(135deg, var(--accent-red), var(--accent-red-light))',
-                          }}
-                        >
-                          {event.status === 'SOLD_OUT' ? '¡Agotado!' : formatEventDate(event.eventDate)}
-                        </span>
-                      </div>
-                      {event.coverPrice !== null && event.coverPrice > 0 && (
-                        <div className="absolute top-4 right-4">
-                          <span className="px-3 py-1 text-white text-xs font-heading tracking-wider rounded-full glass-card">
-                            💰 ${event.coverPrice.toLocaleString('es-CO')}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="p-6">
-                      <h3 className="text-2xl font-heading text-white mb-2 group-hover:text-[var(--accent-gold)] transition-colors">
-                        {event.name}
-                      </h3>
-                      <div className="flex gap-4 mb-4 text-white/60 text-sm">
-                        <span className="flex items-center gap-1">
-                          <Calendar size={14} className="text-[var(--accent-gold)]" />
-                          {formatEventDate(event.eventDate)}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock size={14} className="text-[var(--accent-gold)]" />
-                          {event.eventTime}
-                        </span>
-                      </div>
-                      {event.description && (
-                        <p className="text-white/60 font-body text-sm mb-6">
-                          {event.description}
-                        </p>
-                      )}
-                      <Link
-                        to="/reservas"
-                        className="inline-flex items-center text-[var(--accent-gold)] hover:text-white font-heading text-sm uppercase tracking-wider transition-colors group/link"
-                      >
-                        Reservar
-                        <ArrowRight size={16} className="ml-1 transform group-hover/link:translate-x-1 transition-transform" />
-                      </Link>
-                    </div>
-                  </motion.div>
+                  <EventCard event={event} />
                 </StaggerItem>
               ))}
             </StaggerContainer>
@@ -254,7 +271,7 @@ export function EventosPage() {
         </section>
       )}
 
-      {/* Services - Glass Cards with Hover Reveal */}
+      {/* Services */}
       <section className="py-20 px-4">
         <div className="max-w-6xl mx-auto">
           <ScrollReveal>
@@ -277,7 +294,6 @@ export function EventosPage() {
                     whileHover={{ y: -10 }}
                     className="h-full glass-card-heavy p-8 group cursor-pointer overflow-hidden relative"
                   >
-                    {/* Hover glow effect */}
                     <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent-gold)]/0 to-[var(--accent-gold)]/0 group-hover:from-[var(--accent-gold)]/10 group-hover:to-transparent transition-all duration-500" />
 
                     <div
@@ -323,9 +339,7 @@ export function EventosPage() {
       <section className="py-20 px-4 relative overflow-hidden">
         <div
           className="absolute inset-0"
-          style={{
-            background: 'linear-gradient(135deg, rgba(227,27,35,0.15), rgba(255,215,0,0.1))',
-          }}
+          style={{ background: 'linear-gradient(135deg, rgba(227,27,35,0.15), rgba(255,215,0,0.1))' }}
         />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-[var(--accent-gold)]/10 rounded-full blur-[100px]" />
 
