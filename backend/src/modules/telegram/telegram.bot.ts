@@ -1,4 +1,4 @@
-import { Bot, InputFile } from 'grammy';
+import { Bot } from 'grammy';
 import { env } from '../../config/env.js';
 import { logger } from '../../lib/logger.js';
 import { eventsService } from '../events/events.service.js';
