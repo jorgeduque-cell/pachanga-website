@@ -51,8 +51,29 @@ const services = [
   },
 ];
 
-// ─── Event Card ─────────────────────────────────────────────
-function EventCard({ event, isActive }: { event: Event; isActive: boolean }) {
+// ─── Small Side Preview ─────────────────────────────────────
+function SidePreview({ event }: { event: Event }) {
+  const hasFlyer = !!event.flyerUrl;
+  return (
+    <div className="rounded-xl overflow-hidden glass-card border-white/5 h-full">
+      <div className="relative w-full h-full">
+        {hasFlyer ? (
+          <img src={event.flyerUrl!} alt={event.name} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-[var(--accent-red)]/15 to-[var(--accent-gold)]/10 flex items-center justify-center min-h-[300px]">
+            <PartyPopper size={40} className="text-white/10" />
+          </div>
+        )}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent pt-10 pb-3 px-3">
+          <h4 className="text-sm font-heading text-white/80 leading-tight">{event.name}</h4>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Event Card ────────────────────────────────────────
+function MainEventCard({ event }: { event: Event }) {
   const [expanded, setExpanded] = useState(false);
   const badge = getStatusBadge(event.status);
   const hasFlyer = !!event.flyerUrl;
@@ -60,22 +81,16 @@ function EventCard({ event, isActive }: { event: Event; isActive: boolean }) {
   const hasMore = event.description ? event.description.length > 120 : false;
 
   return (
-    <div className="rounded-2xl overflow-hidden glass-card-heavy border-white/10 h-full flex flex-col">
+    <div className="rounded-2xl overflow-hidden glass-card-heavy border-[var(--accent-gold)]/15 shadow-2xl shadow-black/40">
       {/* Flyer */}
-      <div className="relative w-full overflow-hidden" style={{ maxHeight: isActive ? '500px' : '350px' }}>
+      <div className="relative w-full overflow-hidden" style={{ maxHeight: '520px' }}>
         {hasFlyer ? (
-          <img
-            src={event.flyerUrl!}
-            alt={event.name}
-            className="w-full h-full object-contain bg-black/50"
-          />
+          <img src={event.flyerUrl!} alt={event.name} className="w-full h-full object-contain bg-black/50" />
         ) : (
           <div className="w-full aspect-[4/5] bg-gradient-to-br from-[var(--accent-red)]/20 to-[var(--accent-gold)]/10 flex items-center justify-center">
-            <PartyPopper size={60} className="text-[var(--accent-gold)]/30" />
+            <PartyPopper size={80} className="text-[var(--accent-gold)]/30" />
           </div>
         )}
-
-        {/* Badges */}
         <div className="absolute top-3 left-3">
           <span className={`px-2.5 py-1 text-white text-[10px] font-heading uppercase tracking-wider rounded-full ${badge.color} shadow-lg`}>
             {badge.label}
@@ -88,17 +103,13 @@ function EventCard({ event, isActive }: { event: Event; isActive: boolean }) {
             </span>
           </div>
         )}
-
-        {/* Title overlay */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent pt-12 pb-3 px-5">
-          <h3 className={`font-heading text-white leading-tight ${isActive ? 'text-2xl md:text-3xl' : 'text-lg'}`}>
-            {event.name}
-          </h3>
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent pt-14 pb-4 px-6">
+          <h3 className="text-2xl md:text-3xl font-heading text-white leading-tight">{event.name}</h3>
         </div>
       </div>
 
       {/* Info */}
-      <div className="p-5 space-y-3 flex-1 flex flex-col">
+      <div className="p-5 space-y-3">
         <div className="flex flex-wrap gap-2">
           <span className="flex items-center gap-1.5 text-white/80 text-xs glass-card px-2.5 py-1 rounded-full">
             <Calendar size={12} className="text-[var(--accent-gold)]" />
@@ -109,9 +120,7 @@ function EventCard({ event, isActive }: { event: Event; isActive: boolean }) {
             {event.eventTime}
           </span>
         </div>
-
-        {/* Description */}
-        {isActive && event.description && (
+        {event.description && (
           <div className="text-white/50 font-body text-xs leading-relaxed">
             <p>{expanded ? event.description : preview}</p>
             {hasMore && (
@@ -124,23 +133,13 @@ function EventCard({ event, isActive }: { event: Event; isActive: boolean }) {
             )}
           </div>
         )}
-
-        {/* CTA */}
-        {isActive && (
-          <div className="mt-auto pt-2">
-            <Link to="/reservas" className="block">
-              <Button
-                className="w-full btn-gold transition-all"
-                size="default"
-                disabled={event.status === 'SOLD_OUT'}
-              >
-                {event.status === 'SOLD_OUT' ? 'Agotado' : (
-                  <>Reservar <ArrowRight size={14} className="ml-1" /></>
-                )}
-              </Button>
-            </Link>
-          </div>
-        )}
+        <Link to="/reservas" className="block pt-1">
+          <Button className="w-full btn-gold transition-all" disabled={event.status === 'SOLD_OUT'}>
+            {event.status === 'SOLD_OUT' ? 'Agotado' : (
+              <>Reservar para este evento <ArrowRight size={14} className="ml-1" /></>
+            )}
+          </Button>
+        </Link>
       </div>
     </div>
   );
@@ -154,6 +153,10 @@ export function EventosPage() {
   const events: Event[] = Array.isArray(eventsData)
     ? eventsData
     : (eventsData as { data?: Event[] })?.data ?? [];
+
+  const prevEvent = activeIndex > 0 ? events[activeIndex - 1] : null;
+  const nextEvent = activeIndex < events.length - 1 ? events[activeIndex + 1] : null;
+  const currentEvent = events[activeIndex];
 
   const goTo = (idx: number) => {
     if (idx >= 0 && idx < events.length) setActiveIndex(idx);
@@ -206,89 +209,100 @@ export function EventosPage() {
             </div>
           )}
 
-          {/* ─── PEEK CAROUSEL ─────────────────────────────── */}
-          {events.length === 1 && (
-            <div className="max-w-lg mx-auto">
-              <EventCard event={events[0]} isActive />
+          {/* ─── STACKED CAROUSEL ─────────────────────────── */}
+          {events.length > 0 && currentEvent && (
+            <div className="relative flex items-start justify-center" style={{ minHeight: '500px' }}>
+
+              {/* LEFT SIDE — peeking from behind */}
+              {prevEvent && (
+                <motion.div
+                  key={`left-${prevEvent.id}`}
+                  initial={{ x: -40, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  className="hidden md:block absolute left-0 top-4 bottom-4 cursor-pointer"
+                  style={{ width: '220px', zIndex: 1 }}
+                  onClick={() => goTo(activeIndex - 1)}
+                >
+                  <motion.div
+                    whileHover={{ scale: 1.03, opacity: 0.8 }}
+                    className="h-full"
+                    style={{ opacity: 0.4, filter: 'brightness(0.5)' }}
+                  >
+                    <SidePreview event={prevEvent} />
+                  </motion.div>
+                </motion.div>
+              )}
+
+              {/* CENTER — Main Card */}
+              <motion.div
+                key={currentEvent.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                className="relative w-full max-w-lg"
+                style={{ zIndex: 10 }}
+              >
+                <MainEventCard event={currentEvent} />
+              </motion.div>
+
+              {/* RIGHT SIDE — peeking from behind */}
+              {nextEvent && (
+                <motion.div
+                  key={`right-${nextEvent.id}`}
+                  initial={{ x: 40, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  className="hidden md:block absolute right-0 top-4 bottom-4 cursor-pointer"
+                  style={{ width: '220px', zIndex: 1 }}
+                  onClick={() => goTo(activeIndex + 1)}
+                >
+                  <motion.div
+                    whileHover={{ scale: 1.03, opacity: 0.8 }}
+                    className="h-full"
+                    style={{ opacity: 0.4, filter: 'brightness(0.5)' }}
+                  >
+                    <SidePreview event={nextEvent} />
+                  </motion.div>
+                </motion.div>
+              )}
+
+              {/* Arrows */}
+              {events.length > 1 && (
+                <>
+                  <button
+                    onClick={() => goTo(activeIndex - 1)}
+                    disabled={activeIndex === 0}
+                    className="absolute left-2 md:left-[230px] top-1/2 -translate-y-1/2 w-10 h-10 rounded-full glass-card-heavy flex items-center justify-center text-white hover:bg-[var(--accent-gold)]/20 transition-all disabled:opacity-15 disabled:cursor-not-allowed"
+                    style={{ zIndex: 15 }}
+                  >
+                    <ArrowLeft size={16} />
+                  </button>
+                  <button
+                    onClick={() => goTo(activeIndex + 1)}
+                    disabled={activeIndex === events.length - 1}
+                    className="absolute right-2 md:right-[230px] top-1/2 -translate-y-1/2 w-10 h-10 rounded-full glass-card-heavy flex items-center justify-center text-white hover:bg-[var(--accent-gold)]/20 transition-all disabled:opacity-15 disabled:cursor-not-allowed"
+                    style={{ zIndex: 15 }}
+                  >
+                    <ArrowRight size={16} />
+                  </button>
+                </>
+              )}
             </div>
           )}
 
+          {/* Dots */}
           {events.length > 1 && (
-            <div className="relative">
-              {/* Cards Container */}
-              <div className="flex items-stretch justify-center gap-4 md:gap-6 px-4">
-                {events.map((event, idx) => {
-                  const offset = idx - activeIndex;
-
-                  // Only show: prev (-1), active (0), next (+1)
-                  if (offset < -1 || offset > 1) return null;
-
-                  const isCenter = offset === 0;
-                  const isLeft = offset === -1;
-                  const isRight = offset === 1;
-
-                  return (
-                    <motion.div
-                      key={event.id}
-                      layout
-                      initial={false}
-                      animate={{
-                        scale: isCenter ? 1 : 0.85,
-                        opacity: isCenter ? 1 : 0.5,
-                        filter: isCenter ? 'blur(0px)' : 'blur(1px)',
-                        zIndex: isCenter ? 10 : 5,
-                      }}
-                      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                      className={`flex-shrink-0 cursor-pointer ${
-                        isCenter
-                          ? 'w-full max-w-md md:max-w-lg'
-                          : 'w-48 md:w-64 hidden sm:block'
-                      }`}
-                      onClick={() => !isCenter && goTo(idx)}
-                      style={{
-                        order: isLeft ? 0 : isRight ? 2 : 1,
-                      }}
-                    >
-                      <EventCard event={event} isActive={isCenter} />
-                    </motion.div>
-                  );
-                })}
-              </div>
-
-              {/* Navigation Arrows */}
-              <button
-                onClick={() => goTo(activeIndex - 1)}
-                disabled={activeIndex === 0}
-                className="absolute left-0 md:left-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full glass-card-heavy flex items-center justify-center text-white hover:bg-[var(--accent-gold)]/20 hover:border-[var(--accent-gold)]/40 transition-all disabled:opacity-20 disabled:cursor-not-allowed z-20"
-              >
-                <ArrowLeft size={18} />
-              </button>
-              <button
-                onClick={() => goTo(activeIndex + 1)}
-                disabled={activeIndex === events.length - 1}
-                className="absolute right-0 md:right-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full glass-card-heavy flex items-center justify-center text-white hover:bg-[var(--accent-gold)]/20 hover:border-[var(--accent-gold)]/40 transition-all disabled:opacity-20 disabled:cursor-not-allowed z-20"
-              >
-                <ArrowRight size={18} />
-              </button>
-
-              {/* Dots */}
-              <div className="flex justify-center gap-2 mt-8">
-                {events.map((_, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => goTo(idx)}
-                    className={`h-2.5 rounded-full transition-all duration-300 ${
-                      idx === activeIndex
-                        ? 'w-8 bg-[var(--accent-gold)]'
-                        : 'w-2.5 bg-white/20 hover:bg-white/40'
-                    }`}
-                  />
-                ))}
-              </div>
-
-              <p className="text-center text-white/30 text-sm mt-2 font-heading">
-                {activeIndex + 1} / {events.length}
-              </p>
+            <div className="flex justify-center gap-2 mt-8">
+              {events.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => goTo(idx)}
+                  className={`h-2.5 rounded-full transition-all duration-300 ${
+                    idx === activeIndex
+                      ? 'w-8 bg-[var(--accent-gold)]'
+                      : 'w-2.5 bg-white/20 hover:bg-white/40'
+                  }`}
+                />
+              ))}
             </div>
           )}
         </div>
@@ -361,14 +375,12 @@ export function EventosPage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/reservas">
                 <Button size="lg" className="btn-gold text-lg px-8">
-                  <Calendar size={20} className="mr-2" />
-                  Solicitar Reserva
+                  <Calendar size={20} className="mr-2" />Solicitar Reserva
                 </Button>
               </Link>
               <a href="tel:+573219992719">
                 <Button size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10 px-8 text-lg">
-                  <Phone size={20} className="mr-2" />
-                  Llamar Ahora
+                  <Phone size={20} className="mr-2" />Llamar Ahora
                 </Button>
               </a>
             </div>
