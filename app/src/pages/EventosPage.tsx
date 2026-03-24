@@ -1,12 +1,12 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Calendar, Clock, Music, PartyPopper, Sparkles, ArrowRight, Wine, Phone, Loader2 } from 'lucide-react';
+import { Calendar, Clock, Music, PartyPopper, Sparkles, ArrowRight, ArrowLeft, Wine, Phone, Loader2 } from 'lucide-react';
 import { ScrollReveal } from '@/components/ScrollReveal';
 import { StaggerContainer, StaggerItem } from '@/components/StaggerContainer';
 import { Button } from '@/components/ui/button';
 import { useUpcomingEvents } from '@/hooks/useEvents';
 import type { Event } from '@/types/events.types';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
 // ─── Helpers ────────────────────────────────────────────────
 function formatEventDate(dateStr: string): string {
@@ -18,7 +18,6 @@ function formatEventDate(dateStr: string): string {
     year: 'numeric',
   });
 }
-
 
 function truncateText(text: string, maxLen: number): string {
   if (text.length <= maxLen) return text;
@@ -32,6 +31,25 @@ function getStatusLabel(status: string): { label: string; color: string } {
     default: return { label: 'DISPONIBLE', color: 'bg-emerald-500' };
   }
 }
+
+// ─── Carousel Variants ──────────────────────────────────────
+const slideVariants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? 400 : -400,
+    opacity: 0,
+    scale: 0.9,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+    scale: 1,
+  },
+  exit: (direction: number) => ({
+    x: direction < 0 ? 400 : -400,
+    opacity: 0,
+    scale: 0.9,
+  }),
+};
 
 // ─── Static Services Data ───────────────────────────────────
 const services = [
@@ -55,8 +73,8 @@ const services = [
   },
 ];
 
-// ─── Event Card Component ───────────────────────────────────
-function EventCard({ event, featured = false }: { event: Event; featured?: boolean }) {
+// ─── Event Carousel Card ────────────────────────────────────
+function EventSlide({ event }: { event: Event }) {
   const [expanded, setExpanded] = useState(false);
   const statusInfo = getStatusLabel(event.status);
   const hasFlyer = !!event.flyerUrl;
@@ -64,26 +82,18 @@ function EventCard({ event, featured = false }: { event: Event; featured?: boole
   const hasMore = event.description ? event.description.length > 120 : false;
 
   return (
-    <motion.div
-      whileHover={{ y: -6, scale: 1.01 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-      className={`group rounded-2xl overflow-hidden transition-all duration-300 ${
-        featured
-          ? 'glass-card-heavy border-[var(--accent-gold)]/20 hover:border-[var(--accent-gold)]/50'
-          : 'glass-card hover:border-[var(--accent-red)]/30'
-      }`}
-    >
-      {/* Flyer Image — Full, no overlay */}
-      <div className={`relative w-full overflow-hidden ${featured ? 'max-h-[600px]' : 'max-h-[480px]'}`}>
+    <div className="rounded-2xl overflow-hidden glass-card-heavy border-[var(--accent-gold)]/20">
+      {/* Flyer Image — Full visible */}
+      <div className="relative w-full overflow-hidden" style={{ maxHeight: '550px' }}>
         {hasFlyer ? (
           <img
             src={event.flyerUrl!}
             alt={event.name}
-            className="w-full h-full object-contain bg-black/40"
+            className="w-full h-full object-contain bg-black/50"
           />
         ) : (
-          <div className="w-full aspect-video bg-gradient-to-br from-[var(--accent-red)]/20 to-[var(--accent-gold)]/10 flex items-center justify-center">
-            <PartyPopper size={64} className="text-[var(--accent-gold)]/40" />
+          <div className="w-full aspect-[4/5] bg-gradient-to-br from-[var(--accent-red)]/20 to-[var(--accent-gold)]/10 flex items-center justify-center">
+            <PartyPopper size={80} className="text-[var(--accent-gold)]/30" />
           </div>
         )}
 
@@ -94,7 +104,7 @@ function EventCard({ event, featured = false }: { event: Event; featured?: boole
           </span>
         </div>
 
-        {/* Cover Price Badge */}
+        {/* Cover Badge */}
         {event.coverPrice !== null && event.coverPrice > 0 && (
           <div className="absolute top-4 right-4">
             <span className="px-3 py-1.5 text-white text-xs font-heading tracking-wider rounded-full bg-black/70 backdrop-blur-sm border border-white/20 shadow-lg">
@@ -103,17 +113,17 @@ function EventCard({ event, featured = false }: { event: Event; featured?: boole
           </div>
         )}
 
-        {/* Date overlay at bottom */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-12 pb-4 px-6">
-          <h3 className={`font-heading text-white mb-1 ${featured ? 'text-3xl md:text-4xl' : 'text-2xl'}`}>
+        {/* Title overlay */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-16 pb-4 px-6">
+          <h3 className="text-3xl md:text-4xl font-heading text-white">
             {event.name}
           </h3>
         </div>
       </div>
 
-      {/* Event Info */}
+      {/* Info */}
       <div className="p-6 space-y-4">
-        {/* Date, Time, Location */}
+        {/* Date & Time pills */}
         <div className="flex flex-wrap gap-3">
           <span className="flex items-center gap-2 text-white/80 text-sm glass-card px-3 py-1.5 rounded-full">
             <Calendar size={14} className="text-[var(--accent-gold)]" />
@@ -123,23 +133,23 @@ function EventCard({ event, featured = false }: { event: Event; featured?: boole
             <Clock size={14} className="text-[var(--accent-gold)]" />
             {event.eventTime}
           </span>
-          {event.coverPrice === 0 || event.coverPrice === null ? (
+          {(event.coverPrice === 0 || event.coverPrice === null) && (
             <span className="flex items-center gap-2 text-emerald-400 text-sm glass-card px-3 py-1.5 rounded-full">
               🆓 Entrada libre
             </span>
-          ) : null}
+          )}
         </div>
 
-        {/* Description — truncated, expandable */}
+        {/* Truncated description */}
         {event.description && (
           <div className="text-white/60 font-body text-sm leading-relaxed">
             <p>{expanded ? event.description : descriptionPreview}</p>
             {hasMore && (
               <button
                 onClick={() => setExpanded(!expanded)}
-                className="text-[var(--accent-gold)] hover:text-white text-xs mt-1 font-heading uppercase tracking-wider transition-colors"
+                className="text-[var(--accent-gold)] hover:text-white text-xs mt-2 font-heading uppercase tracking-wider transition-colors"
               >
-                {expanded ? 'Ver menos' : 'Ver más'}
+                {expanded ? '▲ Ver menos' : '▼ Ver más'}
               </button>
             )}
           </div>
@@ -148,12 +158,8 @@ function EventCard({ event, featured = false }: { event: Event; featured?: boole
         {/* CTA */}
         <Link to="/reservas" className="block">
           <Button
-            className={`w-full ${
-              featured
-                ? 'btn-gold text-lg'
-                : 'btn-outline-gold hover:bg-[var(--accent-gold)] hover:text-black'
-            } transition-all`}
-            size={featured ? 'lg' : 'default'}
+            className="w-full btn-gold text-lg transition-all"
+            size="lg"
             disabled={event.status === 'SOLD_OUT'}
           >
             {event.status === 'SOLD_OUT' ? (
@@ -167,20 +173,26 @@ function EventCard({ event, featured = false }: { event: Event; featured?: boole
           </Button>
         </Link>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
 // ─── Main Page ──────────────────────────────────────────────
 export function EventosPage() {
   const { data: eventsData, isLoading, error } = useUpcomingEvents();
+  const [[activeIndex, direction], setActiveIndex] = useState([0, 0]);
 
   const events: Event[] = Array.isArray(eventsData)
     ? eventsData
     : (eventsData as { data?: Event[] })?.data ?? [];
 
-  const featuredEvent = events[0];
-  const otherEvents = events.slice(1);
+  const paginate = useCallback((newDirection: number) => {
+    setActiveIndex(([prev]) => {
+      const next = prev + newDirection;
+      if (next < 0 || next >= events.length) return [prev, 0];
+      return [next, newDirection];
+    });
+  }, [events.length]);
 
   return (
     <div className="min-h-screen bg-[var(--bg-base)] pt-24">
@@ -205,7 +217,7 @@ export function EventosPage() {
             </div>
           </ScrollReveal>
 
-          {/* Loading State */}
+          {/* Loading */}
           {isLoading && (
             <div className="flex items-center justify-center py-20">
               <Loader2 size={40} className="text-[var(--accent-gold)] animate-spin" />
@@ -213,7 +225,7 @@ export function EventosPage() {
             </div>
           )}
 
-          {/* Error State */}
+          {/* Error */}
           {error && (
             <div className="text-center py-12 glass-card p-8 rounded-xl">
               <p className="text-white/60 text-lg">No pudimos cargar los eventos en este momento.</p>
@@ -230,42 +242,76 @@ export function EventosPage() {
             </div>
           )}
 
-          {/* Featured Event — Full flyer card */}
-          {featuredEvent && (
-            <ScrollReveal delay={0.2}>
-              <div className="max-w-2xl mx-auto">
-                <div className="text-center mb-6">
-                  <span className="inline-block px-5 py-2 bg-[var(--accent-gold)] text-black font-heading text-sm uppercase tracking-wider rounded-full">
-                    🔥 Próximo Evento
-                  </span>
-                </div>
-                <EventCard event={featuredEvent} featured />
+          {/* ─── CAROUSEL ──────────────────────────────────── */}
+          {events.length > 0 && (
+            <div className="relative max-w-xl mx-auto">
+              {/* Carousel Content */}
+              <div className="overflow-hidden rounded-2xl" style={{ minHeight: '400px' }}>
+                <AnimatePresence initial={false} custom={direction} mode="wait">
+                  <motion.div
+                    key={activeIndex}
+                    custom={direction}
+                    variants={slideVariants}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    transition={{
+                      x: { type: 'spring', stiffness: 300, damping: 30 },
+                      opacity: { duration: 0.2 },
+                    }}
+                  >
+                    <EventSlide event={events[activeIndex]} />
+                  </motion.div>
+                </AnimatePresence>
               </div>
-            </ScrollReveal>
+
+              {/* Navigation Arrows */}
+              {events.length > 1 && (
+                <>
+                  <button
+                    onClick={() => paginate(-1)}
+                    disabled={activeIndex === 0}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-14 w-12 h-12 rounded-full glass-card-heavy flex items-center justify-center text-white hover:bg-[var(--accent-gold)]/20 hover:border-[var(--accent-gold)]/40 transition-all disabled:opacity-30 disabled:cursor-not-allowed z-20"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <button
+                    onClick={() => paginate(1)}
+                    disabled={activeIndex === events.length - 1}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-14 w-12 h-12 rounded-full glass-card-heavy flex items-center justify-center text-white hover:bg-[var(--accent-gold)]/20 hover:border-[var(--accent-gold)]/40 transition-all disabled:opacity-30 disabled:cursor-not-allowed z-20"
+                  >
+                    <ArrowRight size={20} />
+                  </button>
+                </>
+              )}
+
+              {/* Dots */}
+              {events.length > 1 && (
+                <div className="flex justify-center gap-2 mt-6">
+                  {events.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setActiveIndex([idx, idx > activeIndex ? 1 : -1])}
+                      className={`h-2.5 rounded-full transition-all duration-300 ${
+                        idx === activeIndex
+                          ? 'w-8 bg-[var(--accent-gold)]'
+                          : 'w-2.5 bg-white/20 hover:bg-white/40'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Event counter */}
+              {events.length > 1 && (
+                <p className="text-center text-white/40 text-sm mt-3 font-heading">
+                  {activeIndex + 1} / {events.length}
+                </p>
+              )}
+            </div>
           )}
         </div>
       </section>
-
-      {/* Other Events Grid */}
-      {otherEvents.length > 0 && (
-        <section className="py-20 px-4 bg-[var(--bg-surface)]">
-          <div className="max-w-6xl mx-auto">
-            <ScrollReveal>
-              <h2 className="text-4xl md:text-5xl font-heading text-white text-center mb-12">
-                MÁS <span className="text-[var(--accent-red)]">EVENTOS</span>
-              </h2>
-            </ScrollReveal>
-
-            <StaggerContainer className={`grid gap-8 ${otherEvents.length === 1 ? 'max-w-2xl mx-auto' : 'md:grid-cols-2'}`}>
-              {otherEvents.map((event) => (
-                <StaggerItem key={event.id}>
-                  <EventCard event={event} />
-                </StaggerItem>
-              ))}
-            </StaggerContainer>
-          </div>
-        </section>
-      )}
 
       {/* Services */}
       <section className="py-20 px-4">

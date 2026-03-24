@@ -25,6 +25,8 @@ export function useUpcomingEvents() {
   return useQuery({
     queryKey: EVENTS_KEYS.upcoming(),
     queryFn: () => eventsService.getUpcoming(),
+    staleTime: 10 * 60 * 1000,  // 10 min cache
+    gcTime: 30 * 60 * 1000,     // 30 min garbage collection
   });
 }
 
