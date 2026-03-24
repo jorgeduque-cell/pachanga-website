@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Calendar, Clock, Music, PartyPopper, Sparkles, ArrowRight, ArrowLeft, Wine, Phone, Loader2 } from 'lucide-react';
 import { ScrollReveal } from '@/components/ScrollReveal';
@@ -6,16 +6,13 @@ import { StaggerContainer, StaggerItem } from '@/components/StaggerContainer';
 import { Button } from '@/components/ui/button';
 import { useUpcomingEvents } from '@/hooks/useEvents';
 import type { Event } from '@/types/events.types';
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 
 // ─── Helpers ────────────────────────────────────────────────
 function formatEventDate(dateStr: string): string {
   const date = new Date(dateStr);
   return date.toLocaleDateString('es-CO', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   });
 }
 
@@ -24,7 +21,7 @@ function truncateText(text: string, maxLen: number): string {
   return text.slice(0, maxLen).trimEnd() + '...';
 }
 
-function getStatusLabel(status: string): { label: string; color: string } {
+function getStatusBadge(status: string): { label: string; color: string } {
   switch (status) {
     case 'SOLD_OUT': return { label: '¡AGOTADO!', color: 'bg-orange-500' };
     case 'CANCELLED': return { label: 'CANCELADO', color: 'bg-red-600' };
@@ -32,26 +29,7 @@ function getStatusLabel(status: string): { label: string; color: string } {
   }
 }
 
-// ─── Carousel Variants ──────────────────────────────────────
-const slideVariants = {
-  enter: (direction: number) => ({
-    x: direction > 0 ? 400 : -400,
-    opacity: 0,
-    scale: 0.9,
-  }),
-  center: {
-    x: 0,
-    opacity: 1,
-    scale: 1,
-  },
-  exit: (direction: number) => ({
-    x: direction < 0 ? 400 : -400,
-    opacity: 0,
-    scale: 0.9,
-  }),
-};
-
-// ─── Static Services Data ───────────────────────────────────
+// ─── Static Services ────────────────────────────────────────
 const services = [
   {
     icon: PartyPopper,
@@ -73,18 +51,18 @@ const services = [
   },
 ];
 
-// ─── Event Carousel Card ────────────────────────────────────
-function EventSlide({ event }: { event: Event }) {
+// ─── Event Card ─────────────────────────────────────────────
+function EventCard({ event, isActive }: { event: Event; isActive: boolean }) {
   const [expanded, setExpanded] = useState(false);
-  const statusInfo = getStatusLabel(event.status);
+  const badge = getStatusBadge(event.status);
   const hasFlyer = !!event.flyerUrl;
-  const descriptionPreview = event.description ? truncateText(event.description, 120) : null;
+  const preview = event.description ? truncateText(event.description, 120) : null;
   const hasMore = event.description ? event.description.length > 120 : false;
 
   return (
-    <div className="rounded-2xl overflow-hidden glass-card-heavy border-[var(--accent-gold)]/20">
-      {/* Flyer Image — Full visible */}
-      <div className="relative w-full overflow-hidden" style={{ maxHeight: '550px' }}>
+    <div className="rounded-2xl overflow-hidden glass-card-heavy border-white/10 h-full flex flex-col">
+      {/* Flyer */}
+      <div className="relative w-full overflow-hidden" style={{ maxHeight: isActive ? '500px' : '350px' }}>
         {hasFlyer ? (
           <img
             src={event.flyerUrl!}
@@ -93,61 +71,53 @@ function EventSlide({ event }: { event: Event }) {
           />
         ) : (
           <div className="w-full aspect-[4/5] bg-gradient-to-br from-[var(--accent-red)]/20 to-[var(--accent-gold)]/10 flex items-center justify-center">
-            <PartyPopper size={80} className="text-[var(--accent-gold)]/30" />
+            <PartyPopper size={60} className="text-[var(--accent-gold)]/30" />
           </div>
         )}
 
-        {/* Status Badge */}
-        <div className="absolute top-4 left-4">
-          <span className={`px-3 py-1.5 text-white text-xs font-heading uppercase tracking-wider rounded-full ${statusInfo.color} shadow-lg`}>
-            {statusInfo.label}
+        {/* Badges */}
+        <div className="absolute top-3 left-3">
+          <span className={`px-2.5 py-1 text-white text-[10px] font-heading uppercase tracking-wider rounded-full ${badge.color} shadow-lg`}>
+            {badge.label}
           </span>
         </div>
-
-        {/* Cover Badge */}
         {event.coverPrice !== null && event.coverPrice > 0 && (
-          <div className="absolute top-4 right-4">
-            <span className="px-3 py-1.5 text-white text-xs font-heading tracking-wider rounded-full bg-black/70 backdrop-blur-sm border border-white/20 shadow-lg">
-              💰 ${event.coverPrice.toLocaleString('es-CO')} COP
+          <div className="absolute top-3 right-3">
+            <span className="px-2.5 py-1 text-white text-[10px] font-heading tracking-wider rounded-full bg-black/70 backdrop-blur-sm border border-white/20">
+              💰 ${event.coverPrice.toLocaleString('es-CO')}
             </span>
           </div>
         )}
 
         {/* Title overlay */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-16 pb-4 px-6">
-          <h3 className="text-3xl md:text-4xl font-heading text-white">
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent pt-12 pb-3 px-5">
+          <h3 className={`font-heading text-white leading-tight ${isActive ? 'text-2xl md:text-3xl' : 'text-lg'}`}>
             {event.name}
           </h3>
         </div>
       </div>
 
       {/* Info */}
-      <div className="p-6 space-y-4">
-        {/* Date & Time pills */}
-        <div className="flex flex-wrap gap-3">
-          <span className="flex items-center gap-2 text-white/80 text-sm glass-card px-3 py-1.5 rounded-full">
-            <Calendar size={14} className="text-[var(--accent-gold)]" />
+      <div className="p-5 space-y-3 flex-1 flex flex-col">
+        <div className="flex flex-wrap gap-2">
+          <span className="flex items-center gap-1.5 text-white/80 text-xs glass-card px-2.5 py-1 rounded-full">
+            <Calendar size={12} className="text-[var(--accent-gold)]" />
             {formatEventDate(event.eventDate)}
           </span>
-          <span className="flex items-center gap-2 text-white/80 text-sm glass-card px-3 py-1.5 rounded-full">
-            <Clock size={14} className="text-[var(--accent-gold)]" />
+          <span className="flex items-center gap-1.5 text-white/80 text-xs glass-card px-2.5 py-1 rounded-full">
+            <Clock size={12} className="text-[var(--accent-gold)]" />
             {event.eventTime}
           </span>
-          {(event.coverPrice === 0 || event.coverPrice === null) && (
-            <span className="flex items-center gap-2 text-emerald-400 text-sm glass-card px-3 py-1.5 rounded-full">
-              🆓 Entrada libre
-            </span>
-          )}
         </div>
 
-        {/* Truncated description */}
-        {event.description && (
-          <div className="text-white/60 font-body text-sm leading-relaxed">
-            <p>{expanded ? event.description : descriptionPreview}</p>
+        {/* Description */}
+        {isActive && event.description && (
+          <div className="text-white/50 font-body text-xs leading-relaxed">
+            <p>{expanded ? event.description : preview}</p>
             {hasMore && (
               <button
                 onClick={() => setExpanded(!expanded)}
-                className="text-[var(--accent-gold)] hover:text-white text-xs mt-2 font-heading uppercase tracking-wider transition-colors"
+                className="text-[var(--accent-gold)] hover:text-white text-[10px] mt-1 font-heading uppercase tracking-wider transition-colors"
               >
                 {expanded ? '▲ Ver menos' : '▼ Ver más'}
               </button>
@@ -156,22 +126,21 @@ function EventSlide({ event }: { event: Event }) {
         )}
 
         {/* CTA */}
-        <Link to="/reservas" className="block">
-          <Button
-            className="w-full btn-gold text-lg transition-all"
-            size="lg"
-            disabled={event.status === 'SOLD_OUT'}
-          >
-            {event.status === 'SOLD_OUT' ? (
-              'Agotado — Lista de espera'
-            ) : (
-              <>
-                Reservar para este evento
-                <ArrowRight size={16} className="ml-2" />
-              </>
-            )}
-          </Button>
-        </Link>
+        {isActive && (
+          <div className="mt-auto pt-2">
+            <Link to="/reservas" className="block">
+              <Button
+                className="w-full btn-gold transition-all"
+                size="default"
+                disabled={event.status === 'SOLD_OUT'}
+              >
+                {event.status === 'SOLD_OUT' ? 'Agotado' : (
+                  <>Reservar <ArrowRight size={14} className="ml-1" /></>
+                )}
+              </Button>
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -180,19 +149,15 @@ function EventSlide({ event }: { event: Event }) {
 // ─── Main Page ──────────────────────────────────────────────
 export function EventosPage() {
   const { data: eventsData, isLoading, error } = useUpcomingEvents();
-  const [[activeIndex, direction], setActiveIndex] = useState([0, 0]);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   const events: Event[] = Array.isArray(eventsData)
     ? eventsData
     : (eventsData as { data?: Event[] })?.data ?? [];
 
-  const paginate = useCallback((newDirection: number) => {
-    setActiveIndex(([prev]) => {
-      const next = prev + newDirection;
-      if (next < 0 || next >= events.length) return [prev, 0];
-      return [next, newDirection];
-    });
-  }, [events.length]);
+  const goTo = (idx: number) => {
+    if (idx >= 0 && idx < events.length) setActiveIndex(idx);
+  };
 
   return (
     <div className="min-h-screen bg-[var(--bg-base)] pt-24">
@@ -201,7 +166,7 @@ export function EventosPage() {
         <div className="absolute inset-0 bg-gradient-to-b from-[var(--accent-red)]/10 to-transparent" />
         <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-[var(--accent-gold)]/5 rounded-full blur-[150px]" />
 
-        <div className="max-w-6xl mx-auto relative z-10">
+        <div className="max-w-7xl mx-auto relative z-10">
           <ScrollReveal>
             <div className="text-center mb-12">
               <span className="text-[var(--accent-red)] uppercase tracking-[0.3em] text-sm font-heading mb-4 block">
@@ -229,7 +194,6 @@ export function EventosPage() {
           {error && (
             <div className="text-center py-12 glass-card p-8 rounded-xl">
               <p className="text-white/60 text-lg">No pudimos cargar los eventos en este momento.</p>
-              <p className="text-white/40 mt-2">Intenta de nuevo más tarde.</p>
             </div>
           )}
 
@@ -242,72 +206,89 @@ export function EventosPage() {
             </div>
           )}
 
-          {/* ─── CAROUSEL ──────────────────────────────────── */}
-          {events.length > 0 && (
-            <div className="relative max-w-xl mx-auto">
-              {/* Carousel Content */}
-              <div className="overflow-hidden rounded-2xl" style={{ minHeight: '400px' }}>
-                <AnimatePresence initial={false} custom={direction} mode="wait">
-                  <motion.div
-                    key={activeIndex}
-                    custom={direction}
-                    variants={slideVariants}
-                    initial="enter"
-                    animate="center"
-                    exit="exit"
-                    transition={{
-                      x: { type: 'spring', stiffness: 300, damping: 30 },
-                      opacity: { duration: 0.2 },
-                    }}
-                  >
-                    <EventSlide event={events[activeIndex]} />
-                  </motion.div>
-                </AnimatePresence>
+          {/* ─── PEEK CAROUSEL ─────────────────────────────── */}
+          {events.length === 1 && (
+            <div className="max-w-lg mx-auto">
+              <EventCard event={events[0]} isActive />
+            </div>
+          )}
+
+          {events.length > 1 && (
+            <div className="relative">
+              {/* Cards Container */}
+              <div className="flex items-stretch justify-center gap-4 md:gap-6 px-4">
+                {events.map((event, idx) => {
+                  const offset = idx - activeIndex;
+
+                  // Only show: prev (-1), active (0), next (+1)
+                  if (offset < -1 || offset > 1) return null;
+
+                  const isCenter = offset === 0;
+                  const isLeft = offset === -1;
+                  const isRight = offset === 1;
+
+                  return (
+                    <motion.div
+                      key={event.id}
+                      layout
+                      initial={false}
+                      animate={{
+                        scale: isCenter ? 1 : 0.85,
+                        opacity: isCenter ? 1 : 0.5,
+                        filter: isCenter ? 'blur(0px)' : 'blur(1px)',
+                        zIndex: isCenter ? 10 : 5,
+                      }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                      className={`flex-shrink-0 cursor-pointer ${
+                        isCenter
+                          ? 'w-full max-w-md md:max-w-lg'
+                          : 'w-48 md:w-64 hidden sm:block'
+                      }`}
+                      onClick={() => !isCenter && goTo(idx)}
+                      style={{
+                        order: isLeft ? 0 : isRight ? 2 : 1,
+                      }}
+                    >
+                      <EventCard event={event} isActive={isCenter} />
+                    </motion.div>
+                  );
+                })}
               </div>
 
               {/* Navigation Arrows */}
-              {events.length > 1 && (
-                <>
-                  <button
-                    onClick={() => paginate(-1)}
-                    disabled={activeIndex === 0}
-                    className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-14 w-12 h-12 rounded-full glass-card-heavy flex items-center justify-center text-white hover:bg-[var(--accent-gold)]/20 hover:border-[var(--accent-gold)]/40 transition-all disabled:opacity-30 disabled:cursor-not-allowed z-20"
-                  >
-                    <ArrowLeft size={20} />
-                  </button>
-                  <button
-                    onClick={() => paginate(1)}
-                    disabled={activeIndex === events.length - 1}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-14 w-12 h-12 rounded-full glass-card-heavy flex items-center justify-center text-white hover:bg-[var(--accent-gold)]/20 hover:border-[var(--accent-gold)]/40 transition-all disabled:opacity-30 disabled:cursor-not-allowed z-20"
-                  >
-                    <ArrowRight size={20} />
-                  </button>
-                </>
-              )}
+              <button
+                onClick={() => goTo(activeIndex - 1)}
+                disabled={activeIndex === 0}
+                className="absolute left-0 md:left-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full glass-card-heavy flex items-center justify-center text-white hover:bg-[var(--accent-gold)]/20 hover:border-[var(--accent-gold)]/40 transition-all disabled:opacity-20 disabled:cursor-not-allowed z-20"
+              >
+                <ArrowLeft size={18} />
+              </button>
+              <button
+                onClick={() => goTo(activeIndex + 1)}
+                disabled={activeIndex === events.length - 1}
+                className="absolute right-0 md:right-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full glass-card-heavy flex items-center justify-center text-white hover:bg-[var(--accent-gold)]/20 hover:border-[var(--accent-gold)]/40 transition-all disabled:opacity-20 disabled:cursor-not-allowed z-20"
+              >
+                <ArrowRight size={18} />
+              </button>
 
               {/* Dots */}
-              {events.length > 1 && (
-                <div className="flex justify-center gap-2 mt-6">
-                  {events.map((_, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setActiveIndex([idx, idx > activeIndex ? 1 : -1])}
-                      className={`h-2.5 rounded-full transition-all duration-300 ${
-                        idx === activeIndex
-                          ? 'w-8 bg-[var(--accent-gold)]'
-                          : 'w-2.5 bg-white/20 hover:bg-white/40'
-                      }`}
-                    />
-                  ))}
-                </div>
-              )}
+              <div className="flex justify-center gap-2 mt-8">
+                {events.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => goTo(idx)}
+                    className={`h-2.5 rounded-full transition-all duration-300 ${
+                      idx === activeIndex
+                        ? 'w-8 bg-[var(--accent-gold)]'
+                        : 'w-2.5 bg-white/20 hover:bg-white/40'
+                    }`}
+                  />
+                ))}
+              </div>
 
-              {/* Event counter */}
-              {events.length > 1 && (
-                <p className="text-center text-white/40 text-sm mt-3 font-heading">
-                  {activeIndex + 1} / {events.length}
-                </p>
-              )}
+              <p className="text-center text-white/30 text-sm mt-2 font-heading">
+                {activeIndex + 1} / {events.length}
+              </p>
             </div>
           )}
         </div>
@@ -337,7 +318,6 @@ export function EventosPage() {
                     className="h-full glass-card-heavy p-8 group cursor-pointer overflow-hidden relative"
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent-gold)]/0 to-[var(--accent-gold)]/0 group-hover:from-[var(--accent-gold)]/10 group-hover:to-transparent transition-all duration-500" />
-
                     <div
                       className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 relative z-10"
                       style={{
@@ -347,14 +327,8 @@ export function EventosPage() {
                     >
                       <Icon size={32} className="text-[var(--accent-red)]" />
                     </div>
-
-                    <h3 className="text-2xl font-heading text-white mb-3 relative z-10">
-                      {service.title}
-                    </h3>
-                    <p className="text-white/60 font-body mb-6 relative z-10">
-                      {service.description}
-                    </p>
-
+                    <h3 className="text-2xl font-heading text-white mb-3 relative z-10">{service.title}</h3>
+                    <p className="text-white/60 font-body mb-6 relative z-10">{service.description}</p>
                     <ul className="space-y-3 relative z-10">
                       {service.features.map((feature, idx) => (
                         <li key={idx} className="flex items-center gap-3 text-white/70 text-sm">
@@ -363,7 +337,6 @@ export function EventosPage() {
                         </li>
                       ))}
                     </ul>
-
                     <Link to="/reservas" className="block mt-8 relative z-10">
                       <Button className="w-full btn-outline-gold group-hover:bg-[var(--accent-gold)] group-hover:text-black transition-all">
                         Reservar Ahora
@@ -379,20 +352,12 @@ export function EventosPage() {
 
       {/* CTA */}
       <section className="py-20 px-4 relative overflow-hidden">
-        <div
-          className="absolute inset-0"
-          style={{ background: 'linear-gradient(135deg, rgba(227,27,35,0.15), rgba(255,215,0,0.1))' }}
-        />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(227,27,35,0.15), rgba(255,215,0,0.1))' }} />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-[var(--accent-gold)]/10 rounded-full blur-[100px]" />
-
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <ScrollReveal>
-            <h2 className="text-4xl md:text-5xl font-heading text-white mb-6">
-              ¿QUIERES CELEBRAR CON NOSOTROS?
-            </h2>
-            <p className="text-white/80 font-body text-lg mb-8">
-              Contáctanos y planificamos juntos tu evento perfecto
-            </p>
+            <h2 className="text-4xl md:text-5xl font-heading text-white mb-6">¿QUIERES CELEBRAR CON NOSOTROS?</h2>
+            <p className="text-white/80 font-body text-lg mb-8">Contáctanos y planificamos juntos tu evento perfecto</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/reservas">
                 <Button size="lg" className="btn-gold text-lg px-8">
