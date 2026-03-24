@@ -87,6 +87,16 @@ export function useUpdateEventTables() {
   });
 }
 
+export function useSetFeaturedEvent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => eventsService.setFeatured(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: EVENTS_KEYS.all });
+    },
+  });
+}
+
 export function useDeleteEvent() {
   const queryClient = useQueryClient();
   return useMutation({

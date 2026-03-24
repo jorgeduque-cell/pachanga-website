@@ -90,6 +90,21 @@ router.get('/admin/all', authenticate, requireAdmin, async (req: Request, res: R
     }
 });
 
+// PATCH /api/events/:id/featured — Set event as featured (admin)
+router.patch('/:id/featured', authenticate, requireAdmin, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const id = UuidSchema.parse(req.params.id);
+        await eventsService.setFeatured(id);
+        res.json({ message: 'Evento destacado actualizado' });
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            res.status(400).json({ error: 'ID inválido' });
+            return;
+        }
+        next(error);
+    }
+});
+
 // POST /api/events — Create event (admin)
 router.post('/', authenticate, requireAdmin, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {

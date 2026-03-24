@@ -37,6 +37,9 @@ export const eventsService = {
   updateTables: (id: string, tables: UpdateTablesDTO[]) =>
     apiClient.put<Event>(`/events/${id}/tables`, tables).then((r) => r.data),
 
+  setFeatured: (id: string) =>
+    apiClient.patch(`/events/${id}/featured`).then((r) => r.data),
+
   delete: (id: string) =>
     apiClient.delete(`/events/${id}`).then((r) => r.data),
 };

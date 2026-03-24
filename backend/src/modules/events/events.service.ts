@@ -44,7 +44,10 @@ export class EventsService {
         return prisma.event.findMany({
             where,
             include: { tables: true },
-            orderBy: { eventDate: 'asc' },
+            orderBy: [
+                { isFeatured: 'desc' },
+                { eventDate: 'asc' },
+            ],
         });
     }
 
@@ -56,6 +59,16 @@ export class EventsService {
             where: { id },
             include: { tables: true },
         });
+    }
+
+    /**
+     * Set a single event as the featured one (only one at a time).
+     */
+    async setFeatured(id: string) {
+        return prisma.$transaction([
+            prisma.event.updateMany({ where: { isFeatured: true }, data: { isFeatured: false } }),
+            prisma.event.update({ where: { id }, data: { isFeatured: true }, include: { tables: true } }),
+        ]);
     }
 
     /**

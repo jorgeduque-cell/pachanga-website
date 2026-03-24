@@ -17,6 +17,7 @@ export interface Event {
   flyerUrl: string | null;
   status: 'ACTIVE' | 'SOLD_OUT' | 'CANCELLED' | 'PAST';
   isActive: boolean;
+  isFeatured: boolean;
   createdAt: string;
   updatedAt: string;
   tables: EventTable[];

@@ -13,6 +13,7 @@ import {
   DollarSign,
   Users,
   Clock,
+  Star,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -43,6 +44,7 @@ import {
   useUploadFlyer,
   useDeleteEvent,
   useUpdateEventTables,
+  useSetFeaturedEvent,
 } from '@/hooks/useEvents';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from 'sonner';
@@ -105,6 +107,7 @@ export function AdminEvents() {
   const uploadFlyerMutation = useUploadFlyer();
   const deleteMutation = useDeleteEvent();
   const updateTablesMutation = useUpdateEventTables();
+  const featuredMutation = useSetFeaturedEvent();
 
   // ─── Handlers ─────────────────────────────────────────
 
@@ -137,6 +140,7 @@ export function AdminEvents() {
     if (!window.confirm('¿Estás seguro de eliminar este evento?')) return;
     try {
       await deleteMutation.mutateAsync(id);
+
       toast.success('Evento eliminado');
     } catch {
       toast.error('Error al eliminar el evento');
@@ -280,11 +284,16 @@ export function AdminEvents() {
                     <Image size={48} className="text-white/20" />
                   </div>
                 )}
-                {/* Status Badge */}
-                <div className="absolute top-3 left-3">
+                {/* Status Badge + Featured */}
+                <div className="absolute top-3 left-3 flex items-center gap-2">
                   <span className={`px-3 py-1 rounded-full text-xs font-heading uppercase ${STATUS_COLORS[event.status]}`}>
                     {STATUS_LABELS[event.status]}
                   </span>
+                  {event.isFeatured && (
+                    <span className="px-2.5 py-1 rounded-full text-xs font-heading uppercase bg-[var(--accent-gold)]/20 text-[var(--accent-gold)]">
+                      ⭐ Principal
+                    </span>
+                  )}
                 </div>
                 {/* Actions Menu */}
                 <div className="absolute top-3 right-3">
@@ -303,6 +312,17 @@ export function AdminEvents() {
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => openTables(event)} className="text-white focus:text-white focus:bg-[#0a0a0a]">
                         <Users className="mr-2" size={16} /> Gestionar Mesas
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={async () => {
+                          try {
+                            await featuredMutation.mutateAsync(event.id);
+                            toast.success(`"${event.name}" es ahora el evento principal`);
+                          } catch { toast.error('Error al destacar evento'); }
+                        }}
+                        className={`focus:bg-[#0a0a0a] ${event.isFeatured ? 'text-[var(--accent-gold)]' : 'text-white'} focus:text-white`}
+                      >
+                        <Star className="mr-2" size={16} fill={event.isFeatured ? 'currentColor' : 'none'} /> {event.isFeatured ? 'Ya es principal' : 'Hacer principal'}
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleDelete(event.id)} className="text-red-500 focus:text-red-500 focus:bg-[#0a0a0a]">
                         <Trash2 className="mr-2" size={16} /> Eliminar
