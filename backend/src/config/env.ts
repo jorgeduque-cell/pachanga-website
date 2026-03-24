@@ -39,6 +39,10 @@ const envSchema = z.object({
   SUPABASE_URL: z.string().url().optional().default(''),
   SUPABASE_SERVICE_KEY: z.string().optional().default(''),
 
+  // Telegram Bot (for admin notifications + mobile management)
+  TELEGRAM_BOT_TOKEN: z.string().optional().default(''),
+  TELEGRAM_ADMIN_CHAT_ID: z.string().optional().default(''),
+
   // Sentry (optional — error tracking)
   SENTRY_DSN: z.string().url().optional(),
 }).superRefine((data, ctx) => {

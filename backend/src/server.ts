@@ -25,6 +25,7 @@ import analyticsRoutes from './modules/analytics/analytics.routes.js';
 import surveyRoutes from './modules/survey/survey.routes.js';
 import chatbotRoutes from './modules/chatbot/chatbot.routes.js';
 import { eventsRouter } from './modules/events/events.controller.js';
+import { startTelegramBot, stopTelegramBot } from './modules/telegram/telegram.bot.js';
 
 
 // ─── Constants ───────────────────────────────────────────────
@@ -125,6 +126,7 @@ const startServer = async (): Promise<void> => {
     httpServer.listen(env.PORT, () => {
       logger.info({ port: env.PORT }, 'Server running');
       startCronJobs();
+      startTelegramBot();
     });
   } catch (error) {
     logger.fatal({ err: error }, 'Failed to start server');
@@ -137,6 +139,7 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
   logger.info({ signal }, 'Graceful shutdown initiated');
   tokenCleanupService.stop();
   stopCronJobs();
+  stopTelegramBot();
   await prisma.$disconnect();
   process.exit(0);
 };
