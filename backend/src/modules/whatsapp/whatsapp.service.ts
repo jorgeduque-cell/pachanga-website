@@ -21,9 +21,10 @@ export interface HeaderMedia {
 // ─── Constants ───────────────────────────────────────────────
 const GRAPH_API_URL = 'https://graph.facebook.com';
 
-// Media IDs for template headers (uploaded to Meta's servers — permanent)
+// Media IDs for template headers (uploaded to Meta's servers)
 const WELCOME_IMAGE_MEDIA_ID = '1221474213303119';
-const SURVEY_VIDEO_MEDIA_ID = '1232590129027228';
+// Survey video on Supabase Storage (permanent — never expires)
+const SURVEY_VIDEO_URL = 'https://egvgxitnbjhjflqivobm.supabase.co/storage/v1/object/public/media/whatsapp/encuesta-pachanga.mp4';
 
 
 // ─── Service ─────────────────────────────────────────────────
@@ -83,7 +84,7 @@ export class WhatsAppService {
             [customer.name],
             customer.id,
             [{ type: 'url', index: 0, text: surveyToken }],
-            { type: 'video', mediaId: SURVEY_VIDEO_MEDIA_ID },
+            { type: 'video', url: SURVEY_VIDEO_URL },
         );
     }
 
