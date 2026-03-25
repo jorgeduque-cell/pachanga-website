@@ -70,7 +70,7 @@ export const chatbotService = {
   },
 
   async resolveConversation(conversationId: string): Promise<void> {
-    await apiClient.post(`/chatbot/conversations/${conversationId}/resolve`);
+    await apiClient.patch(`/chatbot/conversations/${conversationId}/resolve`);
   },
 
   async getStats(): Promise<ChatbotStats> {

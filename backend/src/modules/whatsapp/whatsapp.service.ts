@@ -23,7 +23,8 @@ const GRAPH_API_URL = 'https://graph.facebook.com';
 
 // Media IDs for template headers (uploaded to Meta's servers — permanent)
 const WELCOME_IMAGE_MEDIA_ID = '1221474213303119';
-const SURVEY_VIDEO_MEDIA_ID = '1448053986860172';
+// Survey video hosted on Vercel (permanent — media IDs expire)
+const SURVEY_VIDEO_URL = 'https://pachanga-website.vercel.app/videos/encuesta-pachanga.mp4';
 
 
 // ─── Service ─────────────────────────────────────────────────
@@ -83,7 +84,7 @@ export class WhatsAppService {
             [customer.name],
             customer.id,
             [{ type: 'url', index: 0, text: surveyToken }],
-            { type: 'video', mediaId: SURVEY_VIDEO_MEDIA_ID },
+            { type: 'video', url: SURVEY_VIDEO_URL },
         );
     }
 
