@@ -84,7 +84,7 @@ export class WhatsAppService {
             [customer.name],
             customer.id,
             [{ type: 'url', index: 0, text: surveyToken }],
-            { type: 'video', url: SURVEY_VIDEO_URL },
+            // Video header is embedded in the Meta template — no need to send dynamically
         );
     }
 
