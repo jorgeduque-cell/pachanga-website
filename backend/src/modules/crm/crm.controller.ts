@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { crmService } from './crm.service.js';
 import { qrService } from './qr.service.js';
 import { whatsappService } from '../whatsapp/whatsapp.service.js';
+import { surveyService } from '../survey/survey.service.js';
 import { asyncHandler } from '../../middleware/async-handler.js';
 import { validatedQuery, validatedBody } from '../../middleware/validate.middleware.js';
 import type { CustomerFilters, MessageFilters, SendMessageInput, UpdateConfigInput } from '../../schemas/crm.schema.js';
@@ -54,17 +55,25 @@ export class CrmController {
         const { customerId, templateName } = validatedBody<SendMessageInput>(req);
         const customer = await crmService.findById(customerId);
 
-        const variables: string[] = [customer.name];
-        if (templateName === 'cumpleanos_pachanga') {
-            variables.push(`${env.FRONTEND_URL}/reservas`);
+        let messageId: string;
+
+        if (templateName === 'encuesta_pachanga') {
+            // Survey requires video header + URL button — use dedicated method
+            const surveyToken = surveyService.generateSurveyToken(customerId);
+            messageId = await whatsappService.sendSurvey(customer, surveyToken);
+        } else {
+            const variables: string[] = [customer.name];
+            if (templateName === 'cumpleanos_pachanga') {
+                variables.push(`${env.FRONTEND_URL}/reservas`);
+            }
+            messageId = await whatsappService.sendTemplate(
+                customer.phone,
+                templateName,
+                variables,
+                customerId,
+            );
         }
 
-        const messageId = await whatsappService.sendTemplate(
-            customer.phone,
-            templateName,
-            variables,
-            customerId,
-        );
         res.json({ success: true, messageId });
     });
 
