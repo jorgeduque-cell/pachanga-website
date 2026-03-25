@@ -126,6 +126,14 @@ export class WhatsAppController {
         chatbotService.processIncomingMessage(phone, textBody, profileName).catch((err) => {
           logger.error({ err, phone }, '[Webhook] Chatbot processing failed (non-blocking)');
         });
+      } else if (['audio', 'voice', 'image', 'video', 'sticker', 'document'].includes(msg.type)) {
+        // Handle non-text messages: polite reply asking for text
+        whatsappService.sendFreeformMessage(
+          phone,
+          '¡Hola! Por el momento solo puedo leer mensajes de texto. ¿Podrías escribirme tu consulta? Con gusto te ayudo 😊',
+        ).catch((err) => {
+          logger.error({ err, phone }, '[Webhook] Non-text reply failed (non-blocking)');
+        });
       }
     }
   }

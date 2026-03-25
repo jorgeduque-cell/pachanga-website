@@ -27,7 +27,7 @@ const envSchema = z.object({
   CHATBOT_MODEL: z.string().optional().default('gpt-4o-mini'),
   CHATBOT_MAX_TOKENS: z.string().optional().default('500').transform(Number),
   CHATBOT_TEMPERATURE: z.string().optional().default('0.7').transform(Number),
-  CHATBOT_CONTEXT_WINDOW: z.string().optional().default('5').transform(Number),
+  CHATBOT_CONTEXT_WINDOW: z.string().optional().default('15').transform(Number),
   CHATBOT_CONFIDENCE_THRESHOLD: z.string().optional().default('0.7').transform(Number),
   CHATBOT_ENABLED: z.string().optional().default('false'),
   CHATBOT_ADMIN_PHONE: z.string().optional().default('+573124183002'),
