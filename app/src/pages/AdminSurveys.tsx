@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Music, Smile, Sparkles, ShieldCheck, Star, RefreshCw, BarChart3, Send, Loader2, MessageSquare } from 'lucide-react';
+import { Music, Smile, Sparkles, ShieldCheck, Star, RefreshCw, BarChart3, Send, Loader2, MessageSquare, User, Phone, Calendar, Table2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { surveyAdminService, type SurveyItem, type SurveyStatsResponse } from '@/services/survey-admin.service';
 
@@ -54,6 +55,109 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
+// ─── Rating Bar for Detail Modal ─────────────────────────────
+function RatingBar({ label, rating, icon, color }: { label: string; rating: number; icon: React.ReactNode; color: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${color}`}>
+        {icon}
+      </div>
+      <div className="flex-1">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-white/70 text-sm">{label}</span>
+          <span className="text-white font-heading text-sm">{rating}/5</span>
+        </div>
+        <div className="h-2 rounded-full bg-[#333]">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${color.replace('/20', '')}`}
+            style={{ width: `${(rating / 5) * 100}%` }}
+          />
+        </div>
+      </div>
+      <div className="flex gap-0.5">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <Star key={i} size={12} className={i <= rating ? 'text-[#FFD700] fill-[#FFD700]' : 'text-[#333]'} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Survey Detail Dialog ────────────────────────────────────
+function SurveyDetailDialog({ survey, open, onOpenChange }: { survey: SurveyItem | null; open: boolean; onOpenChange: (open: boolean) => void }) {
+  if (!survey) return null;
+
+  const avgRating = ((survey.musicRating + survey.serviceRating + survey.ambienceRating + survey.hygieneRating) / 4).toFixed(1);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-[#1a1a1a] border-[#333] sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-white font-heading uppercase tracking-wider">
+            Detalle de Encuesta
+          </DialogTitle>
+        </DialogHeader>
+
+        {/* Customer info */}
+        <div className="flex items-center gap-4 p-4 rounded-lg bg-[#0a0a0a] border border-[#333]">
+          <div className="w-12 h-12 rounded-full bg-[#E31B23]/20 flex items-center justify-center">
+            <User size={24} className="text-[#E31B23]" />
+          </div>
+          <div className="flex-1">
+            <p className="text-white font-heading text-lg">{survey.customer.name}</p>
+            <div className="flex items-center gap-3 mt-1">
+              <span className="flex items-center gap-1 text-white/50 text-sm">
+                <Phone size={12} /> {survey.customer.phone}
+              </span>
+              {survey.qrTable && (
+                <span className="flex items-center gap-1 text-[#FFD700] text-sm">
+                  <Table2 size={12} /> Mesa {survey.qrTable}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="text-center">
+            <p className="text-3xl font-heading text-[#FFD700]">{avgRating}</p>
+            <p className="text-white/40 text-xs">Promedio</p>
+          </div>
+        </div>
+
+        {/* Ratings */}
+        <div className="space-y-3">
+          <RatingBar label="Música" rating={survey.musicRating} icon={<Music size={16} className="text-purple-400" />} color="bg-purple-500/20" />
+          <RatingBar label="Servicio" rating={survey.serviceRating} icon={<Smile size={16} className="text-blue-400" />} color="bg-blue-500/20" />
+          <RatingBar label="Ambiente" rating={survey.ambienceRating} icon={<Sparkles size={16} className="text-amber-400" />} color="bg-amber-500/20" />
+          <RatingBar label="Higiene" rating={survey.hygieneRating} icon={<ShieldCheck size={16} className="text-green-400" />} color="bg-green-500/20" />
+        </div>
+
+        {/* Comment */}
+        {survey.comments && (
+          <div className="p-4 rounded-lg bg-[#0a0a0a] border border-[#333]">
+            <div className="flex items-center gap-2 mb-2">
+              <MessageSquare size={16} className="text-[#FFD700]" />
+              <span className="text-white/60 text-sm font-heading uppercase">Comentario</span>
+            </div>
+            <p className="text-white/80 text-sm leading-relaxed whitespace-pre-wrap">
+              {survey.comments}
+            </p>
+          </div>
+        )}
+
+        {/* Date */}
+        <div className="flex items-center gap-2 text-white/40 text-sm">
+          <Calendar size={14} />
+          {new Date(survey.createdAt).toLocaleDateString('es-CO', {
+            weekday: 'long',
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric',
+          })}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Main Component ──────────────────────────────────────────
 export function AdminSurveys() {
   const [stats, setStats] = useState<SurveyStatsResponse['data'] | null>(null);
@@ -62,6 +166,7 @@ export function AdminSurveys() {
   const [isSending, setIsSending] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [selectedSurvey, setSelectedSurvey] = useState<SurveyItem | null>(null);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -228,7 +333,7 @@ export function AdminSurveys() {
                       </thead>
                       <tbody>
                         {surveys.map((survey) => (
-                          <tr key={survey.id} className="border-b border-[#333] hover:bg-[#0a0a0a]/50">
+                          <tr key={survey.id} className="border-b border-[#333] hover:bg-[#0a0a0a]/50 cursor-pointer transition-colors" onClick={() => setSelectedSurvey(survey)}>
                             <td className="py-4 px-4">
                               <div>
                                 <p className="text-white font-heading">{survey.customer.name}</p>
@@ -324,6 +429,13 @@ export function AdminSurveys() {
           </Card>
         </>
       )}
+
+      {/* Survey Detail Dialog */}
+      <SurveyDetailDialog
+        survey={selectedSurvey}
+        open={!!selectedSurvey}
+        onOpenChange={(open) => { if (!open) setSelectedSurvey(null); }}
+      />
     </div>
   );
 }
