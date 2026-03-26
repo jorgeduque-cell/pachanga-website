@@ -116,7 +116,7 @@ export class SurveySender {
         todayStart.setTime(todayStart.getTime() - COLOMBIA_OFFSET_MS);
 
         // Lookback window: include customers from the last 3 days
-        const LOOKBACK_DAYS = 3;
+        const LOOKBACK_DAYS = 5;
         const lookbackStart = new Date(todayStart);
         lookbackStart.setDate(lookbackStart.getDate() - LOOKBACK_DAYS);
 
