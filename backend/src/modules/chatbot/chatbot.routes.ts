@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { chatbotController } from './chatbot.controller.js';
 import { authenticate, requireAdmin } from '../../middleware/auth.middleware.js';
+import { validateQuery, validateParams } from '../../middleware/validate.middleware.js';
+import { conversationListSchema, conversationIdParamSchema } from './chatbot.schemas.js';
 
 const router = Router();
 
@@ -8,10 +10,10 @@ const router = Router();
 router.use(authenticate, requireAdmin);
 
 // ─── Conversations ──────────────────────────────────────────
-router.get('/conversations', chatbotController.listConversations.bind(chatbotController));
-router.get('/conversations/:id', chatbotController.getConversation.bind(chatbotController));
-router.post('/conversations/:id/reply', chatbotController.replyToConversation.bind(chatbotController));
-router.patch('/conversations/:id/resolve', chatbotController.resolveConversation.bind(chatbotController));
+router.get('/conversations', validateQuery(conversationListSchema), chatbotController.listConversations.bind(chatbotController));
+router.get('/conversations/:id', validateParams(conversationIdParamSchema), chatbotController.getConversation.bind(chatbotController));
+router.post('/conversations/:id/reply', validateParams(conversationIdParamSchema), chatbotController.replyToConversation.bind(chatbotController));
+router.patch('/conversations/:id/resolve', validateParams(conversationIdParamSchema), chatbotController.resolveConversation.bind(chatbotController));
 
 // ─── Knowledge Base ─────────────────────────────────────────
 router.get('/knowledge', chatbotController.listKnowledge.bind(chatbotController));

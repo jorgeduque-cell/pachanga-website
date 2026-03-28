@@ -17,7 +17,19 @@ export const adminReplySchema = z.object({
     message: z.string().min(1).max(1000),
 });
 
+// ─── Conversation Queries ────────────────────────────────────
+export const conversationListSchema = z.object({
+    status: z.enum(['ACTIVE', 'ESCALATED', 'RESOLVED']).optional(),
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+export const conversationIdParamSchema = z.object({
+    id: z.string().uuid(),
+});
+
 // ─── Types ──────────────────────────────────────────────────
 export type KnowledgeCreateInput = z.infer<typeof knowledgeCreateSchema>;
 export type KnowledgeUpdateInput = z.infer<typeof knowledgeUpdateSchema>;
 export type AdminReplyInput = z.infer<typeof adminReplySchema>;
+export type ConversationListQuery = z.infer<typeof conversationListSchema>;

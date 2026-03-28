@@ -107,7 +107,7 @@ export class SurveySender {
      * received a SURVEY message today.
      */
     private async findEligibleCustomers() {
-        // Calculate "today" in Colombia time (UTC-5)
+        // Calculate "today" and "yesterday" in Colombia time (UTC-5)
         const COLOMBIA_OFFSET_MS = -5 * 60 * 60 * 1000;
         const now = new Date();
         const colombiaNow = new Date(now.getTime() + COLOMBIA_OFFSET_MS);
@@ -115,24 +115,23 @@ export class SurveySender {
         // Convert back to UTC for DB query
         todayStart.setTime(todayStart.getTime() - COLOMBIA_OFFSET_MS);
 
-        // Lookback window: include customers from the last 3 days
-        const LOOKBACK_DAYS = 5;
-        const lookbackStart = new Date(todayStart);
-        lookbackStart.setDate(lookbackStart.getDate() - LOOKBACK_DAYS);
+        // Only target customers who registered YESTERDAY (24h window)
+        const yesterdayStart = new Date(todayStart);
+        yesterdayStart.setDate(yesterdayStart.getDate() - 1);
 
         return prisma.customer.findMany({
             where: {
                 isActive: true,
                 optIn: true,
+                // Only customers registered yesterday
                 createdAt: {
-                    gte: lookbackStart,
+                    gte: yesterdayStart,
                     lt: todayStart,
                 },
-                // Exclude customers who already received a survey message TODAY
+                // Exclude customers who have EVER received a survey message
                 messages: {
                     none: {
                         type: 'SURVEY',
-                        sentAt: { gte: todayStart },
                     },
                 },
                 // Exclude customers who already completed a survey

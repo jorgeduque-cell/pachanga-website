@@ -18,6 +18,7 @@ const WebhookMessageSchema = z.object({
   from: z.string(),
   type: z.string(),
   text: z.object({ body: z.string() }).optional(),
+  image: z.object({ id: z.string(), mime_type: z.string() }).optional(),
   timestamp: z.string(),
 });
 

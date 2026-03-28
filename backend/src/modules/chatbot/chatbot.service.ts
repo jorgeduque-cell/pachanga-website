@@ -9,6 +9,7 @@ import { whatsappService } from '../whatsapp/whatsapp.service.js';
 // ─── Rate Limit Map ─────────────────────────────────────────
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const MAX_MESSAGES_PER_HOUR = 20;
+const MAX_RATE_LIMIT_ENTRIES = 10_000;
 
 const VENUE_LOCATION = {
     latitude: 4.6565,
@@ -259,7 +260,7 @@ export class ChatbotService {
         await whatsappService.sendFreeformMessage(phone, escalationMessage);
 
         // 🔔 Notify admin via WhatsApp
-        const adminPhone = env.CHATBOT_ADMIN_PHONE || '+573124183002';
+        const adminPhone = env.CHATBOT_ADMIN_PHONE;
         const adminAlert = `⚠️ *ESCALADA — Chatbot IA*\n\n📱 Cliente: ${phone}\n🏷️ Tema: ${aiResponse.intent}\n📊 Confianza IA: ${(aiResponse.confidence * 100).toFixed(0)}%\n\n💬 Revisa en el panel:\npachanga-website.vercel.app/admin/chatbot`;
 
         whatsappService.sendFreeformMessage(adminPhone, adminAlert).catch((err) => {
@@ -276,6 +277,14 @@ export class ChatbotService {
 
     private isRateLimited(phone: string): boolean {
         const now = Date.now();
+
+        // Evict expired entries when map grows too large (prevent OOM)
+        if (rateLimitMap.size > MAX_RATE_LIMIT_ENTRIES) {
+            for (const [key, entry] of rateLimitMap) {
+                if (now > entry.resetAt) rateLimitMap.delete(key);
+            }
+        }
+
         const entry = rateLimitMap.get(phone);
 
         if (!entry || now > entry.resetAt) {

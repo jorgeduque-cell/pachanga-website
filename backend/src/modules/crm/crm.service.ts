@@ -1,4 +1,4 @@
-import { CustomerSource, MessageType, MessageStatus, Prisma, Customer } from '@prisma/client';
+import { CustomerSource, MessageType, MessageStatus, Prisma, type Customer } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { AppError } from '../../middleware/error.middleware.js';
 import { normalizePhone, normalizePhoneSafe } from '../../lib/phone-utils.js';
@@ -154,7 +154,8 @@ export class CrmService {
         const day = today.getDate();
 
         return prisma.$queryRaw<Customer[]>`
-      SELECT * FROM customers
+      SELECT id, name, phone, birth_date, rating, source, total_visits, last_visit_at, opt_in, is_active, created_at, updated_at
+      FROM customers
       WHERE EXTRACT(MONTH FROM birth_date) = ${month}
         AND EXTRACT(DAY FROM birth_date) = ${day}
         AND opt_in = true

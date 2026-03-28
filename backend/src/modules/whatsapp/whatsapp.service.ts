@@ -21,10 +21,10 @@ export interface HeaderMedia {
 // ─── Constants ───────────────────────────────────────────────
 const GRAPH_API_URL = 'https://graph.facebook.com';
 
-// Media IDs for template headers (uploaded to Meta's servers)
-const WELCOME_IMAGE_MEDIA_ID = '1221474213303119';
+// Media IDs for template headers (configured via env vars)
+const WELCOME_IMAGE_MEDIA_ID = env.WHATSAPP_WELCOME_MEDIA_ID;
 // Survey video on Supabase Storage (permanent — never expires)
-const SURVEY_VIDEO_URL = 'https://egvgxitnbjhjflqivobm.supabase.co/storage/v1/object/public/media/whatsapp/encuesta-pachanga.mp4';
+const SURVEY_VIDEO_URL = env.WHATSAPP_SURVEY_VIDEO_URL;
 
 
 // ─── Service ─────────────────────────────────────────────────

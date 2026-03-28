@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Subir Video a Supabase Storage</title>
+    <style>
+        body { font-family: Arial; max-width: 600px; margin: 40px auto; padding: 20px; background: #1a1a2e; color: #eee; }
+        h1 { color: #e94560; }
+        input, button { margin: 10px 0; padding: 10px; font-size: 16px; }
+        button { background: #e94560; color: white; border: none; cursor: pointer; border-radius: 6px; padding: 12px 24px; }
+        button:hover { background: #c73650; }
+        #result { margin-top: 20px; padding: 15px; background: #16213e; border-radius: 8px; word-break: break-all; }
+        .success { color: #0f0; font-weight: bold; }
+        .error { color: #f55; }
+    </style>
+</head>
+<body>
+    <h1>📦 Subir a Supabase Storage</h1>
+    <p>Sube archivos multimedia al bucket <code>media</code> para uso permanente con WhatsApp.</p>
+
+    <div>
+        <label><strong>Carpeta destino:</strong></label><br>
+        <input type="text" id="folder" value="whatsapp" style="width:100%; box-sizing:border-box;" placeholder="ej: whatsapp">
+    </div>
+    <div>
+        <label><strong>Nombre del archivo:</strong></label><br>
+        <input type="text" id="filename" value="encuesta-pachanga.mp4" style="width:100%; box-sizing:border-box;" placeholder="ej: encuesta-pachanga.mp4">
+    </div>
+    <div>
+        <label><strong>Selecciona el archivo:</strong></label><br>
+        <input type="file" id="fileInput" accept="video/*,image/*">
+    </div>
+    <button onclick="upload()">🚀 Subir a Supabase</button>
+    <div id="result"></div>
+
+    <script>
+        const SUPABASE_URL = 'https://egvgxitnbjhjflqivobm.supabase.co';
+        const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVndmd4aXRuYmpoamZscWl2b2JtIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTk4ODY4NCwiZXhwIjoyMDg3NTY0Njg0fQ.PlWH3TYG-WnXn4XCGrOw2lRqG6Capvjdv2Zo-YRX8Tg';
+        const BUCKET = 'media';
+
+        async function upload() {
+            const fileInput = document.getElementById('fileInput');
+            const folder = document.getElementById('folder').value.trim();
+            const filename = document.getElementById('filename').value.trim();
+            const resultDiv = document.getElementById('result');
+
+            if (!fileInput.files[0]) {
+                resultDiv.innerHTML = '<span class="error">❌ Selecciona un archivo primero</span>';
+                return;
+            }
+
+            if (!filename) {
+                resultDiv.innerHTML = '<span class="error">❌ Escribe un nombre para el archivo</span>';
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const path = folder ? `${folder}/${filename}` : filename;
+
+            resultDiv.innerHTML = '⏳ Subiendo...';
+
+            try {
+                // Upload via Supabase Storage REST API
+                const response = await fetch(
+                    `${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+                            'x-upsert': 'true',
+                        },
+                        body: file,
+                    }
+                );
+
+                if (!response.ok) {
+                    const err = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${err}`);
+                }
+
+                const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+
+                resultDiv.innerHTML = `
+                    <span class="success">✅ ¡Subido exitosamente!</span><br><br>
+                    <strong>URL Pública (permanente):</strong><br>
+                    <code>${publicUrl}</code><br><br>
+                    <strong>Copia esta URL para el código:</strong><br>
+                    <input type="text" value="${publicUrl}" style="width:100%; padding:8px; box-sizing:border-box;" onclick="this.select();" readonly>
+                `;
+            } catch (err) {
+                resultDiv.innerHTML = `<span class="error">❌ Error: ${err.message}</span>`;
+            }
+        }
+    </script>
+</body>
+</html>

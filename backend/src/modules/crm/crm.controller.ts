@@ -41,7 +41,8 @@ export class CrmController {
     });
 
     update = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-        const customer = await crmService.update(req.params.id, req.body);
+        const data = validatedBody<import('../../schemas/crm.schema.js').UpdateCustomerInput>(req);
+        const customer = await crmService.update(req.params.id, data);
         res.json({ data: customer });
     });
 

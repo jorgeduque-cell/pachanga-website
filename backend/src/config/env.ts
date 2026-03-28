@@ -21,6 +21,8 @@ const envSchema = z.object({
   WHATSAPP_API_VERSION: z.string().optional().default('v21.0'),
   WHATSAPP_DRY_RUN: z.string().optional().default('true'),
   WHATSAPP_APP_SECRET: z.string().optional().default(''),
+  WHATSAPP_WELCOME_MEDIA_ID: z.string().optional().default('1221474213303119'),
+  WHATSAPP_SURVEY_VIDEO_URL: z.string().optional().default('https://egvgxitnbjhjflqivobm.supabase.co/storage/v1/object/public/media/whatsapp/encuesta-pachanga.mp4'),
 
   // Chatbot AI (OpenAI)
   OPENAI_API_KEY: z.string().optional().default(''),
