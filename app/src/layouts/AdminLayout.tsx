@@ -11,7 +11,8 @@ import {
   ChevronRight,
   User,
   Bot,
-  PartyPopper
+  PartyPopper,
+  Send
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -34,6 +35,7 @@ export function AdminLayout() {
     { path: '/admin/eventos', label: 'Eventos', icon: PartyPopper },
     { path: '/admin/clientes', label: 'Clientes', icon: Users },
     { path: '/admin/encuestas', label: 'Encuestas', icon: BarChart3 },
+    { path: '/admin/mensajes', label: 'Mensajes', icon: Send },
     { path: '/admin/chatbot', label: 'Chatbot IA', icon: Bot },
   ];
 
