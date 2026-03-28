@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   MessageSquare, Send, CheckCheck, Eye, AlertTriangle, Clock,
-  RefreshCw, Filter, ChevronLeft, ChevronRight, Search,
+  RefreshCw, Filter, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
