@@ -322,6 +322,8 @@ export class ChatbotService {
         switch (state) {
             case 'COLLECTING_EVENT':
                 return purchaseFlowService.handleEventSelection(conversationId, userMessage);
+            case 'COLLECTING_TICKET_TYPE':
+                return purchaseFlowService.handleTicketTypeSelection(conversationId, userMessage);
             case 'COLLECTING_QUANTITY':
                 return purchaseFlowService.handleQuantitySelection(conversationId, customerId, userMessage);
             case 'AWAITING_PAYMENT':

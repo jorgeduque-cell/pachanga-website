@@ -4,6 +4,7 @@ import { prisma } from '../../lib/prisma.js';
 export type PurchaseFlowState =
     | 'IDLE'
     | 'COLLECTING_EVENT'
+    | 'COLLECTING_TICKET_TYPE'
     | 'COLLECTING_QUANTITY'
     | 'AWAITING_PAYMENT'
     | 'VERIFYING_PAYMENT'
@@ -14,22 +15,26 @@ export interface PurchaseFlowMetadata {
         state: PurchaseFlowState;
         eventId?: string;
         eventName?: string;
+        eventType?: string;
         ticketType?: string;
+        ticketTypeLabel?: string;
         quantity?: number;
         unitPrice?: number;
         totalAmount?: number;
         reference?: string;
         paymentVerificationId?: string;
-        updatedAt: string; // ISO timestamp for expiry check
+        updatedAt: string;
     };
 }
 
 interface ActiveEvent {
     id: string;
     name: string;
+    eventType: string;
     eventDate: Date;
     eventTime: string;
     coverPrice: number | null;
+    ticketPrices: unknown;
     tables?: Array<{ zone: string; total: number; reserved: number }>;
 }
 
@@ -38,12 +43,29 @@ const FLOW_EXPIRY_MS = 2 * 60 * 60 * 1000; // 2 hours
 const PAYMENT_EXPIRY_HOURS = 48;
 const BANK_INFO_CATEGORY = 'payment_info';
 
+const TICKET_LABELS: Record<string, string> = {
+    palco_8: 'Palco 8 Personas',
+    palco_4: 'Palco 4 Personas',
+    palco_2: 'Palco 2 Personas',
+    vip_primer_piso: 'VIP Primer Piso (4P)',
+    vip_segundo_piso: 'VIP Segundo Piso (4P)',
+    barras: 'Barras (Pareja)',
+};
+
+const TICKET_CAPACITY: Record<string, number> = {
+    palco_8: 8,
+    palco_4: 4,
+    palco_2: 2,
+    vip_primer_piso: 4,
+    vip_segundo_piso: 4,
+    barras: 2,
+};
+
 // ─── Service ────────────────────────────────────────────────
 export class PurchaseFlowService {
 
     /**
      * Checks if a conversation has an active purchase flow.
-     * Returns the flow state or null if no active flow.
      */
     async getFlowState(conversationId: string): Promise<PurchaseFlowMetadata['purchaseFlow'] | null> {
         const conversation = await prisma.chatConversation.findUnique({
@@ -54,7 +76,6 @@ export class PurchaseFlowService {
         const metadata = conversation?.metadata as PurchaseFlowMetadata | null;
         if (!metadata?.purchaseFlow) return null;
 
-        // Check expiration
         if (this.isFlowExpired(metadata.purchaseFlow)) {
             await this.resetFlow(conversationId);
             return null;
@@ -73,22 +94,34 @@ export class PurchaseFlowService {
             return '😔 ¡Lo siento! No tenemos eventos disponibles para compra en este momento. Pero estate pendiente, ¡pronto tendremos algo bueno! 🎶';
         }
 
-        // Update conversation metadata
         await this.updateFlowState(conversationId, {
             state: 'COLLECTING_EVENT',
             updatedAt: new Date().toISOString(),
         });
 
-        // Build event list message
         let message = '🎉 *¡Genial! Estos son los eventos disponibles:*\n\n';
         events.forEach((event, index) => {
             const dateStr = event.eventDate.toLocaleDateString('es-CO', {
                 weekday: 'long', day: 'numeric', month: 'long',
             });
-            const price = event.coverPrice
-                ? `$${event.coverPrice.toLocaleString('es-CO')}`
-                : 'Entrada libre';
-            message += `*${index + 1}.* ${event.name}\n   📅 ${dateStr} — 🕕 ${event.eventTime}\n   💰 ${price}\n\n`;
+
+            // Show pricing summary
+            let priceInfo = '';
+            const tp = event.ticketPrices as Record<string, number> | null;
+            if (tp && Object.values(tp).some(v => v > 0)) {
+                const minPerPerson = Math.min(
+                    ...Object.entries(tp)
+                        .filter(([, v]) => v > 0)
+                        .map(([key, price]) => Math.round(price / (TICKET_CAPACITY[key] || 1)))
+                );
+                priceInfo = `Desde $${minPerPerson.toLocaleString('es-CO')}/persona`;
+            } else if (event.coverPrice && event.coverPrice > 0) {
+                priceInfo = `Cover: $${event.coverPrice.toLocaleString('es-CO')}`;
+            } else {
+                priceInfo = 'Entrada libre';
+            }
+
+            message += `*${index + 1}.* ${event.name}\n   📅 ${dateStr} — 🕕 ${event.eventTime}\n   💰 ${priceInfo}\n\n`;
         });
         message += '👉 Escribe el *número* del evento que te interesa.';
 
@@ -107,20 +140,92 @@ export class PurchaseFlowService {
         }
 
         const selectedEvent = events[selection - 1];
+        const tp = selectedEvent.ticketPrices as Record<string, number> | null;
+        const isConcert = selectedEvent.eventType === 'CONCERT' && tp && Object.values(tp).some(v => v > 0);
+
+        if (isConcert) {
+            // Concert → ask for ticket type / location
+            await this.updateFlowState(conversationId, {
+                state: 'COLLECTING_TICKET_TYPE',
+                eventId: selectedEvent.id,
+                eventName: selectedEvent.name,
+                eventType: selectedEvent.eventType,
+                updatedAt: new Date().toISOString(),
+            });
+
+            let message = `✅ Seleccionaste: *${selectedEvent.name}*\n\n📍 *Elige tu ubicación:*\n\n`;
+            const entries = Object.entries(tp!).filter(([, v]) => v > 0);
+            entries.forEach(([key, price], idx) => {
+                const capacity = TICKET_CAPACITY[key] || 1;
+                const perPerson = Math.round(price / capacity);
+                message += `*${idx + 1}.* ${TICKET_LABELS[key] || key}\n   💰 $${price.toLocaleString('es-CO')} total (${capacity}P = $${perPerson.toLocaleString('es-CO')}/persona)\n\n`;
+            });
+            message += '👉 Escribe el *número* de la ubicación que deseas.';
+            return message;
+        } else {
+            // Quick Event → go straight to quantity
+            await this.updateFlowState(conversationId, {
+                state: 'COLLECTING_QUANTITY',
+                eventId: selectedEvent.id,
+                eventName: selectedEvent.name,
+                eventType: selectedEvent.eventType,
+                ticketType: 'cover',
+                ticketTypeLabel: 'Cover',
+                unitPrice: selectedEvent.coverPrice ?? 0,
+                updatedAt: new Date().toISOString(),
+            });
+
+            const price = selectedEvent.coverPrice
+                ? `$${selectedEvent.coverPrice.toLocaleString('es-CO')}`
+                : 'Entrada libre';
+
+            return `✅ Seleccionaste: *${selectedEvent.name}*\n💰 Precio por persona: ${price}\n\n¿Cuántas boletas necesitas? (Escribe el número, por ejemplo: *2*)`;
+        }
+    }
+
+    /**
+     * Handles ticket type / location selection for concerts.
+     */
+    async handleTicketTypeSelection(conversationId: string, userMessage: string): Promise<string> {
+        const flowState = await this.getFlowState(conversationId);
+        if (!flowState || !flowState.eventId) {
+            await this.resetFlow(conversationId);
+            return '⚠️ Hubo un problema. Escribe "comprar boletas" para iniciar de nuevo.';
+        }
+
+        const event = await prisma.event.findUnique({ where: { id: flowState.eventId } });
+        if (!event) {
+            await this.resetFlow(conversationId);
+            return '⚠️ El evento ya no está disponible. Escribe "comprar boletas" para ver los eventos activos.';
+        }
+
+        const tp = event.ticketPrices as Record<string, number> | null;
+        if (!tp) {
+            await this.resetFlow(conversationId);
+            return '⚠️ No hay ubicaciones configuradas para este evento.';
+        }
+
+        const entries = Object.entries(tp).filter(([, v]) => v > 0);
+        const selection = parseInt(userMessage.trim(), 10);
+
+        if (isNaN(selection) || selection < 1 || selection > entries.length) {
+            return `🤔 Por favor escribe un número del *1* al *${entries.length}*.`;
+        }
+
+        const [ticketKey, ticketPrice] = entries[selection - 1];
+        const capacity = TICKET_CAPACITY[ticketKey] || 1;
+        const label = TICKET_LABELS[ticketKey] || ticketKey;
 
         await this.updateFlowState(conversationId, {
+            ...flowState,
             state: 'COLLECTING_QUANTITY',
-            eventId: selectedEvent.id,
-            eventName: selectedEvent.name,
-            unitPrice: selectedEvent.coverPrice ?? 0,
+            ticketType: ticketKey,
+            ticketTypeLabel: label,
+            unitPrice: ticketPrice,
             updatedAt: new Date().toISOString(),
         });
 
-        const price = selectedEvent.coverPrice
-            ? `$${selectedEvent.coverPrice.toLocaleString('es-CO')}`
-            : 'Entrada libre';
-
-        return `✅ Seleccionaste: *${selectedEvent.name}*\n💰 Precio por persona: ${price}\n\n¿Cuántas boletas necesitas? (Escribe el número, por ejemplo: *2*)`;
+        return `✅ Ubicación: *${label}*\n💰 Precio: *$${ticketPrice.toLocaleString('es-CO')}* (${capacity} personas incluidas)\n\n¿Cuántas *${label}* necesitas? (Escribe el número, por ejemplo: *1*)`;
     }
 
     /**
@@ -132,20 +237,19 @@ export class PurchaseFlowService {
         userMessage: string,
     ): Promise<string> {
         const flowState = await this.getFlowState(conversationId);
-        if (!flowState || !flowState.eventId || !flowState.unitPrice) {
+        if (!flowState || !flowState.eventId || flowState.unitPrice === undefined) {
             await this.resetFlow(conversationId);
             return '⚠️ Hubo un problema con tu selección. Por favor escribe "comprar boletas" para iniciar de nuevo.';
         }
 
         const quantity = parseInt(userMessage.trim(), 10);
         if (isNaN(quantity) || quantity < 1 || quantity > 10) {
-            return '🤔 Por favor escribe un número de boletas entre *1* y *10*.';
+            return '🤔 Por favor escribe un número entre *1* y *10*.';
         }
 
         const totalAmount = flowState.unitPrice * quantity;
         const reference = this.generatePaymentReference();
 
-        // Create PaymentVerification in DB
         const expiresAt = new Date(Date.now() + PAYMENT_EXPIRY_HOURS * 60 * 60 * 1000);
         const paymentVerification = await prisma.paymentVerification.create({
             data: {
@@ -153,7 +257,7 @@ export class PurchaseFlowService {
                 customerId,
                 eventId: flowState.eventId,
                 conversationId,
-                ticketType: 'general',
+                ticketType: flowState.ticketType || 'general',
                 quantity,
                 expectedAmount: totalAmount,
                 status: 'PENDING',
@@ -161,13 +265,9 @@ export class PurchaseFlowService {
             },
         });
 
-        // Update flow state
         await this.updateFlowState(conversationId, {
+            ...flowState,
             state: 'AWAITING_PAYMENT',
-            eventId: flowState.eventId,
-            eventName: flowState.eventName,
-            unitPrice: flowState.unitPrice,
-            ticketType: 'general',
             quantity,
             totalAmount,
             reference,
@@ -175,12 +275,13 @@ export class PurchaseFlowService {
             updatedAt: new Date().toISOString(),
         });
 
-        // Get bank info from knowledge base
         const bankInfo = await this.getBankInfo();
+        const ticketLabel = flowState.ticketTypeLabel || 'General';
 
         return `🧾 *Resumen de tu compra:*\n\n` +
             `🎉 Evento: *${flowState.eventName}*\n` +
-            `🎫 Boletas: *${quantity}* (general)\n` +
+            `📍 Ubicación: *${ticketLabel}*\n` +
+            `🎫 Cantidad: *${quantity}*\n` +
             `💰 Total: *$${totalAmount.toLocaleString('es-CO')}*\n` +
             `🔖 Referencia: *${reference}*\n\n` +
             `${bankInfo}\n\n` +
@@ -231,23 +332,26 @@ export class PurchaseFlowService {
     }
 
     private async getActiveEvents(): Promise<ActiveEvent[]> {
-        return prisma.event.findMany({
+        const events = await prisma.event.findMany({
             where: {
                 isActive: true,
                 status: 'ACTIVE',
                 eventDate: { gte: new Date() },
-                coverPrice: { not: null, gt: 0 },
             },
             include: { tables: true },
             orderBy: { eventDate: 'asc' },
             take: 5,
         });
+
+        // Filter: must have either coverPrice > 0 OR ticketPrices with values > 0
+        return events.filter(event => {
+            const tp = event.ticketPrices as Record<string, number> | null;
+            const hasTicketPrices = tp && Object.values(tp).some(v => v > 0);
+            const hasCoverPrice = event.coverPrice !== null && event.coverPrice > 0;
+            return hasTicketPrices || hasCoverPrice;
+        });
     }
 
-    /**
-     * Generates a unique reference: PACH-DDMMYY-NX
-     * Where N = random digit, X = random letter
-     */
     private generatePaymentReference(): string {
         const now = new Date();
         const dd = String(now.getDate()).padStart(2, '0');
@@ -258,9 +362,6 @@ export class PurchaseFlowService {
         return `PACH-${dd}${mm}${yy}-${randomDigit}${randomLetter}`;
     }
 
-    /**
-     * Gets bank info from chatbot knowledge base (category: payment_info).
-     */
     private async getBankInfo(): Promise<string> {
         const entries = await prisma.chatbotKnowledge.findMany({
             where: { category: BANK_INFO_CATEGORY, isActive: true },
