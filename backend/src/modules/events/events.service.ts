@@ -209,7 +209,7 @@ export class EventsService {
     /**
      * Auto-sync event data to chatbot knowledge base.
      */
-    private async syncKnowledge(event: { id: string; name: string; eventDate: Date; eventTime: string; description?: string | null; coverPrice?: number | null; status: EventStatus; tables?: Array<{ zone: TableZone; total: number; reserved: number }> }) {
+    private async syncKnowledge(event: { id: string; name: string; eventType?: string; eventDate: Date; eventTime: string; description?: string | null; coverPrice?: number | null; ticketPrices?: unknown; status: EventStatus; tables?: Array<{ zone: TableZone; total: number; reserved: number }> }) {
         const dateStr = event.eventDate.toLocaleDateString('es-CO', {
             weekday: 'long', day: 'numeric', month: 'long',
         });
@@ -218,11 +218,45 @@ export class EventsService {
             `${t.zone}: ${t.total - t.reserved} disponibles de ${t.total}`
         ).join(', ') || 'Sin info de mesas';
 
+        // Ticket prices with per-person calculation
+        const TICKET_LABELS: Record<string, string> = {
+            palco_8: 'Palco 8 Personas',
+            palco_4: 'Palco 4 Personas',
+            palco_2: 'Palco 2 Personas',
+            vip_primer_piso: 'VIP Primer Piso (4P)',
+            vip_segundo_piso: 'VIP Segundo Piso (4P)',
+            barras: 'Barras (Pareja)',
+        };
+        const TICKET_CAPACITY: Record<string, number> = {
+            palco_8: 8, palco_4: 4, palco_2: 2,
+            vip_primer_piso: 4, vip_segundo_piso: 4, barras: 2,
+        };
+
+        let pricingInfo = '';
+        const tp = event.ticketPrices as Record<string, number> | null;
+        if (tp && Object.values(tp).some(v => v > 0)) {
+            const lines = Object.entries(tp)
+                .filter(([, v]) => v > 0)
+                .map(([key, price]) => {
+                    const cap = TICKET_CAPACITY[key] || 1;
+                    const pp = Math.round(price / cap);
+                    return `  • ${TICKET_LABELS[key] || key}: $${price.toLocaleString('es-CO')} total ($${pp.toLocaleString('es-CO')}/persona)`;
+                });
+            pricingInfo = `💰 PRECIOS POR UBICACIÓN:\n${lines.join('\n')}`;
+        } else if (event.coverPrice && event.coverPrice > 0) {
+            pricingInfo = `💰 Cover: $${event.coverPrice.toLocaleString('es-CO')}`;
+        } else {
+            pricingInfo = '🆓 Entrada libre';
+        }
+
+        const eventTypeLabel = event.eventType === 'CONCERT' ? '🎵 Concierto' : '🎉 Evento Rápido';
+
         const value = `🎉 EVENTO: ${event.name}
+🎫 Tipo: ${eventTypeLabel}
 📅 Fecha: ${dateStr}
 🕕 Hora: ${event.eventTime}
 ${event.description ? `📝 ${event.description}` : ''}
-${event.coverPrice ? `💰 Cover: $${event.coverPrice.toLocaleString('es-CO')}` : 'Entrada libre'}
+${pricingInfo}
 📊 Estado: ${event.status === 'ACTIVE' ? 'Disponible' : event.status === 'SOLD_OUT' ? '¡AGOTADO!' : event.status}
 🪑 Mesas: ${tablesInfo}`;
 
