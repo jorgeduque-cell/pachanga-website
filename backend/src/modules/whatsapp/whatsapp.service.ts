@@ -424,6 +424,40 @@ export class WhatsAppService {
             data: updateData,
         });
     }
+
+    /**
+     * Downloads a media file from WhatsApp Cloud API.
+     * Two-step: GET media URL → GET binary buffer.
+     */
+    async downloadMedia(mediaId: string): Promise<{ buffer: Buffer; mimeType: string }> {
+        // Step 1: Get the download URL
+        const metaResponse = await axios.get(
+            `${GRAPH_API_URL}/${this.apiVersion}/${mediaId}`,
+            {
+                headers: { Authorization: `Bearer ${this.token}` },
+                timeout: 10000,
+            },
+        );
+
+        const downloadUrl = metaResponse.data?.url;
+        const mimeType = metaResponse.data?.mime_type ?? 'image/jpeg';
+
+        if (!downloadUrl) {
+            throw new Error(`No download URL returned for media ${mediaId}`);
+        }
+
+        // Step 2: Download the actual file
+        const fileResponse = await axios.get(downloadUrl, {
+            headers: { Authorization: `Bearer ${this.token}` },
+            responseType: 'arraybuffer',
+            timeout: 30000,
+        });
+
+        return {
+            buffer: Buffer.from(fileResponse.data),
+            mimeType,
+        };
+    }
 }
 
 export const whatsappService = new WhatsAppService();

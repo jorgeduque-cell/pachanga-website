@@ -2,7 +2,16 @@ import { Request, Response, NextFunction } from 'express';
 import { chatbotConversationService } from './chatbot.conversation.js';
 import { chatbotKnowledgeService } from './chatbot.knowledge.js';
 import { chatbotService } from './chatbot.service.js';
-import { knowledgeCreateSchema, knowledgeUpdateSchema, adminReplySchema } from './chatbot.schemas.js';
+import { chatbotPaymentService } from './chatbot.payment.js';
+import { whatsappService } from '../whatsapp/whatsapp.service.js';
+import {
+    knowledgeCreateSchema,
+    knowledgeUpdateSchema,
+    adminReplySchema,
+    paymentListQuerySchema,
+    paymentConfirmSchema,
+    paymentRejectSchema,
+} from './chatbot.schemas.js';
 
 // ─── Controller ─────────────────────────────────────────────
 export class ChatbotController {
@@ -128,6 +137,80 @@ export class ChatbotController {
                 escalatedConversations,
                 totalMessages,
             });
+        } catch (error) {
+            next(error);
+        }
+    }
+    // ─── Payments ────────────────────────────────────────────
+
+    async listPayments(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const parsed = paymentListQuerySchema.safeParse(req.query);
+            if (!parsed.success) {
+                res.status(400).json({ error: 'Parámetros inválidos', details: parsed.error.issues });
+                return;
+            }
+
+            const result = await chatbotPaymentService.listPayments(parsed.data);
+            res.json(result);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async getPaymentDetail(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const payment = await chatbotPaymentService.getPaymentDetail(req.params.id);
+            res.json({ data: payment });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async confirmPayment(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const parsed = paymentConfirmSchema.safeParse(req.body);
+            if (!parsed.success) {
+                res.status(400).json({ error: 'Datos inválidos', details: parsed.error.issues });
+                return;
+            }
+
+            const adminUserId = (req as unknown as { user: { id: string } }).user.id;
+            await chatbotPaymentService.confirmPayment(req.params.id, adminUserId, parsed.data.notes);
+
+            // Notify customer via WhatsApp
+            const payment = await chatbotPaymentService.getPaymentDetail(req.params.id);
+            await whatsappService.sendFreeformMessage(
+                payment.customer.phone,
+                `🎉 *¡Tu pago ha sido confirmado!*\n\n🔖 Referencia: *${payment.reference}*\n🎫 ${payment.quantity} boleta(s) — *${payment.event.name}*\n\n¡Te esperamos! 🎶`,
+            );
+
+            res.json({ success: true, message: 'Pago confirmado' });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async rejectPayment(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const parsed = paymentRejectSchema.safeParse(req.body);
+            if (!parsed.success) {
+                res.status(400).json({ error: 'Datos inválidos', details: parsed.error.issues });
+                return;
+            }
+
+            const adminUserId = (req as unknown as { user: { id: string } }).user.id;
+            await chatbotPaymentService.rejectPayment(req.params.id, adminUserId, parsed.data.reason);
+
+            // Notify customer via WhatsApp
+            const payment = await chatbotPaymentService.getPaymentDetail(req.params.id);
+            const reasonText = parsed.data.reason ? `\n📝 Motivo: ${parsed.data.reason}` : '';
+            await whatsappService.sendFreeformMessage(
+                payment.customer.phone,
+                `❌ *Tu pago no pudo ser verificado*\n\n🔖 Referencia: *${payment.reference}*${reasonText}\n\nPor favor revisa los datos y envía de nuevo el comprobante, o contáctanos si tienes dudas.`,
+            );
+
+            res.json({ success: true, message: 'Pago rechazado' });
         } catch (error) {
             next(error);
         }

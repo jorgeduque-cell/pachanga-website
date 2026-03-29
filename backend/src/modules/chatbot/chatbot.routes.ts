@@ -1,8 +1,15 @@
 import { Router } from 'express';
 import { chatbotController } from './chatbot.controller.js';
 import { authenticate, requireAdmin } from '../../middleware/auth.middleware.js';
-import { validateQuery, validateParams } from '../../middleware/validate.middleware.js';
-import { conversationListSchema, conversationIdParamSchema } from './chatbot.schemas.js';
+import { validateQuery, validateParams, validateBody } from '../../middleware/validate.middleware.js';
+import {
+    conversationListSchema,
+    conversationIdParamSchema,
+    paymentListQuerySchema,
+    paymentIdParamSchema,
+    paymentConfirmSchema,
+    paymentRejectSchema,
+} from './chatbot.schemas.js';
 
 const router = Router();
 
@@ -14,6 +21,12 @@ router.get('/conversations', validateQuery(conversationListSchema), chatbotContr
 router.get('/conversations/:id', validateParams(conversationIdParamSchema), chatbotController.getConversation.bind(chatbotController));
 router.post('/conversations/:id/reply', validateParams(conversationIdParamSchema), chatbotController.replyToConversation.bind(chatbotController));
 router.patch('/conversations/:id/resolve', validateParams(conversationIdParamSchema), chatbotController.resolveConversation.bind(chatbotController));
+
+// ─── Payments ───────────────────────────────────────────────
+router.get('/payments', validateQuery(paymentListQuerySchema), chatbotController.listPayments.bind(chatbotController));
+router.get('/payments/:id', validateParams(paymentIdParamSchema), chatbotController.getPaymentDetail.bind(chatbotController));
+router.patch('/payments/:id/confirm', validateParams(paymentIdParamSchema), validateBody(paymentConfirmSchema), chatbotController.confirmPayment.bind(chatbotController));
+router.patch('/payments/:id/reject', validateParams(paymentIdParamSchema), validateBody(paymentRejectSchema), chatbotController.rejectPayment.bind(chatbotController));
 
 // ─── Knowledge Base ─────────────────────────────────────────
 router.get('/knowledge', chatbotController.listKnowledge.bind(chatbotController));

@@ -22,6 +22,7 @@ const VALID_INTENTS = [
     'MENU',
     'BIRTHDAY',
     'COMPLAINTS',
+    'PURCHASE',
     'UNKNOWN',
 ] as const;
 
@@ -63,7 +64,7 @@ const SYSTEM_INSTRUCTION = `Eres el asistente virtual de PACHANGA Y POCHOLA, un 
 Responde SIEMPRE en formato JSON con esta estructura exacta:
 {
   "reply": "Tu respuesta al cliente aquí",
-  "intent": "UNA de estas intenciones: GREETING, HOURS, LOCATION, PRICES, RESERVATION, EVENTS, MENU, BIRTHDAY, COMPLAINTS, UNKNOWN",
+  "intent": "UNA de estas intenciones: GREETING, HOURS, LOCATION, PRICES, RESERVATION, EVENTS, MENU, BIRTHDAY, COMPLAINTS, PURCHASE, UNKNOWN",
   "confidence": 0.95,
   "customer_name": null,
   "actions": []
@@ -76,6 +77,8 @@ El campo "customer_name" debe ser el nombre del cliente SOLO si lo menciona expl
 - Si el cliente pregunta por PRECIOS, CARTA, LICORES, o MENÚ → agrega "SEND_MENU_IMAGE" en actions.
 - Si el cliente pregunta por la UBICACIÓN, DIRECCIÓN, o CÓMO LLEGAR → agrega "SEND_LOCATION" en actions.
 - Si el cliente pregunta por un EVENTO específico y existe un flyer → agrega "SEND_EVENT_FLYER" en actions.
+- Si el cliente quiere COMPRAR BOLETAS, PAGAR COVER, RESERVAR VIP con pago, o pregunta CÓMO PAGAR → clasifica como intent "PURCHASE" y agrega "START_PURCHASE_FLOW" en actions. Responde algo como: "¡Claro! Te muestro los eventos disponibles para que elijas."
+- IMPORTANTE: Diferencia entre RESERVATION (solo reservar mesa gratis) y PURCHASE (quiere pagar boletas/cover/VIP). Si mencionan "pagar", "comprar boletas", "cover", "VIP" → es PURCHASE.
 - Puedes agregar varias acciones si aplica. Si no aplica ninguna, deja actions vacío [].`;
 
 // ─── Engine ─────────────────────────────────────────────────

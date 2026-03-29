@@ -61,3 +61,35 @@ export async function deleteFromStorage(publicUrl: string): Promise<void> {
         logger.error({ err: error }, '[Storage] Delete failed');
     }
 }
+
+/**
+ * Uploads a payment receipt to Supabase Storage.
+ * Uses a separate path prefix to isolate from flyers.
+ */
+export async function uploadPaymentReceipt(
+    buffer: Buffer,
+    fileName: string,
+    contentType: string,
+): Promise<string | null> {
+    const client = getClient();
+    if (!client) {
+        logger.warn('[Storage] Supabase not configured, skipping receipt upload');
+        return null;
+    }
+
+    const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100);
+    const path = `payment-receipts/${Date.now()}-${safeName}`;
+
+    const { error } = await client.storage
+        .from(BUCKET)
+        .upload(path, buffer, { contentType, upsert: true });
+
+    if (error) {
+        logger.error({ err: error }, '[Storage] Receipt upload failed');
+        return null;
+    }
+
+    const { data } = client.storage.from(BUCKET).getPublicUrl(path);
+    logger.info({ path, url: data.publicUrl }, '[Storage] Receipt uploaded');
+    return data.publicUrl;
+}

@@ -2,6 +2,7 @@ import { birthdayEngine } from './birthday-engine.js';
 import { startReservationCleanup, stopReservationCleanup } from './reservation-cleanup.js';
 import { surveySender } from './survey-sender.js';
 import { startMessageRetry, stopMessageRetry } from './message-retry.js';
+import { startPaymentExpiry, stopPaymentExpiry } from './payment-expiry.js';
 import { logger } from '../logger.js';
 
 export function startCronJobs(): void {
@@ -10,6 +11,7 @@ export function startCronJobs(): void {
     startReservationCleanup();
     surveySender.start();
     startMessageRetry();
+    startPaymentExpiry();
     logger.info('All cron jobs initialized');
   } catch (error) {
     logger.error({ err: error }, 'Error starting cron jobs');
@@ -22,6 +24,7 @@ export function stopCronJobs(): void {
     stopReservationCleanup();
     surveySender.stop();
     stopMessageRetry();
+    stopPaymentExpiry();
     logger.info('All cron jobs stopped');
   } catch (error) {
     logger.error({ err: error }, 'Error stopping cron jobs');

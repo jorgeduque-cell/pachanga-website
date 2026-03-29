@@ -154,10 +154,11 @@ model Customer {
   createdAt   DateTime       @default(now()) @map("created_at")
   updatedAt   DateTime       @updatedAt @map("updated_at")
 
-  messages      WhatsAppMessage[]
-  interactions  Interaction[]
-  surveys       SatisfactionSurvey[]
-  conversations ChatConversation[]
+  messages             WhatsAppMessage[]
+  interactions         Interaction[]
+  surveys              SatisfactionSurvey[]
+  conversations        ChatConversation[]
+  paymentVerifications PaymentVerification[]
 
   @@index([phone])
   @@index([birthDate])
@@ -240,17 +241,61 @@ model ChatConversation {
   customer    Customer           @relation(fields: [customerId], references: [id])
   status      ConversationStatus @default(ACTIVE)
   intent      String?
+  metadata    Json?
   escalatedAt DateTime?          @map("escalated_at")
   resolvedAt  DateTime?          @map("resolved_at")
   createdAt   DateTime           @default(now()) @map("created_at")
   updatedAt   DateTime           @updatedAt @map("updated_at")
 
-  messages    ChatMessage[]
+  messages              ChatMessage[]
+  paymentVerifications  PaymentVerification[]
 
   @@index([customerId])
   @@index([status])
   @@index([createdAt])
   @@map("chat_conversations")
+}
+
+// ═══════════════════════════════════════════════════════════
+// PAYMENT VERIFICATION
+// ═══════════════════════════════════════════════════════════
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+  EXPIRED
+}
+
+model PaymentVerification {
+  id              String        @id @default(uuid())
+  reference       String        @unique
+  customerId      String        @map("customer_id")
+  customer        Customer      @relation(fields: [customerId], references: [id])
+  eventId         String        @map("event_id")
+  event           Event         @relation(fields: [eventId], references: [id])
+  conversationId  String        @map("conversation_id")
+  conversation    ChatConversation @relation(fields: [conversationId], references: [id])
+  ticketType      String        @map("ticket_type")
+  quantity        Int
+  expectedAmount  Int           @map("expected_amount")
+  detectedAmount  Int?          @map("detected_amount")
+  receiptUrl      String?       @map("receipt_url")
+  visionAnalysis  Json?         @map("vision_analysis")
+  status          PaymentStatus @default(PENDING)
+  adminNotes      String?       @map("admin_notes")
+  confirmedBy     String?       @map("confirmed_by")
+  confirmedAt     DateTime?     @map("confirmed_at")
+  rejectedAt      DateTime?     @map("rejected_at")
+  expiresAt       DateTime      @map("expires_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  @@index([customerId])
+  @@index([eventId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("payment_verifications")
 }
 
 model ChatMessage {
@@ -309,6 +354,7 @@ model Event {
   updatedAt   DateTime    @updatedAt @map("updated_at")
 
   tables      EventTable[]
+  paymentVerifications PaymentVerification[]
 
   @@index([eventDate, status])
   @@map("events")
