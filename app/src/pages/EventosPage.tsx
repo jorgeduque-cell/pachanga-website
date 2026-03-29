@@ -80,6 +80,23 @@ function MainEventCard({ event }: { event: Event }) {
   const preview = event.description ? truncateText(event.description, 120) : null;
   const hasMore = event.description ? event.description.length > 120 : false;
 
+  const ticketPrices = event.ticketPrices as Record<string, number> | null;
+  const hasTicketPrices = ticketPrices && Object.values(ticketPrices).some(v => v > 0);
+
+  const TICKET_LABELS: Record<string, string> = {
+    palco_8: 'Palco 8P',
+    palco_4: 'Palco 4P',
+    palco_2: 'Palco 2P',
+    vip_primer_piso: 'VIP 1er Piso',
+    vip_segundo_piso: 'VIP 2do Piso',
+    barras: 'Barras',
+  };
+
+  const allPrices = hasTicketPrices
+    ? Object.values(ticketPrices!).filter(v => v > 0)
+    : event.coverPrice && event.coverPrice > 0 ? [event.coverPrice] : [];
+  const minPrice = allPrices.length > 0 ? Math.min(...allPrices) : null;
+
   return (
     <div className="rounded-2xl overflow-hidden glass-card-heavy border-[var(--accent-gold)]/15 shadow-2xl shadow-black/40">
       {/* Flyer */}
@@ -96,10 +113,10 @@ function MainEventCard({ event }: { event: Event }) {
             {badge.label}
           </span>
         </div>
-        {event.coverPrice !== null && event.coverPrice > 0 && (
+        {minPrice && (
           <div className="absolute top-4 right-4">
             <span className="px-4 py-1.5 text-white text-sm font-heading tracking-wider rounded-full bg-black/70 backdrop-blur-sm border border-[var(--accent-gold)]/30">
-              💰 Precios desde ${event.coverPrice.toLocaleString('es-CO')}
+              💰 Desde ${minPrice.toLocaleString('es-CO')}
             </span>
           </div>
         )}
@@ -120,6 +137,27 @@ function MainEventCard({ event }: { event: Event }) {
             {event.eventTime}
           </span>
         </div>
+
+        {/* Ticket Prices Grid (Concerts) */}
+        {hasTicketPrices && (
+          <div className="grid grid-cols-2 gap-1.5 pt-1">
+            {Object.entries(ticketPrices!).filter(([, v]) => v > 0).map(([key, price]) => (
+              <div key={key} className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
+                <span className="text-white/60 text-xs">{TICKET_LABELS[key] || key}</span>
+                <span className="text-[var(--accent-gold)] text-xs font-heading">${price.toLocaleString('es-CO')}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Cover Price (Quick Events) */}
+        {!hasTicketPrices && event.coverPrice !== null && event.coverPrice > 0 && (
+          <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/5 border border-white/10">
+            <span className="text-white/60 text-sm">Cover</span>
+            <span className="text-[var(--accent-gold)] font-heading">${event.coverPrice.toLocaleString('es-CO')}</span>
+          </div>
+        )}
+
         {event.description && (
           <div className="text-white/50 font-body text-xs leading-relaxed">
             <p>{expanded ? event.description : preview}</p>
