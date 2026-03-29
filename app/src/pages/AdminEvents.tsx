@@ -48,7 +48,13 @@ import {
 } from '@/hooks/useEvents';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from 'sonner';
-import type { Event, CreateEventDTO, UpdateEventDTO, UpdateTablesDTO } from '@/types/events.types';
+import type { Event, EventType, TicketPrices, CreateEventDTO, UpdateEventDTO, UpdateTablesDTO } from '@/types/events.types';
+
+// ─── Constants ───────────────────────────────────────────
+const EVENT_TYPE_LABELS: Record<EventType, string> = {
+  CONCERT: '🎵 Concierto',
+  QUICK_EVENT: '🎉 Evento Rápido',
+};
 
 // ─── Constants ───────────────────────────────────────────
 const STATUS_LABELS: Record<Event['status'], string> = {
@@ -89,10 +95,12 @@ export function AdminEvents() {
   // Form state
   const [form, setForm] = useState<CreateEventDTO>({
     name: '',
+    eventType: 'QUICK_EVENT',
     eventDate: '',
     eventTime: '',
     description: '',
     coverPrice: 0,
+    ticketPrices: {},
   });
 
   const [editForm, setEditForm] = useState<UpdateEventDTO>({});
@@ -117,7 +125,7 @@ export function AdminEvents() {
       await createMutation.mutateAsync(form);
       toast.success('Evento creado exitosamente');
       setIsCreateOpen(false);
-      setForm({ name: '', eventDate: '', eventTime: '', description: '', coverPrice: 0 });
+      setForm({ name: '', eventType: 'QUICK_EVENT', eventDate: '', eventTime: '', description: '', coverPrice: 0, ticketPrices: {} });
     } catch {
       toast.error('Error al crear el evento');
     }
@@ -173,10 +181,12 @@ export function AdminEvents() {
     setSelectedEvent(event);
     setEditForm({
       name: event.name,
+      eventType: event.eventType || 'QUICK_EVENT',
       eventDate: event.eventDate.split('T')[0],
       eventTime: event.eventTime,
       description: event.description || '',
       coverPrice: event.coverPrice || 0,
+      ticketPrices: (event.ticketPrices as TicketPrices) || {},
       status: event.status,
     });
     setIsEditOpen(true);
@@ -352,6 +362,11 @@ export function AdminEvents() {
                       ${event.coverPrice.toLocaleString('es-CO')} COP
                     </div>
                   )}
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${event.eventType === 'CONCERT' ? 'bg-purple-500/20 text-purple-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                      {EVENT_TYPE_LABELS[event.eventType] || '🎉 Evento'}
+                    </span>
+                  </div>
                 </div>
                 {/* Tables summary */}
                 {event.tables && event.tables.length > 0 && (
@@ -394,6 +409,40 @@ export function AdminEvents() {
               <label className="block text-white/80 mb-2 text-sm">Nombre del evento</label>
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Noche Salsera" required className="bg-[#0a0a0a] border-[#333] text-white placeholder:text-white/40" />
             </div>
+
+            {/* Event Type Selector */}
+            <div>
+              <label className="block text-white/80 mb-2 text-sm">Tipo de evento</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, eventType: 'CONCERT', ticketPrices: { general: 0, vip: 0, palco: 0 }, coverPrice: 0 })}
+                  className={`p-3 rounded-lg border-2 text-center transition-all ${
+                    form.eventType === 'CONCERT'
+                      ? 'border-purple-500 bg-purple-500/10 text-purple-400'
+                      : 'border-[#333] bg-[#0a0a0a] text-white/60 hover:border-[#555]'
+                  }`}
+                >
+                  <span className="text-2xl block mb-1">🎵</span>
+                  <span className="text-sm font-medium">Concierto</span>
+                  <span className="text-xs block text-white/40 mt-0.5">VIP, General, Palco</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, eventType: 'QUICK_EVENT', ticketPrices: {}, coverPrice: 0 })}
+                  className={`p-3 rounded-lg border-2 text-center transition-all ${
+                    form.eventType === 'QUICK_EVENT'
+                      ? 'border-blue-500 bg-blue-500/10 text-blue-400'
+                      : 'border-[#333] bg-[#0a0a0a] text-white/60 hover:border-[#555]'
+                  }`}
+                >
+                  <span className="text-2xl block mb-1">🎉</span>
+                  <span className="text-sm font-medium">Evento Rápido</span>
+                  <span className="text-xs block text-white/40 mt-0.5">Cover opcional</span>
+                </button>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-white/80 mb-2 text-sm">Fecha</label>
@@ -408,10 +457,33 @@ export function AdminEvents() {
               <label className="block text-white/80 mb-2 text-sm">Descripción</label>
               <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Describe el evento..." rows={3} className="w-full px-3 py-2 rounded-md bg-[#0a0a0a] border border-[#333] text-white placeholder:text-white/40 resize-none" />
             </div>
-            <div>
-              <label className="block text-white/80 mb-2 text-sm">Precio cover (COP)</label>
-              <Input type="number" min={0} value={form.coverPrice} onChange={(e) => setForm({ ...form, coverPrice: parseInt(e.target.value) || 0 })} className="bg-[#0a0a0a] border-[#333] text-white" />
-            </div>
+
+            {/* Dynamic Pricing Section */}
+            {form.eventType === 'CONCERT' ? (
+              <div className="space-y-3 p-4 rounded-lg bg-purple-500/5 border border-purple-500/20">
+                <label className="block text-purple-400 mb-1 text-sm font-medium">💰 Precios por categoria</label>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-white/60 text-xs mb-1">General</label>
+                    <Input type="number" min={0} value={form.ticketPrices?.general || 0} onChange={(e) => setForm({ ...form, ticketPrices: { ...form.ticketPrices, general: parseInt(e.target.value) || 0 } })} className="bg-[#0a0a0a] border-[#333] text-white" />
+                  </div>
+                  <div>
+                    <label className="block text-white/60 text-xs mb-1">VIP</label>
+                    <Input type="number" min={0} value={form.ticketPrices?.vip || 0} onChange={(e) => setForm({ ...form, ticketPrices: { ...form.ticketPrices, vip: parseInt(e.target.value) || 0 } })} className="bg-[#0a0a0a] border-[#333] text-white" />
+                  </div>
+                  <div>
+                    <label className="block text-white/60 text-xs mb-1">Palco</label>
+                    <Input type="number" min={0} value={form.ticketPrices?.palco || 0} onChange={(e) => setForm({ ...form, ticketPrices: { ...form.ticketPrices, palco: parseInt(e.target.value) || 0 } })} className="bg-[#0a0a0a] border-[#333] text-white" />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-white/80 mb-2 text-sm">Precio cover (COP) — 0 = entrada libre</label>
+                <Input type="number" min={0} value={form.coverPrice} onChange={(e) => setForm({ ...form, coverPrice: parseInt(e.target.value) || 0 })} className="bg-[#0a0a0a] border-[#333] text-white" />
+              </div>
+            )}
+
             <div className="flex gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)} className="flex-1 border-[#333] bg-transparent text-white hover:bg-[#333]">Cancelar</Button>
               <Button type="submit" disabled={createMutation.isPending} className="flex-1 btn-primary">

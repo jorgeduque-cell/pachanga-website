@@ -339,13 +339,20 @@ enum EventStatus {
   PAST
 }
 
+enum EventType {
+  CONCERT
+  QUICK_EVENT
+}
+
 model Event {
   id          String      @id @default(uuid())
   name        String
+  eventType   EventType   @default(QUICK_EVENT) @map("event_type")
   eventDate   DateTime    @map("event_date") @db.Date
   eventTime   String      @map("event_time")
   description String?
   coverPrice  Int?        @map("cover_price")
+  ticketPrices Json?      @map("ticket_prices")
   flyerUrl    String?     @map("flyer_url")
   status      EventStatus @default(ACTIVE)
   isActive    Boolean     @default(true) @map("is_active")

@@ -1,4 +1,4 @@
-import { EventStatus, TableZone } from '@prisma/client';
+import { EventStatus, EventType, TableZone, Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { uploadToStorage, deleteFromStorage } from '../../lib/storage.js';
 import { logger } from '../../lib/logger.js';
@@ -6,19 +6,23 @@ import { logger } from '../../lib/logger.js';
 // ─── Types ───────────────────────────────────────────────────
 export interface CreateEventInput {
     name: string;
+    eventType?: 'CONCERT' | 'QUICK_EVENT';
     eventDate: string;    // ISO date string
     eventTime: string;    // e.g. "18:00"
     description?: string;
     coverPrice?: number;
+    ticketPrices?: Record<string, number>;  // e.g. { general: 60000, vip: 120000, palco: 200000 }
     tables?: Array<{ zone: TableZone; total: number }>;
 }
 
 export interface UpdateEventInput {
     name?: string;
+    eventType?: 'CONCERT' | 'QUICK_EVENT';
     eventDate?: string;
     eventTime?: string;
     description?: string;
     coverPrice?: number;
+    ticketPrices?: Record<string, number>;
     status?: EventStatus;
     isActive?: boolean;
 }
@@ -78,10 +82,12 @@ export class EventsService {
         const event = await prisma.event.create({
             data: {
                 name: input.name,
+                eventType: (input.eventType as EventType) ?? 'QUICK_EVENT',
                 eventDate: new Date(input.eventDate),
                 eventTime: input.eventTime,
                 description: input.description,
                 coverPrice: input.coverPrice,
+                ticketPrices: input.ticketPrices ? (input.ticketPrices as unknown as Prisma.InputJsonValue) : undefined,
                 tables: input.tables?.length ? {
                     create: input.tables.map((t) => ({
                         zone: t.zone,
@@ -108,10 +114,12 @@ export class EventsService {
             where: { id },
             data: {
                 ...(input.name && { name: input.name }),
+                ...(input.eventType && { eventType: input.eventType as EventType }),
                 ...(input.eventDate && { eventDate: new Date(input.eventDate) }),
                 ...(input.eventTime && { eventTime: input.eventTime }),
                 ...(input.description !== undefined && { description: input.description }),
                 ...(input.coverPrice !== undefined && { coverPrice: input.coverPrice }),
+                ...(input.ticketPrices !== undefined && { ticketPrices: input.ticketPrices as unknown as Prisma.InputJsonValue }),
                 ...(input.status && { status: input.status }),
                 ...(input.isActive !== undefined && { isActive: input.isActive }),
             },
