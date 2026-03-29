@@ -25,6 +25,7 @@ import { AdminSurveys } from '@/pages/AdminSurveys';
 import { AdminChatbot } from '@/pages/AdminChatbot';
 import { AdminEvents } from '@/pages/AdminEvents';
 import { AdminMessages } from '@/pages/AdminMessages';
+import { AdminPayments } from '@/pages/AdminPayments';
 
 // Wrapper para transiciones de página
 function AnimatedOutlet() {
@@ -78,6 +79,7 @@ export const router = createBrowserRouter([
       { path: 'chatbot', element: <AdminChatbot /> },
       { path: 'eventos', element: <AdminEvents /> },
       { path: 'mensajes', element: <AdminMessages /> },
+      { path: 'pagos', element: <AdminPayments /> },
     ],
   },
   {
