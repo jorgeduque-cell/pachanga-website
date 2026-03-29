@@ -3,9 +3,12 @@
 export type EventType = 'CONCERT' | 'QUICK_EVENT';
 
 export interface TicketPrices {
-  general?: number;
-  vip?: number;
-  palco?: number;
+  palco_8?: number;
+  palco_4?: number;
+  palco_2?: number;
+  vip_primer_piso?: number;
+  vip_segundo_piso?: number;
+  barras?: number;
   cover?: number;
 }
 

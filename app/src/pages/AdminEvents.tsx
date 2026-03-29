@@ -416,7 +416,7 @@ export function AdminEvents() {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => setForm({ ...form, eventType: 'CONCERT', ticketPrices: { general: 0, vip: 0, palco: 0 }, coverPrice: 0 })}
+                  onClick={() => setForm({ ...form, eventType: 'CONCERT', ticketPrices: { palco_8: 0, palco_4: 0, palco_2: 0, vip_primer_piso: 0, vip_segundo_piso: 0, barras: 0 }, coverPrice: 0 })}
                   className={`p-3 rounded-lg border-2 text-center transition-all ${
                     form.eventType === 'CONCERT'
                       ? 'border-purple-500 bg-purple-500/10 text-purple-400'
@@ -425,7 +425,7 @@ export function AdminEvents() {
                 >
                   <span className="text-2xl block mb-1">🎵</span>
                   <span className="text-sm font-medium">Concierto</span>
-                  <span className="text-xs block text-white/40 mt-0.5">VIP, General, Palco</span>
+                  <span className="text-xs block text-white/40 mt-0.5">Palcos, VIP, Barras</span>
                 </button>
                 <button
                   type="button"
@@ -461,19 +461,31 @@ export function AdminEvents() {
             {/* Dynamic Pricing Section */}
             {form.eventType === 'CONCERT' ? (
               <div className="space-y-3 p-4 rounded-lg bg-purple-500/5 border border-purple-500/20">
-                <label className="block text-purple-400 mb-1 text-sm font-medium">💰 Precios por categoria</label>
-                <div className="grid grid-cols-3 gap-3">
+                <label className="block text-purple-400 mb-1 text-sm font-medium">📍 Ubicaciones y precios</label>
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-white/60 text-xs mb-1">General</label>
-                    <Input type="number" min={0} value={form.ticketPrices?.general || 0} onChange={(e) => setForm({ ...form, ticketPrices: { ...form.ticketPrices, general: parseInt(e.target.value) || 0 } })} className="bg-[#0a0a0a] border-[#333] text-white" />
+                    <label className="block text-white/60 text-xs mb-1">P — Palco 8 Personas</label>
+                    <Input type="number" min={0} value={form.ticketPrices?.palco_8 || 0} onChange={(e) => setForm({ ...form, ticketPrices: { ...form.ticketPrices, palco_8: parseInt(e.target.value) || 0 } })} className="bg-[#0a0a0a] border-[#333] text-white" />
                   </div>
                   <div>
-                    <label className="block text-white/60 text-xs mb-1">VIP</label>
-                    <Input type="number" min={0} value={form.ticketPrices?.vip || 0} onChange={(e) => setForm({ ...form, ticketPrices: { ...form.ticketPrices, vip: parseInt(e.target.value) || 0 } })} className="bg-[#0a0a0a] border-[#333] text-white" />
+                    <label className="block text-white/60 text-xs mb-1">R — Palco 4 Personas</label>
+                    <Input type="number" min={0} value={form.ticketPrices?.palco_4 || 0} onChange={(e) => setForm({ ...form, ticketPrices: { ...form.ticketPrices, palco_4: parseInt(e.target.value) || 0 } })} className="bg-[#0a0a0a] border-[#333] text-white" />
                   </div>
                   <div>
-                    <label className="block text-white/60 text-xs mb-1">Palco</label>
-                    <Input type="number" min={0} value={form.ticketPrices?.palco || 0} onChange={(e) => setForm({ ...form, ticketPrices: { ...form.ticketPrices, palco: parseInt(e.target.value) || 0 } })} className="bg-[#0a0a0a] border-[#333] text-white" />
+                    <label className="block text-white/60 text-xs mb-1">M — Palco 2 Personas</label>
+                    <Input type="number" min={0} value={form.ticketPrices?.palco_2 || 0} onChange={(e) => setForm({ ...form, ticketPrices: { ...form.ticketPrices, palco_2: parseInt(e.target.value) || 0 } })} className="bg-[#0a0a0a] border-[#333] text-white" />
+                  </div>
+                  <div>
+                    <label className="block text-white/60 text-xs mb-1">V — VIP Primer Piso</label>
+                    <Input type="number" min={0} value={form.ticketPrices?.vip_primer_piso || 0} onChange={(e) => setForm({ ...form, ticketPrices: { ...form.ticketPrices, vip_primer_piso: parseInt(e.target.value) || 0 } })} className="bg-[#0a0a0a] border-[#333] text-white" />
+                  </div>
+                  <div>
+                    <label className="block text-white/60 text-xs mb-1">S — VIP Segundo Piso</label>
+                    <Input type="number" min={0} value={form.ticketPrices?.vip_segundo_piso || 0} onChange={(e) => setForm({ ...form, ticketPrices: { ...form.ticketPrices, vip_segundo_piso: parseInt(e.target.value) || 0 } })} className="bg-[#0a0a0a] border-[#333] text-white" />
+                  </div>
+                  <div>
+                    <label className="block text-white/60 text-xs mb-1">K — Barras</label>
+                    <Input type="number" min={0} value={form.ticketPrices?.barras || 0} onChange={(e) => setForm({ ...form, ticketPrices: { ...form.ticketPrices, barras: parseInt(e.target.value) || 0 } })} className="bg-[#0a0a0a] border-[#333] text-white" />
                   </div>
                 </div>
               </div>
