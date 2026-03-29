@@ -92,10 +92,28 @@ function MainEventCard({ event }: { event: Event }) {
     barras: 'Barras',
   };
 
-  const allPrices = hasTicketPrices
-    ? Object.values(ticketPrices!).filter(v => v > 0)
+  const TICKET_CAPACITY: Record<string, number> = {
+    palco_8: 8,
+    palco_4: 4,
+    palco_2: 2,
+    vip_primer_piso: 4,
+    vip_segundo_piso: 4,
+    barras: 2,
+  };
+
+  // Calculate per-person prices
+  const perPersonPrices = hasTicketPrices
+    ? Object.entries(ticketPrices!).filter(([, v]) => v > 0).map(([key, price]) => ({
+        key,
+        total: price,
+        perPerson: Math.round(price / (TICKET_CAPACITY[key] || 1)),
+      }))
+    : [];
+
+  const allPerPersonPrices = perPersonPrices.length > 0
+    ? perPersonPrices.map(p => p.perPerson)
     : event.coverPrice && event.coverPrice > 0 ? [event.coverPrice] : [];
-  const minPrice = allPrices.length > 0 ? Math.min(...allPrices) : null;
+  const minPrice = allPerPersonPrices.length > 0 ? Math.min(...allPerPersonPrices) : null;
 
   return (
     <div className="rounded-2xl overflow-hidden glass-card-heavy border-[var(--accent-gold)]/15 shadow-2xl shadow-black/40">
@@ -116,7 +134,7 @@ function MainEventCard({ event }: { event: Event }) {
         {minPrice && (
           <div className="absolute top-4 right-4">
             <span className="px-4 py-1.5 text-white text-sm font-heading tracking-wider rounded-full bg-black/70 backdrop-blur-sm border border-[var(--accent-gold)]/30">
-              💰 Desde ${minPrice.toLocaleString('es-CO')}
+              💰 Desde ${minPrice.toLocaleString('es-CO')}/persona
             </span>
           </div>
         )}
@@ -139,12 +157,15 @@ function MainEventCard({ event }: { event: Event }) {
         </div>
 
         {/* Ticket Prices Grid (Concerts) */}
-        {hasTicketPrices && (
+        {hasTicketPrices && perPersonPrices.length > 0 && (
           <div className="grid grid-cols-2 gap-1.5 pt-1">
-            {Object.entries(ticketPrices!).filter(([, v]) => v > 0).map(([key, price]) => (
+            {perPersonPrices.map(({ key, total, perPerson }) => (
               <div key={key} className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
                 <span className="text-white/60 text-xs">{TICKET_LABELS[key] || key}</span>
-                <span className="text-[var(--accent-gold)] text-xs font-heading">${price.toLocaleString('es-CO')}</span>
+                <div className="text-right">
+                  <span className="text-[var(--accent-gold)] text-xs font-heading">${perPerson.toLocaleString('es-CO')}</span>
+                  <span className="text-white/30 text-[10px] block">/persona ({TICKET_CAPACITY[key]}P = ${total.toLocaleString('es-CO')})</span>
+                </div>
               </div>
             ))}
           </div>
