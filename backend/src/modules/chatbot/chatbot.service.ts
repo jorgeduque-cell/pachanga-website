@@ -304,10 +304,19 @@ export class ChatbotService {
         state: string,
         userMessage: string,
     ): Promise<string | null> {
+        const msg = userMessage.toLowerCase();
         const cancelKeywords = ['cancelar', 'salir', 'no quiero', 'volver'];
-        if (cancelKeywords.some(kw => userMessage.toLowerCase().includes(kw))) {
+        if (cancelKeywords.some(kw => msg.includes(kw))) {
             await purchaseFlowService.resetFlow(conversationId);
             return '✅ Compra cancelada. Si necesitas algo más, ¡con gusto te ayudo! 😊';
+        }
+
+        // Allow restarting a new purchase from AWAITING_PAYMENT or VERIFYING_PAYMENT
+        const restartKeywords = ['comprar', 'nueva compra', 'otra compra', 'iniciar', 'empezar', 'quiero comprar'];
+        if ((state === 'AWAITING_PAYMENT' || state === 'VERIFYING_PAYMENT') &&
+            restartKeywords.some(kw => msg.includes(kw))) {
+            await purchaseFlowService.resetFlow(conversationId);
+            return purchaseFlowService.startPurchaseFlow(conversationId);
         }
 
         switch (state) {
@@ -316,7 +325,7 @@ export class ChatbotService {
             case 'COLLECTING_QUANTITY':
                 return purchaseFlowService.handleQuantitySelection(conversationId, customerId, userMessage);
             case 'AWAITING_PAYMENT':
-                return '📸 Estoy esperando tu comprobante de pago. Por favor envía la *foto del comprobante* de transferencia.\n\n💡 Si necesitas ver los datos bancarios de nuevo, escribe *"datos de pago"*.';
+                return '📸 Estoy esperando tu comprobante de pago. Por favor envía la *foto del comprobante* de transferencia.\n\n💡 Si necesitas ver los datos bancarios de nuevo, escribe *"datos de pago"*.\n\n🔄 Si deseas *cancelar* esta compra y hacer una nueva, escribe *"cancelar"*.';
             case 'VERIFYING_PAYMENT':
                 return '⏳ Tu pago está siendo verificado por nuestro equipo. Te avisaremos por este mismo chat cuando esté confirmado. ¡Gracias por tu paciencia! 🙏';
             default:
