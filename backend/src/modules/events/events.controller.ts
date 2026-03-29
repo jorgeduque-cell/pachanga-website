@@ -14,10 +14,12 @@ const UuidSchema = z.string().uuid();
 
 const CreateEventSchema = z.object({
     name: z.string().min(1).max(200),
+    eventType: z.enum(['CONCERT', 'QUICK_EVENT']).optional(),
     eventDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     eventTime: z.string().regex(/^\d{2}:\d{2}$/),
     description: z.string().max(2000).optional(),
     coverPrice: z.number().int().min(0).optional(),
+    ticketPrices: z.record(z.string(), z.number().int().min(0)).optional(),
     tables: z.array(z.object({
         zone: z.enum(['SALON', 'TERRAZA', 'VIP', 'BARRA', 'PISTA']),
         total: z.number().int().min(0),
@@ -26,10 +28,12 @@ const CreateEventSchema = z.object({
 
 const UpdateEventSchema = z.object({
     name: z.string().min(1).max(200).optional(),
+    eventType: z.enum(['CONCERT', 'QUICK_EVENT']).optional(),
     eventDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     eventTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
     description: z.string().max(2000).optional(),
     coverPrice: z.number().int().min(0).optional(),
+    ticketPrices: z.record(z.string(), z.number().int().min(0)).optional(),
     status: z.enum(['ACTIVE', 'SOLD_OUT', 'CANCELLED', 'PAST']).optional(),
     isActive: z.boolean().optional(),
 });
