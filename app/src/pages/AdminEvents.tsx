@@ -531,10 +531,77 @@ export function AdminEvents() {
               <label className="block text-white/80 mb-2 text-sm">Descripción</label>
               <textarea value={editForm.description || ''} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} rows={3} className="w-full px-3 py-2 rounded-md bg-[#0a0a0a] border border-[#333] text-white resize-none" />
             </div>
+            {/* Event Type Selector */}
             <div>
-              <label className="block text-white/80 mb-2 text-sm">Precio cover (COP)</label>
-              <Input type="number" min={0} value={editForm.coverPrice || 0} onChange={(e) => setEditForm({ ...editForm, coverPrice: parseInt(e.target.value) || 0 })} className="bg-[#0a0a0a] border-[#333] text-white" />
+              <label className="block text-white/80 mb-2 text-sm">Tipo de evento</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditForm({ ...editForm, eventType: 'CONCERT', ticketPrices: editForm.ticketPrices || { palco_8: 0, palco_4: 0, palco_2: 0, vip_primer_piso: 0, vip_segundo_piso: 0, barras: 0 }, coverPrice: 0 })}
+                  className={`p-3 rounded-lg border-2 text-center transition-all ${
+                    editForm.eventType === 'CONCERT'
+                      ? 'border-purple-500 bg-purple-500/10 text-purple-400'
+                      : 'border-[#333] bg-[#0a0a0a] text-white/60 hover:border-[#555]'
+                  }`}
+                >
+                  <span className="text-2xl block mb-1">🎵</span>
+                  <span className="text-sm font-medium">Concierto</span>
+                  <span className="text-xs block text-white/40 mt-0.5">Palcos, VIP, Barras</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditForm({ ...editForm, eventType: 'QUICK_EVENT', ticketPrices: {}, coverPrice: editForm.coverPrice || 0 })}
+                  className={`p-3 rounded-lg border-2 text-center transition-all ${
+                    editForm.eventType === 'QUICK_EVENT'
+                      ? 'border-blue-500 bg-blue-500/10 text-blue-400'
+                      : 'border-[#333] bg-[#0a0a0a] text-white/60 hover:border-[#555]'
+                  }`}
+                >
+                  <span className="text-2xl block mb-1">🎉</span>
+                  <span className="text-sm font-medium">Evento Rápido</span>
+                  <span className="text-xs block text-white/40 mt-0.5">Cover opcional</span>
+                </button>
+              </div>
             </div>
+
+            {/* Dynamic Pricing */}
+            {editForm.eventType === 'CONCERT' ? (
+              <div className="space-y-3 p-4 rounded-lg bg-purple-500/5 border border-purple-500/20">
+                <label className="block text-purple-400 mb-1 text-sm font-medium">📍 Ubicaciones y precios</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-white/60 text-xs mb-1">P — Palco 8 Personas</label>
+                    <Input type="number" min={0} value={editForm.ticketPrices?.palco_8 || 0} onChange={(e) => setEditForm({ ...editForm, ticketPrices: { ...editForm.ticketPrices, palco_8: parseInt(e.target.value) || 0 } })} className="bg-[#0a0a0a] border-[#333] text-white" />
+                  </div>
+                  <div>
+                    <label className="block text-white/60 text-xs mb-1">R — Palco 4 Personas</label>
+                    <Input type="number" min={0} value={editForm.ticketPrices?.palco_4 || 0} onChange={(e) => setEditForm({ ...editForm, ticketPrices: { ...editForm.ticketPrices, palco_4: parseInt(e.target.value) || 0 } })} className="bg-[#0a0a0a] border-[#333] text-white" />
+                  </div>
+                  <div>
+                    <label className="block text-white/60 text-xs mb-1">M — Palco 2 Personas</label>
+                    <Input type="number" min={0} value={editForm.ticketPrices?.palco_2 || 0} onChange={(e) => setEditForm({ ...editForm, ticketPrices: { ...editForm.ticketPrices, palco_2: parseInt(e.target.value) || 0 } })} className="bg-[#0a0a0a] border-[#333] text-white" />
+                  </div>
+                  <div>
+                    <label className="block text-white/60 text-xs mb-1">V — VIP Primer Piso</label>
+                    <Input type="number" min={0} value={editForm.ticketPrices?.vip_primer_piso || 0} onChange={(e) => setEditForm({ ...editForm, ticketPrices: { ...editForm.ticketPrices, vip_primer_piso: parseInt(e.target.value) || 0 } })} className="bg-[#0a0a0a] border-[#333] text-white" />
+                  </div>
+                  <div>
+                    <label className="block text-white/60 text-xs mb-1">S — VIP Segundo Piso</label>
+                    <Input type="number" min={0} value={editForm.ticketPrices?.vip_segundo_piso || 0} onChange={(e) => setEditForm({ ...editForm, ticketPrices: { ...editForm.ticketPrices, vip_segundo_piso: parseInt(e.target.value) || 0 } })} className="bg-[#0a0a0a] border-[#333] text-white" />
+                  </div>
+                  <div>
+                    <label className="block text-white/60 text-xs mb-1">K — Barras</label>
+                    <Input type="number" min={0} value={editForm.ticketPrices?.barras || 0} onChange={(e) => setEditForm({ ...editForm, ticketPrices: { ...editForm.ticketPrices, barras: parseInt(e.target.value) || 0 } })} className="bg-[#0a0a0a] border-[#333] text-white" />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-white/80 mb-2 text-sm">Precio cover (COP) — 0 = entrada libre</label>
+                <Input type="number" min={0} value={editForm.coverPrice || 0} onChange={(e) => setEditForm({ ...editForm, coverPrice: parseInt(e.target.value) || 0 })} className="bg-[#0a0a0a] border-[#333] text-white" />
+              </div>
+            )}
+
             <div>
               <label className="block text-white/80 mb-2 text-sm">Estado</label>
               <Select value={editForm.status || 'ACTIVE'} onValueChange={(v) => setEditForm({ ...editForm, status: v as Event['status'] })}>
