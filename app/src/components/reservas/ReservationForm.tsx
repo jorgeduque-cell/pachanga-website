@@ -42,6 +42,42 @@ interface ReservationFormProps {
   error: Error | null;
 }
 
+// Presentational field wrapper — defined at module scope so it is NOT recreated
+// on every ReservationForm render (which would remount its inputs). Fixes
+// react-hooks/static-components.
+const FormField = ({
+  label,
+  icon: Icon,
+  error,
+  children,
+}: {
+  label: string;
+  icon: React.ElementType;
+  error?: string;
+  children: React.ReactNode;
+}) => (
+  <div className="space-y-2">
+    <label className="flex items-center gap-2 text-sm font-medium text-[var(--accent-gold)]">
+      <Icon className="w-4 h-4" />
+      {label}
+    </label>
+    {children}
+    <AnimatePresence>
+      {error && (
+        <motion.p
+          initial={{ opacity: 0, y: -5 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          className="text-sm text-[var(--accent-red)] flex items-center gap-1"
+        >
+          <AlertCircle className="w-3 h-3" />
+          {error}
+        </motion.p>
+      )}
+    </AnimatePresence>
+  </div>
+);
+
 export function ReservationForm({
   selectedTableId,
   selectedTableName,
@@ -98,39 +134,6 @@ export function ReservationForm({
   };
 
   // Form field component with glass style
-  const FormField = ({
-    label,
-    icon: Icon,
-    error,
-    children,
-  }: {
-    label: string;
-    icon: React.ElementType;
-    error?: string;
-    children: React.ReactNode;
-  }) => (
-    <div className="space-y-2">
-      <label className="flex items-center gap-2 text-sm font-medium text-[var(--accent-gold)]">
-        <Icon className="w-4 h-4" />
-        {label}
-      </label>
-      {children}
-      <AnimatePresence>
-        {error && (
-          <motion.p
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="text-sm text-[var(--accent-red)] flex items-center gap-1"
-          >
-            <AlertCircle className="w-3 h-3" />
-            {error}
-          </motion.p>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-
   return (
     <div className="glass-card-heavy p-6">
       <h3 className="text-2xl font-heading text-[var(--accent-gold)] uppercase tracking-wider mb-6">

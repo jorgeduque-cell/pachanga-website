@@ -24,7 +24,7 @@ export function AdminLogin() {
     try {
       await login({ email, password });
       navigate(from, { replace: true });
-    } catch (err) {
+    } catch {
       setError('Credenciales inválidas. Intenta de nuevo.');
     }
   };

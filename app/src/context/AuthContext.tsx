@@ -2,6 +2,9 @@ import { createContext, useState, useCallback, useEffect, type ReactNode } from 
 import { authService } from '@/services';
 import type { AuthContextType, LoginCredentials, User, AuthResponse } from '@/types';
 
+// Context object is intentionally colocated with its provider; the consuming
+// useAuth hook lives elsewhere. (HMR fast-refresh nicety only — no runtime impact.)
+// eslint-disable-next-line react-refresh/only-export-components
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 interface AuthProviderProps {

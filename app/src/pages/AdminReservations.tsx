@@ -119,7 +119,7 @@ export function AdminReservations() {
         partySize: 2,
       });
       refetch();
-    } catch (error) {
+    } catch {
       toast.error('Error al crear la reserva');
     } finally {
       setIsCreating(false);
@@ -130,7 +130,7 @@ export function AdminReservations() {
     try {
       await refetch();
       toast.success('Reservas actualizadas');
-    } catch (error) {
+    } catch {
       toast.error('Error al recargar las reservas');
     }
   };

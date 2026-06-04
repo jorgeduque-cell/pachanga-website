@@ -50,7 +50,7 @@ export function ReservasSection() {
       });
 
       alert('¡Reserva enviada con éxito! Te contactaremos pronto.');
-    } catch (error) {
+    } catch {
       alert('Error al enviar la reserva. Por favor intenta de nuevo.');
     }
   };

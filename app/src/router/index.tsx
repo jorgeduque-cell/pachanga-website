@@ -27,7 +27,9 @@ import { AdminEvents } from '@/pages/AdminEvents';
 import { AdminMessages } from '@/pages/AdminMessages';
 import { AdminPayments } from '@/pages/AdminPayments';
 
-// Wrapper para transiciones de página
+// Wrapper para transiciones de página. This file's main export is the router
+// config object, so the fast-refresh component-only rule doesn't apply here.
+// eslint-disable-next-line react-refresh/only-export-components
 function AnimatedOutlet() {
   return (
     <AnimatePresence mode="wait">

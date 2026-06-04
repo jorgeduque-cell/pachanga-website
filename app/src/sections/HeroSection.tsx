@@ -1,4 +1,4 @@
-import { motion, useScroll, useTransform, useReducedMotion } from 'framer-motion';
+import { motion, useScroll, useTransform, useReducedMotion, type MotionValue } from 'framer-motion';
 import { useRef, useState, useEffect, useCallback, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Play, ChevronDown } from 'lucide-react';
@@ -154,7 +154,7 @@ function TypewriterText({ text }: { text: string }) {
 // ========================================
 // VIDEO BACKGROUND with fallback
 // ========================================
-const VideoBackground = memo(({ scrollProgress }: { scrollProgress: any }) => {
+const VideoBackground = memo(({ scrollProgress }: { scrollProgress: MotionValue<number> }) => {
   const blur = useTransform(scrollProgress, [0, 0.5], [0, 10]);
   const scale = useTransform(scrollProgress, [0, 0.5], [1, 1.1]);
   const saturate = useTransform(scrollProgress, [0, 0.5], [1, 0.3]);
