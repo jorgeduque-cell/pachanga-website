@@ -69,5 +69,10 @@
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
+  },
+  "overrides": {
+    "@sentry/node": {
+      "minimatch": "^9.0.5"
+    }
   }
 }
