@@ -5,8 +5,10 @@ const CORS_ORIGINS: Record<string, string[]> = {
     development: ['http://localhost:3000', 'http://localhost:5173'],
     production: [
       'https://pachanga-frontend.vercel.app',
-      'https://pachanga-website.vercel.app', 
-      'https://pachanga.com', 
+      'https://pachanga-website.vercel.app',
+      'https://pachanga.com',
+      'https://pachangaypocholapyp.com',
+      'https://www.pachangaypocholapyp.com',
       env.FRONTEND_URL
     ],
     test: ['http://localhost:3000'],
