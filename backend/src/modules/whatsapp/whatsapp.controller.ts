@@ -12,6 +12,13 @@ const WebhookStatusSchema = z.object({
   id: z.string(),
   status: z.string(),
   timestamp: z.string(),
+  errors: z.array(z.object({
+    code: z.number().optional(),
+    title: z.string().optional(),
+    message: z.string().optional(),
+    error_data: z.object({ details: z.string().optional() }).optional(),
+    href: z.string().optional(),
+  }).passthrough()).optional(),
 });
 
 const WebhookMessageSchema = z.object({
@@ -61,6 +68,9 @@ export class WhatsAppController {
     // Always reply 200 immediately (Meta requirement)
     res.status(200).send('OK');
 
+    // DEBUG: log raw webhook payload so we can see exactly what Meta sends
+    logger.info({ rawBody: req.body }, '[Webhook] RAW incoming payload');
+
     try {
       const parsed = WebhookPayloadSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -86,9 +96,22 @@ export class WhatsAppController {
   private async processStatuses(statuses?: WebhookStatus[]): Promise<void> {
     if (!statuses) return;
     for (const status of statuses) {
+      if (status.status === 'failed' && status.errors?.length) {
+        logger.error(
+          { waMessageId: status.id, errors: status.errors },
+          '[WhatsApp] Meta reported delivery FAILED',
+        );
+      }
+      const firstError = status.errors?.[0];
       await whatsappService.updateMessageStatus(
         status.id,
         status.status as 'delivered' | 'read' | 'failed',
+        firstError
+          ? {
+              code: String(firstError.code ?? ''),
+              details: firstError.error_data?.details ?? firstError.message ?? firstError.title ?? '',
+            }
+          : undefined,
       );
     }
   }
