@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { prisma } from '../prisma.js';
-import { whatsappService } from '../../modules/whatsapp/whatsapp.service.js';
+import { whatsappService, type HeaderMedia } from '../../modules/whatsapp/whatsapp.service.js';
+import { env } from '../../config/env.js';
 import { logger } from '../logger.js';
 
 // ─── Constants ───────────────────────────────────────────────
@@ -15,7 +16,6 @@ const BATCH_SIZE = 10;
  */
 const NON_RETRYABLE_TEMPLATES = new Set([
   'encuesta_pachanga',   // Needs survey JWT token in button + video header
-  'cumpleanos_pachanga', // Template doesn't exist in Meta yet
 ]);
 
 /**
@@ -84,21 +84,42 @@ export async function processRetryQueue(): Promise<{ retried: number; deadLetter
         '[MessageRetry] Retrying failed message',
       );
 
-      // Re-send via WhatsApp service
-      await whatsappService.sendTemplate(
+      // Build header media based on template type.
+      // Use the permanent Supabase URL (Media IDs expire and break retries — see whatsapp.service.ts).
+      let headerMedia: HeaderMedia | undefined;
+      if (msg.templateName === 'pachanga_bienvenida') {
+        headerMedia = { type: 'image', url: env.WHATSAPP_WELCOME_IMAGE_URL };
+      }
+      // Note: 'encuesta_pachanga' has video header but is in NON_RETRYABLE_TEMPLATES
+
+      // Re-send via WhatsApp service. sendTemplate swallows API errors
+      // internally and returns the new message ID regardless of outcome,
+      // so we must inspect the new row's status to know if it actually worked.
+      const newMessageId = await whatsappService.sendTemplate(
         msg.customer.phone,
         msg.templateName,
         [msg.customer.name],
         msg.customerId,
+        undefined, // buttonParams - not needed for welcome retry
+        headerMedia,
       );
 
-      // If send succeeded, the new message was created. Mark the old one as retried.
+      const newMessage = await prisma.whatsAppMessage.findUnique({
+        where: { id: newMessageId },
+        select: { status: true, errorCode: true },
+      });
+
+      if (newMessage?.status !== 'SENT') {
+        throw new Error(
+          `Retry send did not reach SENT (status=${newMessage?.status}, errorCode=${newMessage?.errorCode ?? 'none'})`,
+        );
+      }
+
       await prisma.whatsAppMessage.update({
         where: { id: msg.id },
         data: {
           retryCount: newRetryCount,
           lastRetryAt: now,
-          // Keep FAILED if the re-send created a new record; or mark as SENT
           status: 'SENT',
           sentAt: now,
         },
@@ -145,6 +166,11 @@ export async function processRetryQueue(): Promise<{ retried: number; deadLetter
 export function startMessageRetry(): void {
   if (cronTask) {
     logger.warn('[MessageRetry] Already running');
+    return;
+  }
+
+  if (process.env.MESSAGE_RETRY_DISABLED === 'true') {
+    logger.warn('[MessageRetry] Cron DISABLED via MESSAGE_RETRY_DISABLED=true');
     return;
   }
 

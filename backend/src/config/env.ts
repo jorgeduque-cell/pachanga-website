@@ -21,7 +21,9 @@ const envSchema = z.object({
   WHATSAPP_API_VERSION: z.string().optional().default('v21.0'),
   WHATSAPP_DRY_RUN: z.string().optional().default('true'),
   WHATSAPP_APP_SECRET: z.string().optional().default(''),
-  WHATSAPP_WELCOME_MEDIA_ID: z.string().optional().default('1221474213303119'),
+  WHATSAPP_WELCOME_MEDIA_ID: z.string().optional().default('26670088032614801'),
+  // Welcome header image on Supabase Storage (permanent — never expires, unlike Media IDs)
+  WHATSAPP_WELCOME_IMAGE_URL: z.string().optional().default('https://egvgxitnbjhjflqivobm.supabase.co/storage/v1/object/public/media/whatsapp/bienvenida-pachanga.jpg'),
   WHATSAPP_SURVEY_VIDEO_URL: z.string().optional().default('https://egvgxitnbjhjflqivobm.supabase.co/storage/v1/object/public/media/whatsapp/encuesta-pachanga.mp4'),
 
   // Chatbot AI (OpenAI)

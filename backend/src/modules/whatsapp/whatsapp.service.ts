@@ -21,9 +21,10 @@ export interface HeaderMedia {
 // ─── Constants ───────────────────────────────────────────────
 const GRAPH_API_URL = 'https://graph.facebook.com';
 
-// Media IDs for template headers (configured via env vars)
-const WELCOME_IMAGE_MEDIA_ID = env.WHATSAPP_WELCOME_MEDIA_ID;
-// Survey video on Supabase Storage (permanent — never expires)
+// Media for template headers — hosted on Supabase Storage as permanent URLs.
+// (WhatsApp Media IDs expire after ~30 days, which silently breaks templates;
+//  public links never expire and Meta fetches them at send time.)
+const WELCOME_IMAGE_URL = env.WHATSAPP_WELCOME_IMAGE_URL;
 const SURVEY_VIDEO_URL = env.WHATSAPP_SURVEY_VIDEO_URL;
 
 
@@ -55,7 +56,7 @@ export class WhatsAppService {
             [customer.name],
             customer.id,
             undefined,
-            { type: 'image', mediaId: WELCOME_IMAGE_MEDIA_ID },
+            { type: 'image', url: WELCOME_IMAGE_URL },
         );
     }
 
@@ -66,7 +67,7 @@ export class WhatsAppService {
     async sendBirthday(customer: Customer): Promise<string> {
         return this.sendTemplate(
             customer.phone,
-            'cumpleanos_pachanga',
+            'cumpleaos_pachanga',
             [customer.name],
             customer.id,
             [{ type: 'url', index: 0, text: 'birthday' }],
@@ -396,6 +397,7 @@ export class WhatsAppService {
     async updateMessageStatus(
         waMessageId: string,
         status: 'delivered' | 'read' | 'failed',
+        error?: { code: string; details: string },
     ): Promise<void> {
         const message = await prisma.whatsAppMessage.findFirst({
             where: { waMessageId },
@@ -416,6 +418,7 @@ export class WhatsAppService {
                 break;
             case 'failed':
                 updateData.status = 'FAILED';
+                if (error?.code) updateData.errorCode = error.code;
                 break;
         }
 
