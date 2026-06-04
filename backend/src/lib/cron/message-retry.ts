@@ -19,6 +19,36 @@ const NON_RETRYABLE_TEMPLATES = new Set([
 ]);
 
 /**
+ * Meta Cloud API error codes that are PERMANENT for a message — retrying will
+ * never succeed (account/billing, auth, malformed template/params, or a
+ * recipient that can't receive). These are dead-lettered immediately instead of
+ * burning retries, Meta quota and quality rating on doomed sends.
+ *
+ * Transient codes (rate limits, temporary outages, network errors) are
+ * intentionally NOT listed here, so they keep the normal backoff-retry path.
+ */
+const PERMANENT_ERROR_CODES = new Set<string>([
+  // Account / billing / auth — need human intervention, never recover via retry
+  '131042', // Business eligibility / payment issue
+  '131031', // Account locked
+  '131045', // Phone number not registered / certificate issue
+  '190',    // Access token expired or invalid
+  '200',    // Permissions error
+  '10',     // Permission denied
+  // Template / content / parameter errors — message is malformed, retry won't help
+  '131008', // Required parameter missing
+  '131009', // Parameter value invalid (e.g. expired media id)
+  '132000', // Number of parameters does not match template
+  '132001', // Template does not exist or wrong language
+  '132005', // Translated text too long
+  '132007', // Template format / content-policy violation
+  '132012', // Template parameter format mismatch
+  // Recipient errors — number can't receive, retry won't help
+  '131026', // Message undeliverable (recipient not on WhatsApp / invalid)
+  '131051', // Unsupported message type
+]);
+
+/**
  * Backoff delays in minutes: retry 1 = 1min, retry 2 = 5min, retry 3 = 30min
  */
 const BACKOFF_DELAYS_MS = [
@@ -66,6 +96,22 @@ export async function processRetryQueue(): Promise<{ retried: number; deadLetter
       );
       continue;
     }
+
+    // Permanent failure (payment/account, auth, malformed template, dead recipient):
+    // retrying will never succeed, so dead-letter immediately without a new API call.
+    if (msg.errorCode && PERMANENT_ERROR_CODES.has(msg.errorCode)) {
+      await prisma.whatsAppMessage.update({
+        where: { id: msg.id },
+        data: { status: 'DEAD_LETTER', lastRetryAt: now },
+      });
+      deadLettered++;
+      logger.warn(
+        { messageId: msg.id, errorCode: msg.errorCode, templateName: msg.templateName },
+        '[MessageRetry] Permanent error code — moved to DEAD_LETTER without retry',
+      );
+      continue;
+    }
+
     // Check backoff: enough time must have passed since last retry
     const backoffMs = BACKOFF_DELAYS_MS[msg.retryCount] ?? BACKOFF_DELAYS_MS[BACKOFF_DELAYS_MS.length - 1];
     const lastAttempt = msg.lastRetryAt ?? msg.createdAt;

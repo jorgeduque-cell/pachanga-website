@@ -125,6 +125,14 @@ const startServer = async (): Promise<void> => {
 
     httpServer.listen(env.PORT, () => {
       logger.info({ port: env.PORT }, 'Server running');
+      // Safety net: WHATSAPP_DRY_RUN defaults to 'true', so a missing/incorrect
+      // env var silently turns every send into a no-op. Make that loud.
+      if (env.WHATSAPP_DRY_RUN === 'true') {
+        logger.warn(
+          { nodeEnv: env.NODE_ENV },
+          '[WhatsApp] DRY-RUN is ON — messages are SIMULATED, not sent. Set WHATSAPP_DRY_RUN=false to send for real.',
+        );
+      }
       startCronJobs();
       startTelegramBot();
     });
