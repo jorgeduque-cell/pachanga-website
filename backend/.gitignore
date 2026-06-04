@@ -24,3 +24,6 @@ Thumbs.db
 check-*.ts
 reset-password.ts
 view-qrs.html
+
+# Local-only WhatsApp/diagnostic scripts (not part of the deployed app)
+scripts/diagnostics/
