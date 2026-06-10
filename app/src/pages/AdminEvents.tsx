@@ -43,12 +43,11 @@ import {
   useUpdateEvent,
   useUploadFlyer,
   useDeleteEvent,
-  useUpdateEventTables,
   useSetFeaturedEvent,
 } from '@/hooks/useEvents';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from 'sonner';
-import type { Event, EventType, TicketPrices, CreateEventDTO, UpdateEventDTO, UpdateTablesDTO } from '@/types/events.types';
+import type { Event, EventType, TicketPrices, CreateEventDTO, UpdateEventDTO } from '@/types/events.types';
 
 // ─── Constants ───────────────────────────────────────────
 const EVENT_TYPE_LABELS: Record<EventType, string> = {
@@ -71,63 +70,27 @@ const STATUS_COLORS: Record<Event['status'], string> = {
   PAST: 'bg-gray-500/20 text-gray-400',
 };
 
-const ZONES = ['SALON', 'TERRAZA', 'VIP', 'BARRA', 'PISTA'] as const;
-
-const ZONE_LABELS: Record<string, string> = {
-  SALON: 'Salón',
-  TERRAZA: 'Terraza',
-  VIP: 'VIP',
-  BARRA: 'Barra',
-  PISTA: 'Pista',
-};
-
+// Ubicaciones de boletas para conciertos (mismas letras que en precios)
 const TICKET_TYPES: Array<{ key: string; label: string }> = [
-  { key: 'palco_8', label: 'Palco 8 Personas' },
-  { key: 'palco_4', label: 'Palco 4 Personas' },
-  { key: 'palco_2', label: 'Palco 2 Personas' },
-  { key: 'vip_primer_piso', label: 'VIP Primer Piso' },
-  { key: 'vip_segundo_piso', label: 'VIP Segundo Piso' },
-  { key: 'barras', label: 'Barras' },
+  { key: 'palco_8', label: 'P — Palco 8 Personas' },
+  { key: 'palco_4', label: 'R — Palco 4 Personas' },
+  { key: 'palco_2', label: 'M — Palco 2 Personas' },
+  { key: 'vip_primer_piso', label: 'V — VIP Primer Piso' },
+  { key: 'vip_segundo_piso', label: 'S — VIP Segundo Piso' },
+  { key: 'barras', label: 'K — Barras' },
 ];
 
-// Editor de cupos por tipo de boleta. 0 = sin límite (no se controla inventario
-// para ese tipo). El backend descuenta `sold` automáticamente al confirmar pagos.
-function InventoryGrid({
-  value,
-  sold,
-  onChange,
-}: {
-  value: Record<string, number>;
-  sold?: Record<string, number>;
-  onChange: (next: Record<string, number>) => void;
-}) {
-  return (
-    <div className="space-y-3 p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
-      <label className="block text-amber-400 mb-1 text-sm font-medium">🎟️ Cupos por ubicación (0 = sin límite)</label>
-      <div className="grid grid-cols-2 gap-3">
-        {TICKET_TYPES.map(({ key, label }) => (
-          <div key={key}>
-            <label className="block text-white/60 text-xs mb-1">
-              {label}
-              {sold?.[key] !== undefined && <span className="text-amber-400/70"> — vendidas: {sold[key]}</span>}
-            </label>
-            <Input
-              type="number"
-              min={0}
-              value={value[key] || 0}
-              onChange={(e) => onChange({ ...value, [key]: parseInt(e.target.value) || 0 })}
-              className="bg-[#0a0a0a] border-[#333] text-white"
-            />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+// Fila editable del inventario: total inicial + vendidas (las descuenta el sistema)
+interface InventoryRow {
+  key: string;
+  label: string;
+  total: number;
+  sold: number;
 }
 
 // Los tipos con cupo 0 no se envían: para el backend significan "sin límite".
-function cleanInventory(inv: Record<string, number>): Record<string, number> {
-  return Object.fromEntries(Object.entries(inv).filter(([, total]) => total > 0));
+function cleanInventory(rows: InventoryRow[]): Record<string, number> {
+  return Object.fromEntries(rows.filter((r) => r.total > 0).map((r) => [r.key, r.total]));
 }
 
 // ─── Component ───────────────────────────────────────────
@@ -153,10 +116,8 @@ export function AdminEvents() {
   });
 
   const [editForm, setEditForm] = useState<UpdateEventDTO>({});
-  const [tablesForm, setTablesForm] = useState<UpdateTablesDTO[]>([]);
-  // Cupos por tipo de boleta (crear / editar)
-  const [inventoryForm, setInventoryForm] = useState<Record<string, number>>({});
-  const [editInventoryForm, setEditInventoryForm] = useState<Record<string, number>>({});
+  // Inventario de boletas por ubicación (diálogo "Gestionar Cupos")
+  const [inventoryRows, setInventoryRows] = useState<InventoryRow[]>([]);
 
   // Queries & Mutations
   const { data: events, isLoading, refetch } = useAdminEvents(
@@ -166,7 +127,6 @@ export function AdminEvents() {
   const updateMutation = useUpdateEvent();
   const uploadFlyerMutation = useUploadFlyer();
   const deleteMutation = useDeleteEvent();
-  const updateTablesMutation = useUpdateEventTables();
   const featuredMutation = useSetFeaturedEvent();
 
   // ─── Handlers ─────────────────────────────────────────
@@ -174,11 +134,10 @@ export function AdminEvents() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await createMutation.mutateAsync({ ...form, ticketInventory: cleanInventory(inventoryForm) });
+      await createMutation.mutateAsync(form);
       toast.success('Evento creado exitosamente');
       setIsCreateOpen(false);
       setForm({ name: '', eventType: 'QUICK_EVENT', eventDate: '', eventTime: '', description: '', coverPrice: 0, ticketPrices: {} });
-      setInventoryForm({});
     } catch {
       toast.error('Error al crear el evento');
     }
@@ -188,10 +147,7 @@ export function AdminEvents() {
     e.preventDefault();
     if (!selectedEvent) return;
     try {
-      await updateMutation.mutateAsync({
-        id: selectedEvent.id,
-        data: { ...editForm, ticketInventory: cleanInventory(editInventoryForm) },
-      });
+      await updateMutation.mutateAsync({ id: selectedEvent.id, data: editForm });
       toast.success('Evento actualizado');
       setIsEditOpen(false);
       setSelectedEvent(null);
@@ -222,14 +178,19 @@ export function AdminEvents() {
     }
   };
 
-  const handleTablesUpdate = async () => {
+  // Guarda los cupos totales; "vendidas" no se edita aquí, la descuenta el
+  // sistema automáticamente al confirmar pagos.
+  const handleInventoryUpdate = async () => {
     if (!selectedEvent) return;
     try {
-      await updateTablesMutation.mutateAsync({ id: selectedEvent.id, tables: tablesForm });
-      toast.success('Mesas actualizadas');
+      await updateMutation.mutateAsync({
+        id: selectedEvent.id,
+        data: { ticketInventory: cleanInventory(inventoryRows) },
+      });
+      toast.success('Cupos actualizados');
       setIsTablesOpen(false);
     } catch {
-      toast.error('Error al actualizar mesas');
+      toast.error('Error al actualizar los cupos');
     }
   };
 
@@ -245,19 +206,20 @@ export function AdminEvents() {
       ticketPrices: (event.ticketPrices as TicketPrices) || {},
       status: event.status,
     });
-    setEditInventoryForm(
-      Object.fromEntries((event.ticketInventory ?? []).map((inv) => [inv.ticketType, inv.total])),
-    );
     setIsEditOpen(true);
   };
 
-  const openTables = (event: Event) => {
+  const openInventory = (event: Event) => {
     setSelectedEvent(event);
-    setTablesForm(
-      ZONES.map((zone) => {
-        const existing = event.tables?.find((t) => t.zone === zone);
-        return { zone, total: existing?.total || 0, reserved: existing?.reserved || 0 };
-      })
+    // Conciertos: las 6 ubicaciones. Eventos rápidos: una sola fila de cover.
+    const types = event.eventType === 'CONCERT'
+      ? TICKET_TYPES
+      : [{ key: 'cover', label: 'Cover / Entrada general' }];
+    setInventoryRows(
+      types.map(({ key, label }) => {
+        const existing = event.ticketInventory?.find((inv) => inv.ticketType === key);
+        return { key, label, total: existing?.total || 0, sold: existing?.sold || 0 };
+      }),
     );
     setIsTablesOpen(true);
   };
@@ -379,8 +341,8 @@ export function AdminEvents() {
                       <DropdownMenuItem onClick={() => openFlyerUpload(event)} className="text-white focus:text-white focus:bg-[#0a0a0a]">
                         <Upload className="mr-2" size={16} /> Subir Flyer
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => openTables(event)} className="text-white focus:text-white focus:bg-[#0a0a0a]">
-                        <Users className="mr-2" size={16} /> Gestionar Mesas
+                      <DropdownMenuItem onClick={() => openInventory(event)} className="text-white focus:text-white focus:bg-[#0a0a0a]">
+                        <Users className="mr-2" size={16} /> Gestionar Cupos
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={async () => {
@@ -427,14 +389,17 @@ export function AdminEvents() {
                     </span>
                   </div>
                 </div>
-                {/* Tables summary */}
-                {event.tables && event.tables.length > 0 && (
+                {/* Inventory summary: disponibles/total por ubicación */}
+                {event.ticketInventory && event.ticketInventory.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-[#333]">
-                    <p className="text-xs text-white/40 uppercase font-heading mb-2">Mesas</p>
+                    <p className="text-xs text-white/40 uppercase font-heading mb-2">Cupos</p>
                     <div className="flex flex-wrap gap-1.5">
-                      {event.tables.map((t) => (
-                        <span key={t.zone} className="text-xs px-2 py-1 rounded bg-[#0a0a0a] text-white/70">
-                          {ZONE_LABELS[t.zone]}: {t.total - t.reserved}/{t.total}
+                      {event.ticketInventory.map((inv) => (
+                        <span
+                          key={inv.ticketType}
+                          className={`text-xs px-2 py-1 rounded bg-[#0a0a0a] ${inv.sold >= inv.total ? 'text-red-400' : 'text-white/70'}`}
+                        >
+                          {(TICKET_TYPES.find((t) => t.key === inv.ticketType)?.label ?? inv.ticketType).split(' — ')[0]}: {inv.total - inv.sold}/{inv.total}
                         </span>
                       ))}
                     </div>
@@ -547,7 +512,6 @@ export function AdminEvents() {
                     <Input type="number" min={0} value={form.ticketPrices?.barras || 0} onChange={(e) => setForm({ ...form, ticketPrices: { ...form.ticketPrices, barras: parseInt(e.target.value) || 0 } })} className="bg-[#0a0a0a] border-[#333] text-white" />
                   </div>
                 </div>
-                <InventoryGrid value={inventoryForm} onChange={setInventoryForm} />
               </div>
             ) : (
               <div>
@@ -654,11 +618,6 @@ export function AdminEvents() {
                     <Input type="number" min={0} value={editForm.ticketPrices?.barras || 0} onChange={(e) => setEditForm({ ...editForm, ticketPrices: { ...editForm.ticketPrices, barras: parseInt(e.target.value) || 0 } })} className="bg-[#0a0a0a] border-[#333] text-white" />
                   </div>
                 </div>
-                <InventoryGrid
-                  value={editInventoryForm}
-                  sold={Object.fromEntries((selectedEvent?.ticketInventory ?? []).map((inv) => [inv.ticketType, inv.sold]))}
-                  onChange={setEditInventoryForm}
-                />
               </div>
             ) : (
               <div>
@@ -728,46 +687,44 @@ export function AdminEvents() {
         </DialogContent>
       </Dialog>
 
-      {/* ─── TABLES MODAL ─────────────────────────────── */}
+      {/* ─── INVENTORY MODAL (cupos por ubicación) ───────── */}
       <Dialog open={isTablesOpen} onOpenChange={setIsTablesOpen}>
         <DialogContent className="bg-[#1a1a1a] border-[#333] text-white max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-heading uppercase text-white">
-              Mesas — {selectedEvent?.name}
+              Cupos — {selectedEvent?.name}
             </DialogTitle>
           </DialogHeader>
+          <p className="text-xs text-white/40 mt-1">
+            Pon el cupo inicial en *Total* (0 = sin límite). Las *Vendidas* las descuenta el sistema automáticamente cada vez que confirmas un pago.
+          </p>
           <div className="space-y-4 mt-4">
-            {tablesForm.map((table, index) => (
-              <div key={table.zone} className="bg-[#0a0a0a] rounded-lg p-4">
-                <p className="text-white font-heading uppercase text-sm mb-3">{ZONE_LABELS[table.zone]}</p>
+            {inventoryRows.map((row, index) => (
+              <div key={row.key} className="bg-[#0a0a0a] rounded-lg p-4">
+                <p className="text-white font-heading uppercase text-sm mb-3">{row.label}</p>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-white/60 text-xs mb-1">Total</label>
                     <Input
                       type="number"
                       min={0}
-                      value={table.total}
+                      value={row.total}
                       onChange={(e) => {
-                        const updated = [...tablesForm];
-                        updated[index] = { ...table, total: parseInt(e.target.value) || 0 };
-                        setTablesForm(updated);
+                        const updated = [...inventoryRows];
+                        updated[index] = { ...row, total: parseInt(e.target.value) || 0 };
+                        setInventoryRows(updated);
                       }}
                       className="bg-[#111] border-[#333] text-white"
                     />
                   </div>
                   <div>
-                    <label className="block text-white/60 text-xs mb-1">Reservadas</label>
+                    <label className="block text-white/60 text-xs mb-1">Vendidas</label>
                     <Input
                       type="number"
-                      min={0}
-                      max={table.total}
-                      value={table.reserved}
-                      onChange={(e) => {
-                        const updated = [...tablesForm];
-                        updated[index] = { ...table, reserved: parseInt(e.target.value) || 0 };
-                        setTablesForm(updated);
-                      }}
-                      className="bg-[#111] border-[#333] text-white"
+                      value={row.sold}
+                      readOnly
+                      disabled
+                      className="bg-[#111] border-[#333] text-white/60 cursor-not-allowed"
                     />
                   </div>
                 </div>
@@ -776,21 +733,21 @@ export function AdminEvents() {
                   <div
                     className="h-full rounded-full transition-all"
                     style={{
-                      width: table.total > 0 ? `${(table.reserved / table.total) * 100}%` : '0%',
-                      background: table.reserved >= table.total ? '#ef4444' : table.reserved > table.total * 0.7 ? '#f59e0b' : '#22c55e',
+                      width: row.total > 0 ? `${Math.min(100, (row.sold / row.total) * 100)}%` : '0%',
+                      background: row.sold >= row.total && row.total > 0 ? '#ef4444' : row.sold > row.total * 0.7 ? '#f59e0b' : '#22c55e',
                     }}
                   />
                 </div>
                 <p className="text-xs text-white/40 mt-1">
-                  {table.total - table.reserved} disponibles de {table.total}
+                  {row.total > 0 ? `${Math.max(0, row.total - row.sold)} disponibles de ${row.total}` : 'Sin límite de cupo'}
                 </p>
               </div>
             ))}
 
             <div className="flex gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => setIsTablesOpen(false)} className="flex-1 border-[#333] bg-transparent text-white hover:bg-[#333]">Cancelar</Button>
-              <Button onClick={handleTablesUpdate} disabled={updateTablesMutation.isPending} className="flex-1 btn-primary">
-                {updateTablesMutation.isPending ? <Spinner className="w-4 h-4" /> : 'Guardar Mesas'}
+              <Button onClick={handleInventoryUpdate} disabled={updateMutation.isPending} className="flex-1 btn-primary">
+                {updateMutation.isPending ? <Spinner className="w-4 h-4" /> : 'Guardar Cupos'}
               </Button>
             </div>
           </div>
