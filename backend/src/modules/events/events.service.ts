@@ -12,6 +12,7 @@ export interface CreateEventInput {
     description?: string;
     coverPrice?: number;
     ticketPrices?: Record<string, number>;  // e.g. { general: 60000, vip: 120000, palco: 200000 }
+    ticketInventory?: Record<string, number>; // cupos por tipo: { palco_8: 10, barras: 30 }
     tables?: Array<{ zone: TableZone; total: number }>;
 }
 
@@ -23,6 +24,7 @@ export interface UpdateEventInput {
     description?: string;
     coverPrice?: number;
     ticketPrices?: Record<string, number>;
+    ticketInventory?: Record<string, number>;
     status?: EventStatus;
     isActive?: boolean;
 }
@@ -47,7 +49,7 @@ export class EventsService {
 
         return prisma.event.findMany({
             where,
-            include: { tables: true },
+            include: { tables: true, ticketInventory: true },
             orderBy: [
                 { isFeatured: 'desc' },
                 { eventDate: 'asc' },
@@ -61,7 +63,7 @@ export class EventsService {
     async getById(id: string) {
         return prisma.event.findUnique({
             where: { id },
-            include: { tables: true },
+            include: { tables: true, ticketInventory: true },
         });
     }
 
@@ -71,7 +73,7 @@ export class EventsService {
     async setFeatured(id: string) {
         return prisma.$transaction([
             prisma.event.updateMany({ where: { isFeatured: true }, data: { isFeatured: false } }),
-            prisma.event.update({ where: { id }, data: { isFeatured: true }, include: { tables: true } }),
+            prisma.event.update({ where: { id }, data: { isFeatured: true }, include: { tables: true, ticketInventory: true } }),
         ]);
     }
 
@@ -95,8 +97,15 @@ export class EventsService {
                         reserved: 0,
                     })),
                 } : undefined,
+                ticketInventory: input.ticketInventory ? {
+                    create: Object.entries(input.ticketInventory).map(([ticketType, total]) => ({
+                        ticketType,
+                        total,
+                        sold: 0,
+                    })),
+                } : undefined,
             },
-            include: { tables: true },
+            include: { tables: true, ticketInventory: true },
         });
 
         // Auto-inject into chatbot knowledge
@@ -110,6 +119,24 @@ export class EventsService {
      * Update an event.
      */
     async update(id: string, input: UpdateEventInput) {
+        // Sync ticket inventory first: upsert the types sent (keeping their `sold`
+        // counts) and remove types no longer listed (those become unlimited).
+        if (input.ticketInventory !== undefined) {
+            const types = Object.keys(input.ticketInventory);
+            await prisma.$transaction([
+                prisma.eventTicketInventory.deleteMany({
+                    where: { eventId: id, ticketType: { notIn: types } },
+                }),
+                ...Object.entries(input.ticketInventory).map(([ticketType, total]) =>
+                    prisma.eventTicketInventory.upsert({
+                        where: { eventId_ticketType: { eventId: id, ticketType } },
+                        update: { total },
+                        create: { eventId: id, ticketType, total, sold: 0 },
+                    }),
+                ),
+            ]);
+        }
+
         const event = await prisma.event.update({
             where: { id },
             data: {
@@ -123,7 +150,7 @@ export class EventsService {
                 ...(input.status && { status: input.status }),
                 ...(input.isActive !== undefined && { isActive: input.isActive }),
             },
-            include: { tables: true },
+            include: { tables: true, ticketInventory: true },
         });
 
         await this.syncKnowledge(event);
@@ -149,7 +176,7 @@ export class EventsService {
         const event = await prisma.event.update({
             where: { id },
             data: { flyerUrl },
-            include: { tables: true },
+            include: { tables: true, ticketInventory: true },
         });
 
         logger.info({ eventId: id, flyerUrl }, '[Events] Flyer uploaded');
@@ -178,7 +205,7 @@ export class EventsService {
 
         const event = await prisma.event.findUnique({
             where: { id: eventId },
-            include: { tables: true },
+            include: { tables: true, ticketInventory: true },
         });
 
         if (event) await this.syncKnowledge(event);
@@ -277,7 +304,7 @@ ${pricingInfo}
                 status: { in: ['ACTIVE', 'SOLD_OUT'] },
                 eventDate: { gte: new Date() },
             },
-            include: { tables: true },
+            include: { tables: true, ticketInventory: true },
             orderBy: { eventDate: 'asc' },
             take: 5,
         });

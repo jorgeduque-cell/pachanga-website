@@ -43,7 +43,7 @@ const FLOW_EXPIRY_MS = 2 * 60 * 60 * 1000; // 2 hours
 const PAYMENT_EXPIRY_HOURS = 48;
 const BANK_INFO_CATEGORY = 'payment_info';
 
-const TICKET_LABELS: Record<string, string> = {
+export const TICKET_LABELS: Record<string, string> = {
     palco_8: 'Palco 8 Personas',
     palco_4: 'Palco 4 Personas',
     palco_2: 'Palco 2 Personas',
@@ -82,6 +82,20 @@ export class PurchaseFlowService {
         }
 
         return metadata.purchaseFlow;
+    }
+
+    /**
+     * Returns remaining stock per ticket type for an event.
+     * Ticket types WITHOUT an inventory row are unlimited (absent from the map).
+     */
+    private async getRemainingStock(eventId: string): Promise<Record<string, number>> {
+        const rows = await prisma.eventTicketInventory.findMany({
+            where: { eventId },
+            select: { ticketType: true, total: true, sold: true },
+        });
+        const map: Record<string, number> = {};
+        for (const r of rows) map[r.ticketType] = Math.max(0, r.total - r.sold);
+        return map;
     }
 
     /**
@@ -153,12 +167,19 @@ export class PurchaseFlowService {
                 updatedAt: new Date().toISOString(),
             });
 
+            const remaining = await this.getRemainingStock(selectedEvent.id);
+
             let message = `✅ Seleccionaste: *${selectedEvent.name}*\n\n📍 *Elige tu ubicación:*\n\n`;
             const entries = Object.entries(tp!).filter(([, v]) => v > 0);
             entries.forEach(([key, price], idx) => {
                 const capacity = TICKET_CAPACITY[key] || 1;
                 const perPerson = Math.round(price / capacity);
-                message += `*${idx + 1}.* ${TICKET_LABELS[key] || key}\n   💰 $${price.toLocaleString('es-CO')} total (${capacity}P = $${perPerson.toLocaleString('es-CO')}/persona)\n\n`;
+                const stock = remaining[key];
+                let stockTag = '';
+                if (stock !== undefined) {
+                    stockTag = stock <= 0 ? '   🚫 *AGOTADO*\n' : stock <= 5 ? `   ⚠️ ¡Quedan solo ${stock}!\n` : '';
+                }
+                message += `*${idx + 1}.* ${TICKET_LABELS[key] || key}\n   💰 $${price.toLocaleString('es-CO')} total (${capacity}P = $${perPerson.toLocaleString('es-CO')}/persona)\n${stockTag}\n`;
             });
             message += '👉 Escribe el *número* de la ubicación que deseas.';
             return message;
@@ -216,6 +237,12 @@ export class PurchaseFlowService {
         const capacity = TICKET_CAPACITY[ticketKey] || 1;
         const label = TICKET_LABELS[ticketKey] || ticketKey;
 
+        // Block sold-out ticket types (only when inventory is configured)
+        const remaining = await this.getRemainingStock(event.id);
+        if (remaining[ticketKey] !== undefined && remaining[ticketKey] <= 0) {
+            return `🚫 Lo sentimos, *${label}* ya está *agotado* para este evento.\n\n👉 Elige otra ubicación de la lista escribiendo su número.`;
+        }
+
         await this.updateFlowState(conversationId, {
             ...flowState,
             state: 'COLLECTING_QUANTITY',
@@ -245,6 +272,17 @@ export class PurchaseFlowService {
         const quantity = parseInt(userMessage.trim(), 10);
         if (isNaN(quantity) || quantity < 1 || quantity > 10) {
             return '🤔 Por favor escribe un número entre *1* y *10*.';
+        }
+
+        // Block quantities above remaining stock (only when inventory is configured)
+        if (flowState.ticketType) {
+            const remaining = await this.getRemainingStock(flowState.eventId);
+            const stock = remaining[flowState.ticketType];
+            if (stock !== undefined && quantity > stock) {
+                return stock <= 0
+                    ? `🚫 Lo sentimos, *${flowState.ticketTypeLabel || flowState.ticketType}* se agotó. Escribe "comprar boletas" para ver otras opciones.`
+                    : `⚠️ Solo quedan *${stock}* disponibles de *${flowState.ticketTypeLabel || flowState.ticketType}*. Escribe un número de *1* a *${stock}*.`;
+            }
         }
 
         const totalAmount = flowState.unitPrice * quantity;

@@ -271,6 +271,10 @@ export class WhatsAppService {
      * Used by the chatbot for AI-generated responses within the 24h session window.
      */
     async sendFreeformMessage(phone: string, text: string): Promise<string | null> {
+        // El modelo de IA a veces genera markdown (**negrita**), pero WhatsApp
+        // solo entiende *negrita* con un asterisco: el doble se muestra literal.
+        text = text.replace(/\*\*(.+?)\*\*/g, '*$1*');
+
         if (this.isDryRun) {
             logger.info({ phone, text: text.slice(0, 80) }, '[DRY-RUN] Freeform WhatsApp message simulated');
             return null;

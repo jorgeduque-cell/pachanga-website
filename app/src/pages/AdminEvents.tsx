@@ -81,6 +81,55 @@ const ZONE_LABELS: Record<string, string> = {
   PISTA: 'Pista',
 };
 
+const TICKET_TYPES: Array<{ key: string; label: string }> = [
+  { key: 'palco_8', label: 'Palco 8 Personas' },
+  { key: 'palco_4', label: 'Palco 4 Personas' },
+  { key: 'palco_2', label: 'Palco 2 Personas' },
+  { key: 'vip_primer_piso', label: 'VIP Primer Piso' },
+  { key: 'vip_segundo_piso', label: 'VIP Segundo Piso' },
+  { key: 'barras', label: 'Barras' },
+];
+
+// Editor de cupos por tipo de boleta. 0 = sin límite (no se controla inventario
+// para ese tipo). El backend descuenta `sold` automáticamente al confirmar pagos.
+function InventoryGrid({
+  value,
+  sold,
+  onChange,
+}: {
+  value: Record<string, number>;
+  sold?: Record<string, number>;
+  onChange: (next: Record<string, number>) => void;
+}) {
+  return (
+    <div className="space-y-3 p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
+      <label className="block text-amber-400 mb-1 text-sm font-medium">🎟️ Cupos por ubicación (0 = sin límite)</label>
+      <div className="grid grid-cols-2 gap-3">
+        {TICKET_TYPES.map(({ key, label }) => (
+          <div key={key}>
+            <label className="block text-white/60 text-xs mb-1">
+              {label}
+              {sold?.[key] !== undefined && <span className="text-amber-400/70"> — vendidas: {sold[key]}</span>}
+            </label>
+            <Input
+              type="number"
+              min={0}
+              value={value[key] || 0}
+              onChange={(e) => onChange({ ...value, [key]: parseInt(e.target.value) || 0 })}
+              className="bg-[#0a0a0a] border-[#333] text-white"
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Los tipos con cupo 0 no se envían: para el backend significan "sin límite".
+function cleanInventory(inv: Record<string, number>): Record<string, number> {
+  return Object.fromEntries(Object.entries(inv).filter(([, total]) => total > 0));
+}
+
 // ─── Component ───────────────────────────────────────────
 export function AdminEvents() {
   const [search, setSearch] = useState('');
@@ -105,6 +154,9 @@ export function AdminEvents() {
 
   const [editForm, setEditForm] = useState<UpdateEventDTO>({});
   const [tablesForm, setTablesForm] = useState<UpdateTablesDTO[]>([]);
+  // Cupos por tipo de boleta (crear / editar)
+  const [inventoryForm, setInventoryForm] = useState<Record<string, number>>({});
+  const [editInventoryForm, setEditInventoryForm] = useState<Record<string, number>>({});
 
   // Queries & Mutations
   const { data: events, isLoading, refetch } = useAdminEvents(
@@ -122,10 +174,11 @@ export function AdminEvents() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await createMutation.mutateAsync(form);
+      await createMutation.mutateAsync({ ...form, ticketInventory: cleanInventory(inventoryForm) });
       toast.success('Evento creado exitosamente');
       setIsCreateOpen(false);
       setForm({ name: '', eventType: 'QUICK_EVENT', eventDate: '', eventTime: '', description: '', coverPrice: 0, ticketPrices: {} });
+      setInventoryForm({});
     } catch {
       toast.error('Error al crear el evento');
     }
@@ -135,7 +188,10 @@ export function AdminEvents() {
     e.preventDefault();
     if (!selectedEvent) return;
     try {
-      await updateMutation.mutateAsync({ id: selectedEvent.id, data: editForm });
+      await updateMutation.mutateAsync({
+        id: selectedEvent.id,
+        data: { ...editForm, ticketInventory: cleanInventory(editInventoryForm) },
+      });
       toast.success('Evento actualizado');
       setIsEditOpen(false);
       setSelectedEvent(null);
@@ -189,6 +245,9 @@ export function AdminEvents() {
       ticketPrices: (event.ticketPrices as TicketPrices) || {},
       status: event.status,
     });
+    setEditInventoryForm(
+      Object.fromEntries((event.ticketInventory ?? []).map((inv) => [inv.ticketType, inv.total])),
+    );
     setIsEditOpen(true);
   };
 
@@ -488,6 +547,7 @@ export function AdminEvents() {
                     <Input type="number" min={0} value={form.ticketPrices?.barras || 0} onChange={(e) => setForm({ ...form, ticketPrices: { ...form.ticketPrices, barras: parseInt(e.target.value) || 0 } })} className="bg-[#0a0a0a] border-[#333] text-white" />
                   </div>
                 </div>
+                <InventoryGrid value={inventoryForm} onChange={setInventoryForm} />
               </div>
             ) : (
               <div>
@@ -594,6 +654,11 @@ export function AdminEvents() {
                     <Input type="number" min={0} value={editForm.ticketPrices?.barras || 0} onChange={(e) => setEditForm({ ...editForm, ticketPrices: { ...editForm.ticketPrices, barras: parseInt(e.target.value) || 0 } })} className="bg-[#0a0a0a] border-[#333] text-white" />
                   </div>
                 </div>
+                <InventoryGrid
+                  value={editInventoryForm}
+                  sold={Object.fromEntries((selectedEvent?.ticketInventory ?? []).map((inv) => [inv.ticketType, inv.sold]))}
+                  onChange={setEditInventoryForm}
+                />
               </div>
             ) : (
               <div>

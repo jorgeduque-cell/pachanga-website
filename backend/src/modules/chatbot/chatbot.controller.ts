@@ -3,6 +3,7 @@ import { chatbotConversationService } from './chatbot.conversation.js';
 import { chatbotKnowledgeService } from './chatbot.knowledge.js';
 import { chatbotService } from './chatbot.service.js';
 import { chatbotPaymentService } from './chatbot.payment.js';
+import { generateAndUploadTicketQr } from './chatbot.tickets.js';
 import { whatsappService } from '../whatsapp/whatsapp.service.js';
 import {
     knowledgeCreateSchema,
@@ -178,14 +179,37 @@ export class ChatbotController {
             const adminUserId = (req as unknown as { user: { id: string } }).user.id;
             await chatbotPaymentService.confirmPayment(req.params.id, adminUserId, parsed.data.notes);
 
-            // Notify customer via WhatsApp
+            // Notify customer via WhatsApp: entry QR (fallback to plain text if QR fails)
             const payment = await chatbotPaymentService.getPaymentDetail(req.params.id);
-            await whatsappService.sendFreeformMessage(
-                payment.customer.phone,
-                `🎉 *¡Tu pago ha sido confirmado!*\n\n🔖 Referencia: *${payment.reference}*\n🎫 ${payment.quantity} boleta(s) — *${payment.event.name}*\n\n¡Te esperamos! 🎶`,
-            );
+            const confirmationText =
+                `🎉 *¡Tu pago ha sido confirmado!*\n\n` +
+                `🔖 Referencia: *${payment.reference}*\n` +
+                `🎫 ${payment.quantity} boleta(s) — *${payment.event.name}*\n\n` +
+                `Este QR es tu *entrada oficial*: preséntalo en la puerta el día del evento. 📲\n\n¡Te esperamos! 🎶`;
 
-            res.json({ success: true, message: 'Pago confirmado' });
+            const qrUrl = await generateAndUploadTicketQr({
+                reference: payment.reference,
+                ticketType: payment.ticketType,
+                quantity: payment.quantity,
+                customer: { name: payment.customer.name },
+                event: {
+                    name: payment.event.name,
+                    eventDate: payment.event.eventDate,
+                    eventTime: payment.event.eventTime,
+                },
+            });
+
+            if (qrUrl) {
+                await whatsappService.sendImageMessage(payment.customer.phone, qrUrl, confirmationText);
+            } else {
+                // QR failed — never leave the customer without confirmation
+                await whatsappService.sendFreeformMessage(
+                    payment.customer.phone,
+                    `🎉 *¡Tu pago ha sido confirmado!*\n\n🔖 Referencia: *${payment.reference}*\n🎫 ${payment.quantity} boleta(s) — *${payment.event.name}*\n\nPresenta esta referencia en la entrada. ¡Te esperamos! 🎶`,
+                );
+            }
+
+            res.json({ success: true, message: 'Pago confirmado', qrUrl });
         } catch (error) {
             next(error);
         }

@@ -63,6 +63,34 @@ export async function deleteFromStorage(publicUrl: string): Promise<void> {
 }
 
 /**
+ * Uploads a ticket QR image to Supabase Storage.
+ * Path is keyed by payment reference so re-sending overwrites the same file.
+ */
+export async function uploadTicketQr(buffer: Buffer, reference: string): Promise<string | null> {
+    const client = getClient();
+    if (!client) {
+        logger.warn('[Storage] Supabase not configured, skipping ticket QR upload');
+        return null;
+    }
+
+    const safeRef = reference.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 60);
+    const path = `tickets/${safeRef}.png`;
+
+    const { error } = await client.storage
+        .from(BUCKET)
+        .upload(path, buffer, { contentType: 'image/png', upsert: true });
+
+    if (error) {
+        logger.error({ err: error }, '[Storage] Ticket QR upload failed');
+        return null;
+    }
+
+    const { data } = client.storage.from(BUCKET).getPublicUrl(path);
+    logger.info({ path, url: data.publicUrl }, '[Storage] Ticket QR uploaded');
+    return data.publicUrl;
+}
+
+/**
  * Uploads a payment receipt to Supabase Storage.
  * Uses a separate path prefix to isolate from flyers.
  */

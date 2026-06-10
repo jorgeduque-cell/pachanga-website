@@ -19,6 +19,17 @@ export interface EventTable {
   reserved: number;
 }
 
+// Cupos por tipo de boleta. `sold` se descuenta automáticamente al confirmar pagos.
+export interface EventTicketInventory {
+  id: string;
+  ticketType: string;
+  total: number;
+  sold: number;
+}
+
+// Mapa tipo de boleta → cupo total, usado en formularios admin
+export type TicketInventoryInput = Record<string, number>;
+
 export interface Event {
   id: string;
   name: string;
@@ -35,6 +46,7 @@ export interface Event {
   createdAt: string;
   updatedAt: string;
   tables: EventTable[];
+  ticketInventory?: EventTicketInventory[];
 }
 
 export interface CreateEventDTO {
@@ -45,6 +57,7 @@ export interface CreateEventDTO {
   description?: string;
   coverPrice?: number;
   ticketPrices?: TicketPrices;
+  ticketInventory?: TicketInventoryInput;
   tables?: Array<{ zone: EventTable['zone']; total: number }>;
 }
 
@@ -56,6 +69,7 @@ export interface UpdateEventDTO {
   description?: string;
   coverPrice?: number;
   ticketPrices?: TicketPrices;
+  ticketInventory?: TicketInventoryInput;
   status?: Event['status'];
   isActive?: boolean;
 }
