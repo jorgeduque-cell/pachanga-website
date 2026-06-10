@@ -20,8 +20,14 @@ const CreateEventSchema = z.object({
     description: z.string().max(2000).optional(),
     coverPrice: z.number().int().min(0).optional(),
     ticketPrices: z.record(z.string(), z.number().int().min(0)).optional(),
-    // Cupos por tipo de boleta: { palco_8: 10, barras: 30, ... }
-    ticketInventory: z.record(z.string(), z.number().int().min(0)).optional(),
+    // Cupos por tipo de boleta: { palco_8: { total: 10, sold: 2 }, ... }
+    // `sold` es opcional: permite ajustes manuales (ventas en puerta, correcciones).
+    ticketInventory: z.record(z.string(), z.object({
+        total: z.number().int().min(0),
+        sold: z.number().int().min(0).optional(),
+    }).refine((o) => o.sold === undefined || o.sold <= o.total, {
+        message: 'Las vendidas no pueden superar el total',
+    })).optional(),
     tables: z.array(z.object({
         zone: z.enum(['SALON', 'TERRAZA', 'VIP', 'BARRA', 'PISTA']),
         total: z.number().int().min(0),
@@ -36,7 +42,12 @@ const UpdateEventSchema = z.object({
     description: z.string().max(2000).optional(),
     coverPrice: z.number().int().min(0).optional(),
     ticketPrices: z.record(z.string(), z.number().int().min(0)).optional(),
-    ticketInventory: z.record(z.string(), z.number().int().min(0)).optional(),
+    ticketInventory: z.record(z.string(), z.object({
+        total: z.number().int().min(0),
+        sold: z.number().int().min(0).optional(),
+    }).refine((o) => o.sold === undefined || o.sold <= o.total, {
+        message: 'Las vendidas no pueden superar el total',
+    })).optional(),
     status: z.enum(['ACTIVE', 'SOLD_OUT', 'CANCELLED', 'PAST']).optional(),
     isActive: z.boolean().optional(),
 });

@@ -27,8 +27,9 @@ export interface EventTicketInventory {
   sold: number;
 }
 
-// Mapa tipo de boleta → cupo total, usado en formularios admin
-export type TicketInventoryInput = Record<string, number>;
+// Mapa tipo de boleta → { total, sold }, usado en formularios admin.
+// `sold` es opcional: enviarlo ajusta las vendidas manualmente (ventas en puerta).
+export type TicketInventoryInput = Record<string, { total: number; sold?: number }>;
 
 export interface Event {
   id: string;

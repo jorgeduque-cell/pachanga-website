@@ -12,7 +12,8 @@ export interface CreateEventInput {
     description?: string;
     coverPrice?: number;
     ticketPrices?: Record<string, number>;  // e.g. { general: 60000, vip: 120000, palco: 200000 }
-    ticketInventory?: Record<string, number>; // cupos por tipo: { palco_8: 10, barras: 30 }
+    // Cupos por tipo: { palco_8: { total: 10, sold: 2 } }. `sold` opcional (ajuste manual).
+    ticketInventory?: Record<string, { total: number; sold?: number }>;
     tables?: Array<{ zone: TableZone; total: number }>;
 }
 
@@ -24,7 +25,7 @@ export interface UpdateEventInput {
     description?: string;
     coverPrice?: number;
     ticketPrices?: Record<string, number>;
-    ticketInventory?: Record<string, number>;
+    ticketInventory?: Record<string, { total: number; sold?: number }>;
     status?: EventStatus;
     isActive?: boolean;
 }
@@ -98,10 +99,10 @@ export class EventsService {
                     })),
                 } : undefined,
                 ticketInventory: input.ticketInventory ? {
-                    create: Object.entries(input.ticketInventory).map(([ticketType, total]) => ({
+                    create: Object.entries(input.ticketInventory).map(([ticketType, inv]) => ({
                         ticketType,
-                        total,
-                        sold: 0,
+                        total: inv.total,
+                        sold: inv.sold ?? 0,
                     })),
                 } : undefined,
             },
@@ -119,25 +120,27 @@ export class EventsService {
      * Update an event.
      */
     async update(id: string, input: UpdateEventInput) {
-        // Sync ticket inventory first: upsert the types sent (keeping their `sold`
-        // counts) and remove types no longer listed (those become unlimited).
+        // Sync ticket inventory first: upsert the types sent and remove types no
+        // longer listed (those become unlimited). `sold` only changes when the
+        // admin sends it explicitly (manual adjustment, e.g. door sales);
+        // otherwise the automatic payment-confirmation count is preserved.
         if (input.ticketInventory !== undefined) {
             const types = Object.keys(input.ticketInventory);
             await prisma.$transaction([
                 prisma.eventTicketInventory.deleteMany({
                     where: { eventId: id, ticketType: { notIn: types } },
                 }),
-                ...Object.entries(input.ticketInventory).map(([ticketType, total]) =>
+                ...Object.entries(input.ticketInventory).map(([ticketType, inv]) =>
                     prisma.eventTicketInventory.upsert({
                         where: { eventId_ticketType: { eventId: id, ticketType } },
-                        update: { total },
-                        create: { eventId: id, ticketType, total, sold: 0 },
+                        update: { total: inv.total, ...(inv.sold !== undefined && { sold: inv.sold }) },
+                        create: { eventId: id, ticketType, total: inv.total, sold: inv.sold ?? 0 },
                     }),
                 ),
             ]);
         }
 
-        const event = await prisma.event.update({
+        let event = await prisma.event.update({
             where: { id },
             data: {
                 ...(input.name && { name: input.name }),
@@ -152,6 +155,22 @@ export class EventsService {
             },
             include: { tables: true, ticketInventory: true },
         });
+
+        // Recompute SOLD_OUT/ACTIVE from inventory after manual adjustments,
+        // unless the admin set the status explicitly in this same request.
+        if (input.ticketInventory !== undefined && !input.status && event.ticketInventory.length > 0
+            && (event.status === 'ACTIVE' || event.status === 'SOLD_OUT')) {
+            const allSoldOut = event.ticketInventory.every((inv) => inv.sold >= inv.total);
+            const autoStatus = allSoldOut ? 'SOLD_OUT' : 'ACTIVE';
+            if (event.status !== autoStatus) {
+                event = await prisma.event.update({
+                    where: { id },
+                    data: { status: autoStatus },
+                    include: { tables: true, ticketInventory: true },
+                });
+                logger.info({ eventId: id, autoStatus }, '[Events] Status auto-updated by inventory');
+            }
+        }
 
         await this.syncKnowledge(event);
         logger.info({ eventId: id }, '[Events] Updated');

@@ -89,8 +89,11 @@ interface InventoryRow {
 }
 
 // Los tipos con cupo 0 no se envían: para el backend significan "sin límite".
-function cleanInventory(rows: InventoryRow[]): Record<string, number> {
-  return Object.fromEntries(rows.filter((r) => r.total > 0).map((r) => [r.key, r.total]));
+// `sold` viaja siempre para permitir ajustes manuales (ventas en puerta).
+function cleanInventory(rows: InventoryRow[]): Record<string, { total: number; sold: number }> {
+  return Object.fromEntries(
+    rows.filter((r) => r.total > 0).map((r) => [r.key, { total: r.total, sold: Math.min(r.sold, r.total) }]),
+  );
 }
 
 // ─── Component ───────────────────────────────────────────
@@ -696,7 +699,7 @@ export function AdminEvents() {
             </DialogTitle>
           </DialogHeader>
           <p className="text-xs text-white/40 mt-1">
-            Pon el cupo inicial en *Total* (0 = sin límite). Las *Vendidas* las descuenta el sistema automáticamente cada vez que confirmas un pago.
+            Pon el cupo inicial en Total (0 = sin límite). Las Vendidas se suman solas al confirmar pagos, y también puedes ajustarlas a mano (ej. ventas en puerta).
           </p>
           <div className="space-y-4 mt-4">
             {inventoryRows.map((row, index) => (
@@ -721,10 +724,15 @@ export function AdminEvents() {
                     <label className="block text-white/60 text-xs mb-1">Vendidas</label>
                     <Input
                       type="number"
+                      min={0}
+                      max={row.total}
                       value={row.sold}
-                      readOnly
-                      disabled
-                      className="bg-[#111] border-[#333] text-white/60 cursor-not-allowed"
+                      onChange={(e) => {
+                        const updated = [...inventoryRows];
+                        updated[index] = { ...row, sold: parseInt(e.target.value) || 0 };
+                        setInventoryRows(updated);
+                      }}
+                      className="bg-[#111] border-[#333] text-white"
                     />
                   </div>
                 </div>
