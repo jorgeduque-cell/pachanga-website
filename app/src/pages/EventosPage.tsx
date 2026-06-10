@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Calendar, Clock, Music, PartyPopper, Sparkles, ArrowRight, ArrowLeft, Wine, Phone, Loader2 } from 'lucide-react';
+import { Calendar, Clock, PartyPopper, Sparkles, ArrowRight, ArrowLeft, Wine, Phone, Loader2 } from 'lucide-react';
 import { ScrollReveal } from '@/components/ScrollReveal';
 import { StaggerContainer, StaggerItem } from '@/components/StaggerContainer';
 import { Button } from '@/components/ui/button';
@@ -42,12 +42,6 @@ const services = [
     title: 'Eventos Corporativos',
     description: 'Espacio ideal para integraciones empresariales y celebraciones de equipo.',
     features: ['Menú personalizado', 'Reserva de zona VIP', 'Coctelería premium', 'Música a elección'],
-  },
-  {
-    icon: Music,
-    title: 'Orquestas en Vivo',
-    description: 'Los mejores artistas de salsa y música tropical en nuestro escenario.',
-    features: ['Sonido profesional', 'Escenario amplio', 'Capacidad 300+ personas', 'Dos pisos de rumba'],
   },
 ];
 
@@ -192,13 +186,19 @@ function MainEventCard({ event }: { event: Event }) {
             )}
           </div>
         )}
-        <Link to="/reservas" className="block pt-1">
+        {/* Compra por WhatsApp: el chatbot inicia el flujo de boletas con el evento precargado */}
+        <a
+          href={`https://wa.me/573171481064?text=${encodeURIComponent(`¡Hola! Quiero comprar boletas para ${event.name}`)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block pt-1"
+        >
           <Button className="w-full btn-gold transition-all" disabled={event.status === 'SOLD_OUT'}>
             {event.status === 'SOLD_OUT' ? 'Agotado' : (
-              <>Reservar para este evento <ArrowRight size={14} className="ml-1" /></>
+              <>Comprar boletas por WhatsApp <ArrowRight size={14} className="ml-1" /></>
             )}
           </Button>
-        </Link>
+        </a>
       </div>
     </div>
   );
@@ -381,7 +381,7 @@ export function EventosPage() {
             </div>
           </ScrollReveal>
 
-          <StaggerContainer className="grid md:grid-cols-3 gap-8">
+          <StaggerContainer className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
             {services.map((service) => {
               const Icon = service.icon;
               return (
@@ -437,7 +437,7 @@ export function EventosPage() {
                   <Calendar size={20} className="mr-2" />Solicitar Reserva
                 </Button>
               </Link>
-              <a href="tel:+573219992719">
+              <a href="tel:+573171481064">
                 <Button size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10 px-8 text-lg">
                   <Phone size={20} className="mr-2" />Llamar Ahora
                 </Button>

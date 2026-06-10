@@ -133,11 +133,11 @@ export function Header() {
             {/* CTA & Mobile Menu Button */}
             <div className="flex items-center gap-4">
               <a 
-                href="tel:+573219992719" 
+                href="tel:+573171481064" 
                 className="hidden md:flex items-center gap-2 text-white/80 hover:text-[var(--accent-gold)] transition-colors"
               >
                 <Phone size={18} />
-                <span className="font-heading text-sm">+57 321 999 2719</span>
+                <span className="font-heading text-sm">+57 317 148 1064</span>
               </a>
 
               {/* Dashboard Admin - Solo visible para admins */}
@@ -284,11 +284,11 @@ export function Header() {
                 )}
                 
                 <a 
-                  href="tel:+573219992719" 
+                  href="tel:+573171481064" 
                   className="flex items-center gap-3 text-white/80 hover:text-[var(--accent-gold)] transition-colors mb-4"
                 >
                   <Phone size={20} />
-                  <span className="font-heading">+57 321 999 2719</span>
+                  <span className="font-heading">+57 317 148 1064</span>
                 </a>
                 <Link to="/reservas" className="block">
                   <Button className="btn-primary w-full">

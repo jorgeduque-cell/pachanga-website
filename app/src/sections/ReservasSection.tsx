@@ -179,7 +179,7 @@ export function ReservasSection() {
 
           <div className="mt-8 pt-8 border-t border-[#333] text-center">
             <p className="text-white/60 font-body">
-              ¿Prefieres llamar? <a href="tel:+573219992719" className="text-[#FFD700] hover:underline">+57 321 999 27 19</a>
+              ¿Prefieres llamar? <a href="tel:+573171481064" className="text-[#FFD700] hover:underline">+57 317 148 10 64</a>
             </p>
           </div>
         </div>

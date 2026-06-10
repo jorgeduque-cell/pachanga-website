@@ -56,7 +56,7 @@ export function UbicacionSection() {
                 <Phone className="text-[#E31B23] mt-1 flex-shrink-0" size={24} />
                 <div>
                   <p className="text-white font-heading">RESERVAS</p>
-                  <p className="text-white/60 font-body">+57 321 999 27 19</p>
+                  <p className="text-white/60 font-body">+57 317 148 10 64</p>
                 </div>
               </div>
 
@@ -71,7 +71,7 @@ export function UbicacionSection() {
             </div>
 
             <Button className="btn-primary w-full mt-8">
-              <a href="https://wa.me/573219992719" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2">
+              <a href="https://wa.me/573171481064" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2">
                 ESCRÍBENOS POR WHATSAPP
               </a>
             </Button>

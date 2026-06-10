@@ -11,7 +11,7 @@ const galleryImages = [
   { src: '/pachanga5.jpeg', category: 'ambiente', title: 'La pista' },
   { src: '/pachanga4.jpeg', category: 'eventos', title: 'Eventos especiales' },
   { src: '/dancers.jpg', category: 'historia', title: 'Nuestra historia' },
-  { src: '/hero-salsa.jpg', category: 'ambiente', title: 'Noches especiales' },
+  { src: '/rumba-salsera.jpg', category: 'ambiente', title: 'Noches especiales' },
 ];
 
 const categories = [

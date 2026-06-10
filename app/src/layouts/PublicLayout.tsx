@@ -16,7 +16,7 @@ export function PublicLayout() {
 
       {/* WhatsApp Float Button */}
       <motion.a
-        href="https://wa.me/573219992719"
+        href="https://wa.me/573171481064"
         target="_blank"
         rel="noopener noreferrer"
         initial={{ scale: 0, opacity: 0 }}

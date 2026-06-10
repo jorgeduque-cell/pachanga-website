@@ -195,7 +195,7 @@ export function HomePage() {
         {/* Imagen de fondo sutil con parallax */}
         <div 
           className="absolute inset-0 bg-cover bg-center bg-fixed"
-          style={{ backgroundImage: `url(/hero-salsa.jpg)` }}
+          style={{ backgroundImage: `url(/rumba-salsera.jpg)` }}
         />
         
         {/* Gradiente de transición suave desde el Hero */}
@@ -389,7 +389,7 @@ export function HomePage() {
         >
           <div
             className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(/hero-salsa.jpg)` }}
+            style={{ backgroundImage: `url(/rumba-salsera.jpg)` }}
           />
           <div className="absolute inset-0 bg-[#0a0a0a]/80" />
         </motion.div>

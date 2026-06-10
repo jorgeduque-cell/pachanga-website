@@ -14,8 +14,8 @@ const contactInfo = [
   {
     icon: Phone,
     title: 'Teléfono',
-    content: '+57 321 999 2719',
-    link: 'tel:+573219992719',
+    content: '+57 317 148 1064',
+    link: 'tel:+573171481064',
   },
   {
     icon: Mail,

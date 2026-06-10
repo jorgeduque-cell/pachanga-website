@@ -16,7 +16,6 @@ const footerLinks = {
     { path: '/eventos', label: 'Cumpleaños' },
     { path: '/eventos', label: 'Fiestas de Blanco' },
     { path: '/eventos', label: 'Eventos Corporativos' },
-    { path: '/eventos', label: 'Orquestas en Vivo' },
   ],
 };
 
@@ -146,8 +145,8 @@ export function Footer() {
                 </li>
                 <li className="flex items-center gap-3">
                   <Phone className="text-[var(--accent-red)] flex-shrink-0" size={16} />
-                  <a href="tel:+573219992719" className="text-white/60 hover:text-[var(--accent-gold)] font-body text-sm transition-colors">
-                    +57 321 999 2719
+                  <a href="tel:+573171481064" className="text-white/60 hover:text-[var(--accent-gold)] font-body text-sm transition-colors">
+                    +57 317 148 1064
                   </a>
                 </li>
                 <li className="flex items-center gap-3">
