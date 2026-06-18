@@ -42,6 +42,7 @@ import {
   useCreateEvent,
   useUpdateEvent,
   useUploadFlyer,
+  useUploadBanner,
   useDeleteEvent,
   useSetFeaturedEvent,
 } from '@/hooks/useEvents';
@@ -104,8 +105,10 @@ export function AdminEvents() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isFlyerOpen, setIsFlyerOpen] = useState(false);
+  const [isBannerOpen, setIsBannerOpen] = useState(false);
   const [isTablesOpen, setIsTablesOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
 
   // Form state
   const [form, setForm] = useState<CreateEventDTO>({
@@ -129,6 +132,7 @@ export function AdminEvents() {
   const createMutation = useCreateEvent();
   const updateMutation = useUpdateEvent();
   const uploadFlyerMutation = useUploadFlyer();
+  const uploadBannerMutation = useUploadBanner();
   const deleteMutation = useDeleteEvent();
   const featuredMutation = useSetFeaturedEvent();
 
@@ -181,6 +185,17 @@ export function AdminEvents() {
     }
   };
 
+  const handleBannerUpload = async (file: File) => {
+    if (!selectedEvent) return;
+    try {
+      await uploadBannerMutation.mutateAsync({ id: selectedEvent.id, file });
+      toast.success('Banner (app) subido exitosamente');
+      setIsBannerOpen(false);
+    } catch {
+      toast.error('Error al subir el banner');
+    }
+  };
+
   // Guarda los cupos totales; "vendidas" no se edita aquí, la descuenta el
   // sistema automáticamente al confirmar pagos.
   const handleInventoryUpdate = async () => {
@@ -230,6 +245,11 @@ export function AdminEvents() {
   const openFlyerUpload = (event: Event) => {
     setSelectedEvent(event);
     setIsFlyerOpen(true);
+  };
+
+  const openBannerUpload = (event: Event) => {
+    setSelectedEvent(event);
+    setIsBannerOpen(true);
   };
 
   // Filter by search
@@ -343,6 +363,9 @@ export function AdminEvents() {
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => openFlyerUpload(event)} className="text-white focus:text-white focus:bg-[#0a0a0a]">
                         <Upload className="mr-2" size={16} /> Subir Flyer
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => openBannerUpload(event)} className="text-white focus:text-white focus:bg-[#0a0a0a]">
+                        <Upload className="mr-2" size={16} /> Subir Banner (app)
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => openInventory(event)} className="text-white focus:text-white focus:bg-[#0a0a0a]">
                         <Users className="mr-2" size={16} /> Gestionar Cupos
@@ -684,6 +707,47 @@ export function AdminEvents() {
                 <span className="flex items-center gap-2"><Spinner className="w-4 h-4" /> Subiendo...</span>
               ) : (
                 <span className="flex items-center gap-2"><Upload size={20} /> Seleccionar imagen (JPG, PNG, WebP — máx 5MB)</span>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── BANNER UPLOAD MODAL (app Club PyP, apaisado 2:1) ───────────── */}
+      <Dialog open={isBannerOpen} onOpenChange={setIsBannerOpen}>
+        <DialogContent className="bg-[#1a1a1a] border-[#333] text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-heading uppercase text-white">Subir Banner (app)</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <p className="text-xs text-white/50">
+              Imagen <strong>horizontal 2:1</strong> (recomendado 1600×800 px, máx 5MB). Se muestra en el feed de la app Club PyP. El flyer vertical sigue siendo para la web.
+            </p>
+            {selectedEvent?.bannerUrl && (
+              <div className="rounded-lg overflow-hidden">
+                <img src={selectedEvent.bannerUrl} alt="Banner actual" className="w-full" />
+                <p className="text-xs text-white/40 mt-2 text-center">Banner actual</p>
+              </div>
+            )}
+            <input
+              ref={bannerInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleBannerUpload(file);
+              }}
+            />
+            <Button
+              onClick={() => bannerInputRef.current?.click()}
+              disabled={uploadBannerMutation.isPending}
+              className="w-full btn-primary py-6"
+            >
+              {uploadBannerMutation.isPending ? (
+                <span className="flex items-center gap-2"><Spinner className="w-4 h-4" /> Subiendo...</span>
+              ) : (
+                <span className="flex items-center gap-2"><Upload size={20} /> Seleccionar banner (JPG, PNG, WebP — máx 5MB)</span>
               )}
             </Button>
           </div>

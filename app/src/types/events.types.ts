@@ -41,6 +41,7 @@ export interface Event {
   coverPrice: number | null;
   ticketPrices: TicketPrices | null;
   flyerUrl: string | null;
+  bannerUrl: string | null; // versión apaisada 2:1 para el feed de la app Club PyP
   status: 'ACTIVE' | 'SOLD_OUT' | 'CANCELLED' | 'PAST';
   isActive: boolean;
   isFeatured: boolean;

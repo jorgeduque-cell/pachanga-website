@@ -38,3 +38,4 @@ npm-debug.log*
 backend/encuesta_video.mp4.mp4  
 backend/upload-video.html  
 backend/upload-video.mjs 
+.vercel

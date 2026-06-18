@@ -75,6 +75,18 @@ export function useUploadFlyer() {
   });
 }
 
+export function useUploadBanner() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, file }: { id: string; file: File }) =>
+      eventsService.uploadBanner(id, file),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: EVENTS_KEYS.detail(id) });
+      queryClient.invalidateQueries({ queryKey: EVENTS_KEYS.all });
+    },
+  });
+}
+
 export function useUpdateEventTables() {
   const queryClient = useQueryClient();
   return useMutation({

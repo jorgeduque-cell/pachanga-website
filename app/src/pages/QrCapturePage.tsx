@@ -1,12 +1,16 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Gift, CheckCircle, Loader2, Wine, ChevronDown } from 'lucide-react';
+import { Star, Gift, CheckCircle, Loader2, Wine, ChevronDown, Smartphone, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { captureService, type CaptureInput } from '@/services/capture.service';
+import { preRegisterClubPyP } from '@/lib/clubpyp';
+
+// URL de la app de lealtad Club PyP (para el CTA de descarga)
+const CLUBPYP_APP_URL = 'https://y-beryl-tau.vercel.app';
 
 const COUNTRY_CODES = [
   { code: '+57', country: 'CO', flag: '🇨🇴', name: 'Colombia' },
@@ -55,6 +59,16 @@ export function QrCapturePage() {
     try {
       const cleanedPhone = formData.phone.replace(/[\s\-()]/g, '');
       const fullPhone = `${countryCode}${cleanedPhone}`;
+
+      // Pre-registro en Club PyP (best-effort, no bloquea el registro del CRM).
+      // Así la app de lealtad lo reconoce por su teléfono y solo le pide crear un PIN.
+      void preRegisterClubPyP({
+        phone: fullPhone,
+        name: formData.name,
+        birthDate: formData.birthDate,
+        qrTable: formData.qrTable,
+      });
+
       const response = await captureService.capture({ ...formData, phone: fullPhone });
       
       // Verificar si es un cliente que regresa basado en el mensaje del servidor
@@ -143,6 +157,34 @@ export function QrCapturePage() {
               </span>
             </div>
           )}
+
+          {/* CTA: descargar la app de lealtad Club PyP */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+            className="mt-8 pt-6 border-t border-white/10"
+          >
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <Trophy className="w-5 h-5 text-[var(--accent-gold)]" />
+              <span className="text-white font-heading text-lg">Club PyP</span>
+            </div>
+            <p className="text-white/60 text-sm mb-4">
+              Descarga la app, gana <span className="text-[var(--accent-gold)] font-semibold">PyP Coins</span> por tus consumos y sube de nivel. Entra con este mismo WhatsApp.
+            </p>
+            <a
+              href={CLUBPYP_APP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full inline-flex items-center justify-center gap-2 py-4 px-6 rounded-xl bg-[var(--accent-gold)] text-black font-heading text-base hover:opacity-90 transition-opacity active:scale-[0.98]"
+            >
+              <Smartphone className="w-5 h-5" />
+              Descargar la app
+            </a>
+            <p className="text-white/30 text-xs mt-3">
+              Solo crea tu PIN al entrar. No tienes que registrarte de nuevo.
+            </p>
+          </motion.div>
         </motion.div>
       </div>
     );

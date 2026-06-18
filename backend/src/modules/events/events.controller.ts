@@ -196,6 +196,44 @@ router.post('/:id/flyer', authenticate, requireAdmin, rawBodyParser, async (req:
     }
 });
 
+// POST /api/events/:id/banner — Upload horizontal banner (2:1) for the Club PyP app (admin)
+router.post('/:id/banner', authenticate, requireAdmin, rawBodyParser, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const id = UuidSchema.parse(req.params.id);
+        const contentType = (req.headers['content-type'] || 'image/jpeg') as string;
+
+        if (!ALLOWED_MIME_TYPES.includes(contentType as typeof ALLOWED_MIME_TYPES[number])) {
+            res.status(400).json({
+                error: 'Tipo de archivo no permitido. Solo se aceptan: JPEG, PNG, WebP',
+            });
+            return;
+        }
+
+        const buffer = req.body as Buffer;
+        if (!buffer || buffer.length === 0) {
+            res.status(400).json({ error: 'No se recibió ningún archivo' });
+            return;
+        }
+
+        if (buffer.length > MAX_FLYER_SIZE) {
+            res.status(413).json({ error: 'El archivo excede el límite de 5MB' });
+            return;
+        }
+
+        const rawFileName = (req.headers['x-filename'] as string) || 'banner.jpg';
+        const safeFileName = rawFileName.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100);
+
+        const event = await eventsService.uploadBanner(id, buffer, safeFileName, contentType);
+        res.json(event);
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            res.status(400).json({ error: 'ID inválido' });
+            return;
+        }
+        next(error);
+    }
+});
+
 // PUT /api/events/:id/tables — Update table availability (admin)
 router.put('/:id/tables', authenticate, requireAdmin, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {

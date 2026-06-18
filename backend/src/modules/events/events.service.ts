@@ -1,6 +1,6 @@
 import { EventStatus, EventType, TableZone, Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
-import { uploadToStorage, deleteFromStorage } from '../../lib/storage.js';
+import { uploadToStorage, uploadEventBanner, deleteFromStorage } from '../../lib/storage.js';
 import { logger } from '../../lib/logger.js';
 
 // ─── Types ───────────────────────────────────────────────────
@@ -203,6 +203,30 @@ export class EventsService {
     }
 
     /**
+     * Upload a horizontal banner (2:1) for the Club PyP app feed.
+     */
+    async uploadBanner(id: string, buffer: Buffer, fileName: string, contentType: string) {
+        const existing = await prisma.event.findUnique({ where: { id } });
+        if (!existing) throw new Error('Event not found');
+
+        if (existing.bannerUrl) {
+            await deleteFromStorage(existing.bannerUrl);
+        }
+
+        const bannerUrl = await uploadEventBanner(buffer, fileName, contentType);
+        if (!bannerUrl) throw new Error('Upload failed');
+
+        const event = await prisma.event.update({
+            where: { id },
+            data: { bannerUrl },
+            include: { tables: true, ticketInventory: true },
+        });
+
+        logger.info({ eventId: id, bannerUrl }, '[Events] Banner uploaded');
+        return event;
+    }
+
+    /**
      * Update table availability for an event.
      */
     async updateTables(eventId: string, tables: Array<{ zone: TableZone; total: number; reserved: number }>) {
@@ -240,6 +264,9 @@ export class EventsService {
 
         if (event.flyerUrl) {
             await deleteFromStorage(event.flyerUrl);
+        }
+        if (event.bannerUrl) {
+            await deleteFromStorage(event.bannerUrl);
         }
 
         await prisma.event.delete({ where: { id } });

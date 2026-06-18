@@ -9,6 +9,8 @@ const CORS_ORIGINS: Record<string, string[]> = {
       'https://pachanga.com',
       'https://pachangaypocholapyp.com',
       'https://www.pachangaypocholapyp.com',
+      // App Club PyP — lee la API pública de eventos para el banner del feed
+      'https://y-beryl-tau.vercel.app',
       env.FRONTEND_URL
     ],
     test: ['http://localhost:3000'],

@@ -63,6 +63,38 @@ export async function deleteFromStorage(publicUrl: string): Promise<void> {
 }
 
 /**
+ * Uploads an event banner (apaisado 2:1, para la app Club PyP) to Supabase Storage.
+ * Separate prefix so banners don't mix with the vertical flyers.
+ */
+export async function uploadEventBanner(
+    buffer: Buffer,
+    fileName: string,
+    contentType: string,
+): Promise<string | null> {
+    const client = getClient();
+    if (!client) {
+        logger.warn('[Storage] Supabase not configured, skipping banner upload');
+        return null;
+    }
+
+    const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100);
+    const path = `banners/${Date.now()}-${safeName}`;
+
+    const { error } = await client.storage
+        .from(BUCKET)
+        .upload(path, buffer, { contentType, upsert: true });
+
+    if (error) {
+        logger.error({ err: error }, '[Storage] Banner upload failed');
+        return null;
+    }
+
+    const { data } = client.storage.from(BUCKET).getPublicUrl(path);
+    logger.info({ path, url: data.publicUrl }, '[Storage] Banner uploaded');
+    return data.publicUrl;
+}
+
+/**
  * Uploads a ticket QR image to Supabase Storage.
  * Path is keyed by payment reference so re-sending overwrites the same file.
  */

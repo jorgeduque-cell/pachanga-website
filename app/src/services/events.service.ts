@@ -34,6 +34,18 @@ export const eventsService = {
     return response.data;
   },
 
+  // Banner apaisado (2:1) para el feed de la app Club PyP
+  uploadBanner: async (id: string, file: File): Promise<Event> => {
+    const buffer = await file.arrayBuffer();
+    const response = await apiClient.post<Event>(`/events/${id}/banner`, buffer, {
+      headers: {
+        'Content-Type': file.type,
+        'X-Filename': file.name,
+      },
+    });
+    return response.data;
+  },
+
   updateTables: (id: string, tables: UpdateTablesDTO[]) =>
     apiClient.put<Event>(`/events/${id}/tables`, tables).then((r) => r.data),
 
