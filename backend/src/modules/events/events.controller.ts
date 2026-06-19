@@ -12,13 +12,23 @@ const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 // ─── Validation Schemas ──────────────────────────────────
 const UuidSchema = z.string().uuid();
 
+// Campos de recurrencia para promos (cubetazos, happy hours).
+const promoFields = {
+    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    recurrenceDays: z.string().max(20).optional(),          // "4,5"
+    recurrenceStartTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+    recurrenceEndTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+};
+
 const CreateEventSchema = z.object({
     name: z.string().min(1).max(200),
-    eventType: z.enum(['CONCERT', 'QUICK_EVENT']).optional(),
+    eventType: z.enum(['CONCERT', 'QUICK_EVENT', 'PROMO']).optional(),
     eventDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     eventTime: z.string().regex(/^\d{2}:\d{2}$/),
     description: z.string().max(2000).optional(),
     coverPrice: z.number().int().min(0).optional(),
+    ...promoFields,
     ticketPrices: z.record(z.string(), z.number().int().min(0)).optional(),
     // Cupos por tipo de boleta: { palco_8: { total: 10, sold: 2 }, ... }
     // `sold` es opcional: permite ajustes manuales (ventas en puerta, correcciones).
@@ -36,11 +46,12 @@ const CreateEventSchema = z.object({
 
 const UpdateEventSchema = z.object({
     name: z.string().min(1).max(200).optional(),
-    eventType: z.enum(['CONCERT', 'QUICK_EVENT']).optional(),
+    eventType: z.enum(['CONCERT', 'QUICK_EVENT', 'PROMO']).optional(),
     eventDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     eventTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
     description: z.string().max(2000).optional(),
     coverPrice: z.number().int().min(0).optional(),
+    ...promoFields,
     ticketPrices: z.record(z.string(), z.number().int().min(0)).optional(),
     ticketInventory: z.record(z.string(), z.object({
         total: z.number().int().min(0),

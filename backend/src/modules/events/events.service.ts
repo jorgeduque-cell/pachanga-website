@@ -2,11 +2,21 @@ import { EventStatus, EventType, TableZone, Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { uploadToStorage, uploadEventBanner, deleteFromStorage } from '../../lib/storage.js';
 import { logger } from '../../lib/logger.js';
+import { broadcastToClubPyP } from '../../lib/clubpyp-push.js';
 
 // ─── Types ───────────────────────────────────────────────────
-export interface CreateEventInput {
+// Recurrencia de promos (cubetazos, happy hours).
+interface PromoFields {
+    startDate?: string;            // "YYYY-MM-DD"
+    endDate?: string;             // "YYYY-MM-DD"
+    recurrenceDays?: string;       // "4,5" (0=dom … 6=sáb)
+    recurrenceStartTime?: string;  // "17:00"
+    recurrenceEndTime?: string;    // "20:00"
+}
+
+export interface CreateEventInput extends PromoFields {
     name: string;
-    eventType?: 'CONCERT' | 'QUICK_EVENT';
+    eventType?: 'CONCERT' | 'QUICK_EVENT' | 'PROMO';
     eventDate: string;    // ISO date string
     eventTime: string;    // e.g. "18:00"
     description?: string;
@@ -17,9 +27,9 @@ export interface CreateEventInput {
     tables?: Array<{ zone: TableZone; total: number }>;
 }
 
-export interface UpdateEventInput {
+export interface UpdateEventInput extends PromoFields {
     name?: string;
-    eventType?: 'CONCERT' | 'QUICK_EVENT';
+    eventType?: 'CONCERT' | 'QUICK_EVENT' | 'PROMO';
     eventDate?: string;
     eventTime?: string;
     description?: string;
@@ -37,17 +47,28 @@ export class EventsService {
      * List events with optional filters.
      */
     async list(filters?: { status?: EventStatus; upcoming?: boolean }) {
-        const where: Record<string, unknown> = {};
-
-        if (filters?.status) {
-            where.status = filters.status;
-        }
-
+        // Público (upcoming): eventos próximos (no-PROMO) + promos vigentes hoy.
         if (filters?.upcoming) {
-            where.eventDate = { gte: new Date() };
-            where.status = { in: ['ACTIVE', 'SOLD_OUT'] };
+            const today = new Date();
+            today.setUTCHours(0, 0, 0, 0);
+            const [events, promos] = await Promise.all([
+                prisma.event.findMany({
+                    where: {
+                        eventDate: { gte: today },
+                        status: { in: ['ACTIVE', 'SOLD_OUT'] },
+                        eventType: { not: 'PROMO' },
+                    },
+                    include: { tables: true, ticketInventory: true },
+                    orderBy: [{ isFeatured: 'desc' }, { eventDate: 'asc' }],
+                }),
+                this.activePromos(today),
+            ]);
+            return [...events, ...promos];
         }
 
+        // Admin: todos (con filtro de estado opcional).
+        const where: Record<string, unknown> = {};
+        if (filters?.status) where.status = filters.status;
         return prisma.event.findMany({
             where,
             include: { tables: true, ticketInventory: true },
@@ -55,6 +76,34 @@ export class EventsService {
                 { isFeatured: 'desc' },
                 { eventDate: 'asc' },
             ],
+        });
+    }
+
+    /**
+     * Promos (eventType=PROMO) vigentes HOY: dentro del rango de fechas y, si
+     * tienen recurrencia semanal, que hoy sea uno de sus días.
+     */
+    private async activePromos(today: Date) {
+        const promos = await prisma.event.findMany({
+            where: {
+                eventType: 'PROMO',
+                isActive: true,
+                status: { in: ['ACTIVE', 'SOLD_OUT'] },
+                AND: [
+                    { OR: [{ startDate: null }, { startDate: { lte: today } }] },
+                    { OR: [{ endDate: null }, { endDate: { gte: today } }] },
+                ],
+            },
+            include: { tables: true, ticketInventory: true },
+            orderBy: [{ isFeatured: 'desc' }, { eventDate: 'asc' }],
+        });
+
+        // Día de la semana en Bogotá (UTC-5): 0=dom … 6=sáb
+        const dow = new Date(Date.now() - 5 * 3600 * 1000).getUTCDay();
+        return promos.filter((p) => {
+            if (!p.recurrenceDays) return true; // sin recurrencia = todos los días del rango
+            const days = p.recurrenceDays.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !Number.isNaN(n));
+            return days.length === 0 || days.includes(dow);
         });
     }
 
@@ -91,6 +140,11 @@ export class EventsService {
                 description: input.description,
                 coverPrice: input.coverPrice,
                 ticketPrices: input.ticketPrices ? (input.ticketPrices as unknown as Prisma.InputJsonValue) : undefined,
+                startDate: input.startDate ? new Date(input.startDate) : undefined,
+                endDate: input.endDate ? new Date(input.endDate) : undefined,
+                recurrenceDays: input.recurrenceDays,
+                recurrenceStartTime: input.recurrenceStartTime,
+                recurrenceEndTime: input.recurrenceEndTime,
                 tables: input.tables?.length ? {
                     create: input.tables.map((t) => ({
                         zone: t.zone,
@@ -111,6 +165,15 @@ export class EventsService {
 
         // Auto-inject into chatbot knowledge
         await this.syncKnowledge(event);
+
+        // Avisar a TODA la app Club PyP que hay un evento nuevo (fire-and-forget).
+        const fecha = event.eventDate.toLocaleDateString('es-CO', { day: 'numeric', month: 'long' });
+        void broadcastToClubPyP({
+            title: `🎉 Nuevo evento: ${event.name}`,
+            body: `${fecha}${event.eventTime ? ` · ${event.eventTime}` : ''} en Pachanga. ¡Reserva ya!`,
+            url: '/',
+            urgency: 'high',
+        });
 
         logger.info({ eventId: event.id, name: event.name }, '[Events] Created');
         return event;
@@ -150,6 +213,11 @@ export class EventsService {
                 ...(input.description !== undefined && { description: input.description }),
                 ...(input.coverPrice !== undefined && { coverPrice: input.coverPrice }),
                 ...(input.ticketPrices !== undefined && { ticketPrices: input.ticketPrices as unknown as Prisma.InputJsonValue }),
+                ...(input.startDate !== undefined && { startDate: input.startDate ? new Date(input.startDate) : null }),
+                ...(input.endDate !== undefined && { endDate: input.endDate ? new Date(input.endDate) : null }),
+                ...(input.recurrenceDays !== undefined && { recurrenceDays: input.recurrenceDays || null }),
+                ...(input.recurrenceStartTime !== undefined && { recurrenceStartTime: input.recurrenceStartTime || null }),
+                ...(input.recurrenceEndTime !== undefined && { recurrenceEndTime: input.recurrenceEndTime || null }),
                 ...(input.status && { status: input.status }),
                 ...(input.isActive !== undefined && { isActive: input.isActive }),
             },

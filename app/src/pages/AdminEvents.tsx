@@ -48,13 +48,79 @@ import {
 } from '@/hooks/useEvents';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from 'sonner';
-import type { Event, EventType, TicketPrices, CreateEventDTO, UpdateEventDTO } from '@/types/events.types';
+import type { Event, EventType, TicketPrices, CreateEventDTO, UpdateEventDTO, PromoFields } from '@/types/events.types';
 
 // ─── Constants ───────────────────────────────────────────
 const EVENT_TYPE_LABELS: Record<EventType, string> = {
   CONCERT: '🎵 Concierto',
   QUICK_EVENT: '🎉 Evento Rápido',
+  PROMO: '🍻 Promo',
 };
+
+const WEEKDAYS: Array<[string, string]> = [
+  ['0', 'Dom'], ['1', 'Lun'], ['2', 'Mar'], ['3', 'Mié'], ['4', 'Jue'], ['5', 'Vie'], ['6', 'Sáb'],
+];
+
+// Para promos: el backend exige eventDate/eventTime, así que los derivamos del
+// rango/recurrencia antes de enviar.
+function withPromoDefaults<T extends CreateEventDTO | UpdateEventDTO>(d: T): T {
+  if (d.eventType !== 'PROMO') return d;
+  return {
+    ...d,
+    eventDate: d.startDate || d.eventDate || new Date().toISOString().slice(0, 10),
+    eventTime: d.recurrenceStartTime || d.eventTime || '20:00',
+  };
+}
+
+// Editor de recurrencia para promos (cubetazos, happy hours).
+function PromoEditor({ value, onPatch }: { value: PromoFields; onPatch: (p: PromoFields) => void }) {
+  const days = (value.recurrenceDays || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const toggleDay = (d: string) => {
+    const set = new Set(days);
+    if (set.has(d)) set.delete(d); else set.add(d);
+    onPatch({ recurrenceDays: Array.from(set).sort().join(',') });
+  };
+  return (
+    <div className="space-y-3 p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
+      <label className="block text-amber-400 text-sm font-medium">🍻 Promo recurrente (cubetazo, happy hour…)</label>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-white/60 text-xs mb-1">Desde</label>
+          <Input type="date" value={value.startDate || ''} onChange={(e) => onPatch({ startDate: e.target.value })} className="bg-[#0a0a0a] border-[#333] text-white" />
+        </div>
+        <div>
+          <label className="block text-white/60 text-xs mb-1">Hasta (opcional)</label>
+          <Input type="date" value={value.endDate || ''} onChange={(e) => onPatch({ endDate: e.target.value })} className="bg-[#0a0a0a] border-[#333] text-white" />
+        </div>
+      </div>
+      <div>
+        <label className="block text-white/60 text-xs mb-2">Días (vacío = todos los días del rango)</label>
+        <div className="flex flex-wrap gap-2">
+          {WEEKDAYS.map(([n, l]) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => toggleDay(n)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                days.includes(n) ? 'bg-amber-500 text-black border-amber-500' : 'bg-[#0a0a0a] text-white/60 border-[#333] hover:border-[#555]'
+              }`}
+            >{l}</button>
+          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-white/60 text-xs mb-1">Hora inicio</label>
+          <Input type="time" value={value.recurrenceStartTime || ''} onChange={(e) => onPatch({ recurrenceStartTime: e.target.value })} className="bg-[#0a0a0a] border-[#333] text-white" />
+        </div>
+        <div>
+          <label className="block text-white/60 text-xs mb-1">Hora fin</label>
+          <Input type="time" value={value.recurrenceEndTime || ''} onChange={(e) => onPatch({ recurrenceEndTime: e.target.value })} className="bg-[#0a0a0a] border-[#333] text-white" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Constants ───────────────────────────────────────────
 const STATUS_LABELS: Record<Event['status'], string> = {
@@ -141,7 +207,7 @@ export function AdminEvents() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await createMutation.mutateAsync(form);
+      await createMutation.mutateAsync(withPromoDefaults(form));
       toast.success('Evento creado exitosamente');
       setIsCreateOpen(false);
       setForm({ name: '', eventType: 'QUICK_EVENT', eventDate: '', eventTime: '', description: '', coverPrice: 0, ticketPrices: {} });
@@ -154,7 +220,7 @@ export function AdminEvents() {
     e.preventDefault();
     if (!selectedEvent) return;
     try {
-      await updateMutation.mutateAsync({ id: selectedEvent.id, data: editForm });
+      await updateMutation.mutateAsync({ id: selectedEvent.id, data: withPromoDefaults(editForm) });
       toast.success('Evento actualizado');
       setIsEditOpen(false);
       setSelectedEvent(null);
@@ -223,6 +289,11 @@ export function AdminEvents() {
       coverPrice: event.coverPrice || 0,
       ticketPrices: (event.ticketPrices as TicketPrices) || {},
       status: event.status,
+      startDate: event.startDate ? event.startDate.split('T')[0] : undefined,
+      endDate: event.endDate ? event.endDate.split('T')[0] : undefined,
+      recurrenceDays: event.recurrenceDays || undefined,
+      recurrenceStartTime: event.recurrenceStartTime || undefined,
+      recurrenceEndTime: event.recurrenceEndTime || undefined,
     });
     setIsEditOpen(true);
   };
@@ -463,7 +534,7 @@ export function AdminEvents() {
             {/* Event Type Selector */}
             <div>
               <label className="block text-white/80 mb-2 text-sm">Tipo de evento</label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <button
                   type="button"
                   onClick={() => setForm({ ...form, eventType: 'CONCERT', ticketPrices: { palco_8: 0, palco_4: 0, palco_2: 0, vip_primer_piso: 0, vip_segundo_piso: 0, barras: 0 }, coverPrice: 0 })}
@@ -475,7 +546,6 @@ export function AdminEvents() {
                 >
                   <span className="text-2xl block mb-1">🎵</span>
                   <span className="text-sm font-medium">Concierto</span>
-                  <span className="text-xs block text-white/40 mt-0.5">Palcos, VIP, Barras</span>
                 </button>
                 <button
                   type="button"
@@ -487,22 +557,35 @@ export function AdminEvents() {
                   }`}
                 >
                   <span className="text-2xl block mb-1">🎉</span>
-                  <span className="text-sm font-medium">Evento Rápido</span>
-                  <span className="text-xs block text-white/40 mt-0.5">Cover opcional</span>
+                  <span className="text-sm font-medium">Evento</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, eventType: 'PROMO', ticketPrices: {}, coverPrice: 0 })}
+                  className={`p-3 rounded-lg border-2 text-center transition-all ${
+                    form.eventType === 'PROMO'
+                      ? 'border-amber-500 bg-amber-500/10 text-amber-400'
+                      : 'border-[#333] bg-[#0a0a0a] text-white/60 hover:border-[#555]'
+                  }`}
+                >
+                  <span className="text-2xl block mb-1">🍻</span>
+                  <span className="text-sm font-medium">Promo</span>
                 </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-white/80 mb-2 text-sm">Fecha</label>
-                <Input type="date" value={form.eventDate} onChange={(e) => setForm({ ...form, eventDate: e.target.value })} required className="bg-[#0a0a0a] border-[#333] text-white" />
+            {form.eventType !== 'PROMO' && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-white/80 mb-2 text-sm">Fecha</label>
+                  <Input type="date" value={form.eventDate} onChange={(e) => setForm({ ...form, eventDate: e.target.value })} required className="bg-[#0a0a0a] border-[#333] text-white" />
+                </div>
+                <div>
+                  <label className="block text-white/80 mb-2 text-sm">Hora</label>
+                  <Input type="time" value={form.eventTime} onChange={(e) => setForm({ ...form, eventTime: e.target.value })} required className="bg-[#0a0a0a] border-[#333] text-white" />
+                </div>
               </div>
-              <div>
-                <label className="block text-white/80 mb-2 text-sm">Hora</label>
-                <Input type="time" value={form.eventTime} onChange={(e) => setForm({ ...form, eventTime: e.target.value })} required className="bg-[#0a0a0a] border-[#333] text-white" />
-              </div>
-            </div>
+            )}
             <div>
               <label className="block text-white/80 mb-2 text-sm">Descripción</label>
               <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Describe el evento..." rows={3} className="w-full px-3 py-2 rounded-md bg-[#0a0a0a] border border-[#333] text-white placeholder:text-white/40 resize-none" />
@@ -539,6 +622,8 @@ export function AdminEvents() {
                   </div>
                 </div>
               </div>
+            ) : form.eventType === 'PROMO' ? (
+              <PromoEditor value={form} onPatch={(p) => setForm({ ...form, ...p })} />
             ) : (
               <div>
                 <label className="block text-white/80 mb-2 text-sm">Precio cover (COP) — 0 = entrada libre</label>
@@ -567,16 +652,18 @@ export function AdminEvents() {
               <label className="block text-white/80 mb-2 text-sm">Nombre</label>
               <Input value={editForm.name || ''} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="bg-[#0a0a0a] border-[#333] text-white" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-white/80 mb-2 text-sm">Fecha</label>
-                <Input type="date" value={editForm.eventDate || ''} onChange={(e) => setEditForm({ ...editForm, eventDate: e.target.value })} className="bg-[#0a0a0a] border-[#333] text-white" />
+            {editForm.eventType !== 'PROMO' && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-white/80 mb-2 text-sm">Fecha</label>
+                  <Input type="date" value={editForm.eventDate || ''} onChange={(e) => setEditForm({ ...editForm, eventDate: e.target.value })} className="bg-[#0a0a0a] border-[#333] text-white" />
+                </div>
+                <div>
+                  <label className="block text-white/80 mb-2 text-sm">Hora</label>
+                  <Input type="time" value={editForm.eventTime || ''} onChange={(e) => setEditForm({ ...editForm, eventTime: e.target.value })} className="bg-[#0a0a0a] border-[#333] text-white" />
+                </div>
               </div>
-              <div>
-                <label className="block text-white/80 mb-2 text-sm">Hora</label>
-                <Input type="time" value={editForm.eventTime || ''} onChange={(e) => setEditForm({ ...editForm, eventTime: e.target.value })} className="bg-[#0a0a0a] border-[#333] text-white" />
-              </div>
-            </div>
+            )}
             <div>
               <label className="block text-white/80 mb-2 text-sm">Descripción</label>
               <textarea value={editForm.description || ''} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} rows={3} className="w-full px-3 py-2 rounded-md bg-[#0a0a0a] border border-[#333] text-white resize-none" />
@@ -584,7 +671,7 @@ export function AdminEvents() {
             {/* Event Type Selector */}
             <div>
               <label className="block text-white/80 mb-2 text-sm">Tipo de evento</label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <button
                   type="button"
                   onClick={() => setEditForm({ ...editForm, eventType: 'CONCERT', ticketPrices: editForm.ticketPrices || { palco_8: 0, palco_4: 0, palco_2: 0, vip_primer_piso: 0, vip_segundo_piso: 0, barras: 0 }, coverPrice: 0 })}
@@ -596,7 +683,6 @@ export function AdminEvents() {
                 >
                   <span className="text-2xl block mb-1">🎵</span>
                   <span className="text-sm font-medium">Concierto</span>
-                  <span className="text-xs block text-white/40 mt-0.5">Palcos, VIP, Barras</span>
                 </button>
                 <button
                   type="button"
@@ -608,8 +694,19 @@ export function AdminEvents() {
                   }`}
                 >
                   <span className="text-2xl block mb-1">🎉</span>
-                  <span className="text-sm font-medium">Evento Rápido</span>
-                  <span className="text-xs block text-white/40 mt-0.5">Cover opcional</span>
+                  <span className="text-sm font-medium">Evento</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditForm({ ...editForm, eventType: 'PROMO', ticketPrices: {}, coverPrice: 0 })}
+                  className={`p-3 rounded-lg border-2 text-center transition-all ${
+                    editForm.eventType === 'PROMO'
+                      ? 'border-amber-500 bg-amber-500/10 text-amber-400'
+                      : 'border-[#333] bg-[#0a0a0a] text-white/60 hover:border-[#555]'
+                  }`}
+                >
+                  <span className="text-2xl block mb-1">🍻</span>
+                  <span className="text-sm font-medium">Promo</span>
                 </button>
               </div>
             </div>
@@ -645,6 +742,8 @@ export function AdminEvents() {
                   </div>
                 </div>
               </div>
+            ) : editForm.eventType === 'PROMO' ? (
+              <PromoEditor value={editForm} onPatch={(p) => setEditForm({ ...editForm, ...p })} />
             ) : (
               <div>
                 <label className="block text-white/80 mb-2 text-sm">Precio cover (COP) — 0 = entrada libre</label>

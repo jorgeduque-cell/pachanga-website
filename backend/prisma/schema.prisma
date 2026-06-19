@@ -342,6 +342,7 @@ enum EventStatus {
 enum EventType {
   CONCERT
   QUICK_EVENT
+  PROMO
 }
 
 model Event {
@@ -355,6 +356,12 @@ model Event {
   ticketPrices Json?      @map("ticket_prices")
   flyerUrl    String?     @map("flyer_url")
   bannerUrl   String?     @map("banner_url") // versión apaisada 2:1 para el banner de la app Club PyP
+  // Promos recurrentes (eventType = PROMO): rango de fechas + recurrencia semanal opcional
+  startDate           DateTime? @map("start_date") @db.Date
+  endDate             DateTime? @map("end_date")   @db.Date
+  recurrenceDays      String?   @map("recurrence_days")        // "4,5" = jue,vie (0=dom … 6=sáb)
+  recurrenceStartTime String?   @map("recurrence_start_time")  // "17:00"
+  recurrenceEndTime   String?   @map("recurrence_end_time")    // "20:00"
   status      EventStatus @default(ACTIVE)
   isActive    Boolean     @default(true) @map("is_active")
   isFeatured  Boolean     @default(false) @map("is_featured")

@@ -1,6 +1,6 @@
 // ─── Event Types ─────────────────────────────────────────────
 
-export type EventType = 'CONCERT' | 'QUICK_EVENT';
+export type EventType = 'CONCERT' | 'QUICK_EVENT' | 'PROMO';
 
 export interface TicketPrices {
   palco_8?: number;
@@ -49,9 +49,24 @@ export interface Event {
   updatedAt: string;
   tables: EventTable[];
   ticketInventory?: EventTicketInventory[];
+  // Promos recurrentes (eventType = PROMO)
+  startDate?: string | null;
+  endDate?: string | null;
+  recurrenceDays?: string | null;       // "4,5"
+  recurrenceStartTime?: string | null;  // "17:00"
+  recurrenceEndTime?: string | null;    // "20:00"
 }
 
-export interface CreateEventDTO {
+// Campos de recurrencia que comparten Create/Update.
+export interface PromoFields {
+  startDate?: string;
+  endDate?: string;
+  recurrenceDays?: string;
+  recurrenceStartTime?: string;
+  recurrenceEndTime?: string;
+}
+
+export interface CreateEventDTO extends PromoFields {
   name: string;
   eventType: EventType;
   eventDate: string;       // YYYY-MM-DD
@@ -63,7 +78,7 @@ export interface CreateEventDTO {
   tables?: Array<{ zone: EventTable['zone']; total: number }>;
 }
 
-export interface UpdateEventDTO {
+export interface UpdateEventDTO extends PromoFields {
   name?: string;
   eventType?: EventType;
   eventDate?: string;
