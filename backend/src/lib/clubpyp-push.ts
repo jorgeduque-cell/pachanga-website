@@ -8,12 +8,13 @@ import { logger } from './logger.js';
 // el flujo que la invoca: si falla, solo se loguea.
 //
 // Env requeridas (en Render, backend Pachanga):
-//   CLUBPYP_PUSH_URL    = https://zbzcamdgmukqqamjqcuy.supabase.co/functions/v1/send-push
+//   CLUBPYP_PUSH_URL    = https://zbzcamdgmukqqamjqcuy.supabase.co/functions/v1/clever-endpoint
 //   CLUBPYP_PUSH_SECRET = el mismo valor de PUSH_INTERNAL_SECRET de Club PyP
+// (La función send-push quedó desplegada con el slug 'clever-endpoint'.)
 
 const PUSH_URL =
     process.env.CLUBPYP_PUSH_URL ||
-    'https://zbzcamdgmukqqamjqcuy.supabase.co/functions/v1/send-push';
+    'https://zbzcamdgmukqqamjqcuy.supabase.co/functions/v1/clever-endpoint';
 const PUSH_SECRET = process.env.CLUBPYP_PUSH_SECRET || '';
 
 interface BroadcastInput {
