@@ -39,6 +39,7 @@ export interface Event {
   eventTime: string;
   description: string | null;
   coverPrice: number | null;
+  coverIsConsumable: boolean;
   ticketPrices: TicketPrices | null;
   flyerUrl: string | null;
   bannerUrl: string | null; // versión apaisada 2:1 para el feed de la app Club PyP
@@ -73,6 +74,7 @@ export interface CreateEventDTO extends PromoFields {
   eventTime: string;       // HH:MM
   description?: string;
   coverPrice?: number;
+  coverIsConsumable?: boolean;
   ticketPrices?: TicketPrices;
   ticketInventory?: TicketInventoryInput;
   tables?: Array<{ zone: EventTable['zone']; total: number }>;
@@ -85,6 +87,7 @@ export interface UpdateEventDTO extends PromoFields {
   eventTime?: string;
   description?: string;
   coverPrice?: number;
+  coverIsConsumable?: boolean;
   ticketPrices?: TicketPrices;
   ticketInventory?: TicketInventoryInput;
   status?: Event['status'];

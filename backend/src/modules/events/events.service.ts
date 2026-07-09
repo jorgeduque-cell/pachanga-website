@@ -21,6 +21,7 @@ export interface CreateEventInput extends PromoFields {
     eventTime: string;    // e.g. "18:00"
     description?: string;
     coverPrice?: number;
+    coverIsConsumable?: boolean;
     ticketPrices?: Record<string, number>;  // e.g. { general: 60000, vip: 120000, palco: 200000 }
     // Cupos por tipo: { palco_8: { total: 10, sold: 2 } }. `sold` opcional (ajuste manual).
     ticketInventory?: Record<string, { total: number; sold?: number }>;
@@ -34,6 +35,7 @@ export interface UpdateEventInput extends PromoFields {
     eventTime?: string;
     description?: string;
     coverPrice?: number;
+    coverIsConsumable?: boolean;
     ticketPrices?: Record<string, number>;
     ticketInventory?: Record<string, { total: number; sold?: number }>;
     status?: EventStatus;
@@ -139,6 +141,7 @@ export class EventsService {
                 eventTime: input.eventTime,
                 description: input.description,
                 coverPrice: input.coverPrice,
+                coverIsConsumable: input.coverIsConsumable ?? false,
                 ticketPrices: input.ticketPrices ? (input.ticketPrices as unknown as Prisma.InputJsonValue) : undefined,
                 startDate: input.startDate ? new Date(input.startDate) : undefined,
                 endDate: input.endDate ? new Date(input.endDate) : undefined,
@@ -212,6 +215,7 @@ export class EventsService {
                 ...(input.eventTime && { eventTime: input.eventTime }),
                 ...(input.description !== undefined && { description: input.description }),
                 ...(input.coverPrice !== undefined && { coverPrice: input.coverPrice }),
+                ...(input.coverIsConsumable !== undefined && { coverIsConsumable: input.coverIsConsumable }),
                 ...(input.ticketPrices !== undefined && { ticketPrices: input.ticketPrices as unknown as Prisma.InputJsonValue }),
                 ...(input.startDate !== undefined && { startDate: input.startDate ? new Date(input.startDate) : null }),
                 ...(input.endDate !== undefined && { endDate: input.endDate ? new Date(input.endDate) : null }),
@@ -350,7 +354,7 @@ export class EventsService {
     /**
      * Auto-sync event data to chatbot knowledge base.
      */
-    private async syncKnowledge(event: { id: string; name: string; eventType?: string; eventDate: Date; eventTime: string; description?: string | null; coverPrice?: number | null; ticketPrices?: unknown; status: EventStatus; tables?: Array<{ zone: TableZone; total: number; reserved: number }> }) {
+    private async syncKnowledge(event: { id: string; name: string; eventType?: string; eventDate: Date; eventTime: string; description?: string | null; coverPrice?: number | null; coverIsConsumable?: boolean | null; ticketPrices?: unknown; status: EventStatus; tables?: Array<{ zone: TableZone; total: number; reserved: number }> }) {
         const dateStr = event.eventDate.toLocaleDateString('es-CO', {
             weekday: 'long', day: 'numeric', month: 'long',
         });
@@ -385,7 +389,8 @@ export class EventsService {
                 });
             pricingInfo = `💰 PRECIOS POR UBICACIÓN:\n${lines.join('\n')}`;
         } else if (event.coverPrice && event.coverPrice > 0) {
-            pricingInfo = `💰 Cover: $${event.coverPrice.toLocaleString('es-CO')}`;
+            const consumableNote = event.eventType === 'PROMO' ? (event.coverIsConsumable ? ' (100% consumible en barra)' : ' (no consumible)') : '';
+            pricingInfo = `💰 Cover: $${event.coverPrice.toLocaleString('es-CO')}${consumableNote}`;
         } else {
             pricingInfo = '🆓 Entrada libre';
         }

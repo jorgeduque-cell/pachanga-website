@@ -72,7 +72,32 @@ function withPromoDefaults<T extends CreateEventDTO | UpdateEventDTO>(d: T): T {
   };
 }
 
-type PromoEditorValue = PromoFields & { coverPrice?: number };
+type PromoEditorValue = PromoFields & { coverPrice?: number; coverIsConsumable?: boolean };
+
+// Pregunta reutilizable: si hay cover, ¿es consumible (se redime en barra) o no?
+function CoverConsumableField({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div>
+      <label className="block text-white/60 text-xs mb-1">¿El cover es consumible?</label>
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => onChange(true)}
+          className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-all ${
+            checked ? 'bg-green-500 text-black border-green-500' : 'bg-[#0a0a0a] text-white/60 border-[#333] hover:border-[#555]'
+          }`}
+        >Sí, consumible</button>
+        <button
+          type="button"
+          onClick={() => onChange(false)}
+          className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-all ${
+            !checked ? 'bg-red-500 text-black border-red-500' : 'bg-[#0a0a0a] text-white/60 border-[#333] hover:border-[#555]'
+          }`}
+        >No consumible</button>
+      </div>
+    </div>
+  );
+}
 
 // Editor de recurrencia para promos (cubetazos, happy hours).
 function PromoEditor({ value, onPatch }: { value: PromoEditorValue; onPatch: (p: Partial<PromoEditorValue>) => void }) {
@@ -132,15 +157,18 @@ function PromoEditor({ value, onPatch }: { value: PromoEditorValue; onPatch: (p:
           ¿Tiene cover?
         </label>
         {hasCover && (
-          <div className="mt-2">
-            <label className="block text-white/60 text-xs mb-1">Precio cover (COP)</label>
-            <Input
-              type="number"
-              min={0}
-              value={value.coverPrice || 0}
-              onChange={(e) => onPatch({ coverPrice: parseInt(e.target.value) || 0 })}
-              className="bg-[#0a0a0a] border-[#333] text-white"
-            />
+          <div className="mt-2 space-y-3">
+            <div>
+              <label className="block text-white/60 text-xs mb-1">Precio cover (COP)</label>
+              <Input
+                type="number"
+                min={0}
+                value={value.coverPrice || 0}
+                onChange={(e) => onPatch({ coverPrice: parseInt(e.target.value) || 0 })}
+                className="bg-[#0a0a0a] border-[#333] text-white"
+              />
+            </div>
+            <CoverConsumableField checked={!!value.coverIsConsumable} onChange={(v) => onPatch({ coverIsConsumable: v })} />
           </div>
         )}
       </div>
@@ -210,6 +238,7 @@ export function AdminEvents() {
     eventTime: '',
     description: '',
     coverPrice: 0,
+    coverIsConsumable: false,
     ticketPrices: {},
   });
 
@@ -236,7 +265,7 @@ export function AdminEvents() {
       await createMutation.mutateAsync(withPromoDefaults(form));
       toast.success('Evento creado exitosamente');
       setIsCreateOpen(false);
-      setForm({ name: '', eventType: 'QUICK_EVENT', eventDate: '', eventTime: '', description: '', coverPrice: 0, ticketPrices: {} });
+      setForm({ name: '', eventType: 'QUICK_EVENT', eventDate: '', eventTime: '', description: '', coverPrice: 0, coverIsConsumable: false, ticketPrices: {} });
     } catch {
       toast.error('Error al crear el evento');
     }
@@ -313,6 +342,7 @@ export function AdminEvents() {
       eventTime: event.eventTime,
       description: event.description || '',
       coverPrice: event.coverPrice || 0,
+      coverIsConsumable: event.coverIsConsumable || false,
       ticketPrices: (event.ticketPrices as TicketPrices) || {},
       status: event.status,
       startDate: event.startDate ? event.startDate.split('T')[0] : undefined,
@@ -504,6 +534,11 @@ export function AdminEvents() {
                     <div className="flex items-center gap-2">
                       <DollarSign size={14} className="text-green-400" />
                       ${event.coverPrice.toLocaleString('es-CO')} COP
+                      {event.eventType === 'PROMO' && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${event.coverIsConsumable ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                          {event.coverIsConsumable ? 'Consumible' : 'No consumible'}
+                        </span>
+                      )}
                     </div>
                   )}
                   <div className="flex items-center gap-2">
@@ -563,7 +598,7 @@ export function AdminEvents() {
               <div className="grid grid-cols-3 gap-3">
                 <button
                   type="button"
-                  onClick={() => setForm({ ...form, eventType: 'CONCERT', ticketPrices: { palco_8: 0, palco_4: 0, palco_2: 0, vip_primer_piso: 0, vip_segundo_piso: 0, barras: 0 }, coverPrice: 0 })}
+                  onClick={() => setForm({ ...form, eventType: 'CONCERT', ticketPrices: { palco_8: 0, palco_4: 0, palco_2: 0, vip_primer_piso: 0, vip_segundo_piso: 0, barras: 0 }, coverPrice: 0, coverIsConsumable: false })}
                   className={`p-3 rounded-lg border-2 text-center transition-all ${
                     form.eventType === 'CONCERT'
                       ? 'border-purple-500 bg-purple-500/10 text-purple-400'
@@ -575,7 +610,7 @@ export function AdminEvents() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setForm({ ...form, eventType: 'QUICK_EVENT', ticketPrices: {}, coverPrice: 0 })}
+                  onClick={() => setForm({ ...form, eventType: 'QUICK_EVENT', ticketPrices: {}, coverPrice: 0, coverIsConsumable: false })}
                   className={`p-3 rounded-lg border-2 text-center transition-all ${
                     form.eventType === 'QUICK_EVENT'
                       ? 'border-blue-500 bg-blue-500/10 text-blue-400'
@@ -587,7 +622,7 @@ export function AdminEvents() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setForm({ ...form, eventType: 'PROMO', ticketPrices: {}, coverPrice: 0 })}
+                  onClick={() => setForm({ ...form, eventType: 'PROMO', ticketPrices: {}, coverPrice: 0, coverIsConsumable: false })}
                   className={`p-3 rounded-lg border-2 text-center transition-all ${
                     form.eventType === 'PROMO'
                       ? 'border-amber-500 bg-amber-500/10 text-amber-400'
@@ -700,7 +735,7 @@ export function AdminEvents() {
               <div className="grid grid-cols-3 gap-3">
                 <button
                   type="button"
-                  onClick={() => setEditForm({ ...editForm, eventType: 'CONCERT', ticketPrices: editForm.ticketPrices || { palco_8: 0, palco_4: 0, palco_2: 0, vip_primer_piso: 0, vip_segundo_piso: 0, barras: 0 }, coverPrice: 0 })}
+                  onClick={() => setEditForm({ ...editForm, eventType: 'CONCERT', ticketPrices: editForm.ticketPrices || { palco_8: 0, palco_4: 0, palco_2: 0, vip_primer_piso: 0, vip_segundo_piso: 0, barras: 0 }, coverPrice: 0, coverIsConsumable: false })}
                   className={`p-3 rounded-lg border-2 text-center transition-all ${
                     editForm.eventType === 'CONCERT'
                       ? 'border-purple-500 bg-purple-500/10 text-purple-400'
@@ -724,7 +759,7 @@ export function AdminEvents() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setEditForm({ ...editForm, eventType: 'PROMO', ticketPrices: {}, coverPrice: 0 })}
+                  onClick={() => setEditForm({ ...editForm, eventType: 'PROMO', ticketPrices: {}, coverPrice: 0, coverIsConsumable: false })}
                   className={`p-3 rounded-lg border-2 text-center transition-all ${
                     editForm.eventType === 'PROMO'
                       ? 'border-amber-500 bg-amber-500/10 text-amber-400'

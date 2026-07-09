@@ -28,6 +28,7 @@ const CreateEventSchema = z.object({
     eventTime: z.string().regex(/^\d{2}:\d{2}$/),
     description: z.string().max(2000).optional(),
     coverPrice: z.number().int().min(0).optional(),
+    coverIsConsumable: z.boolean().optional(),
     ...promoFields,
     ticketPrices: z.record(z.string(), z.number().int().min(0)).optional(),
     // Cupos por tipo de boleta: { palco_8: { total: 10, sold: 2 }, ... }
@@ -51,6 +52,7 @@ const UpdateEventSchema = z.object({
     eventTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
     description: z.string().max(2000).optional(),
     coverPrice: z.number().int().min(0).optional(),
+    coverIsConsumable: z.boolean().optional(),
     ...promoFields,
     ticketPrices: z.record(z.string(), z.number().int().min(0)).optional(),
     ticketInventory: z.record(z.string(), z.object({
