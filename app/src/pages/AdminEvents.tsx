@@ -72,14 +72,17 @@ function withPromoDefaults<T extends CreateEventDTO | UpdateEventDTO>(d: T): T {
   };
 }
 
+type PromoEditorValue = PromoFields & { coverPrice?: number };
+
 // Editor de recurrencia para promos (cubetazos, happy hours).
-function PromoEditor({ value, onPatch }: { value: PromoFields; onPatch: (p: PromoFields) => void }) {
+function PromoEditor({ value, onPatch }: { value: PromoEditorValue; onPatch: (p: Partial<PromoEditorValue>) => void }) {
   const days = (value.recurrenceDays || '').split(',').map((s) => s.trim()).filter(Boolean);
   const toggleDay = (d: string) => {
     const set = new Set(days);
     if (set.has(d)) set.delete(d); else set.add(d);
     onPatch({ recurrenceDays: Array.from(set).sort().join(',') });
   };
+  const hasCover = (value.coverPrice || 0) > 0;
   return (
     <div className="space-y-3 p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
       <label className="block text-amber-400 text-sm font-medium">🍻 Promo recurrente (cubetazo, happy hour…)</label>
@@ -117,6 +120,29 @@ function PromoEditor({ value, onPatch }: { value: PromoFields; onPatch: (p: Prom
           <label className="block text-white/60 text-xs mb-1">Hora fin</label>
           <Input type="time" value={value.recurrenceEndTime || ''} onChange={(e) => onPatch({ recurrenceEndTime: e.target.value })} className="bg-[#0a0a0a] border-[#333] text-white" />
         </div>
+      </div>
+      <div className="pt-2 border-t border-amber-500/20">
+        <label className="flex items-center gap-2 text-white/80 text-sm cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={hasCover}
+            onChange={(e) => onPatch({ coverPrice: e.target.checked ? (value.coverPrice || 10000) : 0 })}
+            className="w-4 h-4 accent-amber-500"
+          />
+          ¿Tiene cover?
+        </label>
+        {hasCover && (
+          <div className="mt-2">
+            <label className="block text-white/60 text-xs mb-1">Precio cover (COP)</label>
+            <Input
+              type="number"
+              min={0}
+              value={value.coverPrice || 0}
+              onChange={(e) => onPatch({ coverPrice: parseInt(e.target.value) || 0 })}
+              className="bg-[#0a0a0a] border-[#333] text-white"
+            />
+          </div>
+        )}
       </div>
     </div>
   );
