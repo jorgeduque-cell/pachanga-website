@@ -29,5 +29,38 @@ services:
         sync: false
       - key: WHATSAPP_APP_SECRET
         sync: false  # Secreto de la App en Meta para verificación HMAC del webhook
+      # ── Chatbot IA: motor OpenRouter + economía de tokens ──
+      - key: CHATBOT_ENABLED
+        value: "true"
+      - key: OPENROUTER_API_KEY
+        sync: false  # Configurar en el dashboard de Render (secreto)
+      - key: CHATBOT_MODEL
+        value: google/gemini-2.5-flash-lite
+      - key: CHATBOT_ROUTER_MODEL
+        value: google/gemini-2.5-flash-lite
+      - key: OPENAI_API_KEY
+        sync: false  # Solo para visión (lectura de comprobantes). Opcional.
+      # Economía de tokens — ajusta los precios reales desde OpenRouter
+      - key: TOKENECON_RESPONDER_COST_PER_MTOK
+        value: "0.10"
+      - key: TOKENECON_RESPONDER_OUT_COST_PER_MTOK
+        value: "0.40"
+      - key: TOKENECON_ERROR_RATE
+        value: "0.15"
+      - key: TOKENECON_REF_CONTEXT_TOKENS
+        value: "900"
+      - key: TOKENECON_ERROR_COST_USD
+        value: "0.50"
+      - key: TOKENECON_MIN_TOKENS
+        value: "300"
+      - key: TOKENECON_MAX_TOKENS
+        value: "2000"
+      - key: TOKENECON_ROUTER_ENABLED
+        value: "true"
+      # Compra de boletas desactivada: el bot solo informa y redirige a ventas.
+      - key: CHATBOT_PURCHASE_ENABLED
+        value: "false"
+      - key: CHATBOT_SALES_PHONE
+        value: "+573132891788"
     healthCheckPath: /api/health
     autoDeploy: true

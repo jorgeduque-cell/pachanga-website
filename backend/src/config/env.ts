@@ -26,15 +26,42 @@ const envSchema = z.object({
   WHATSAPP_WELCOME_IMAGE_URL: z.string().optional().default('https://egvgxitnbjhjflqivobm.supabase.co/storage/v1/object/public/media/whatsapp/bienvenida-pachanga.jpg'),
   WHATSAPP_SURVEY_VIDEO_URL: z.string().optional().default('https://egvgxitnbjhjflqivobm.supabase.co/storage/v1/object/public/media/whatsapp/encuesta-pachanga.mp4'),
 
-  // Chatbot AI (OpenAI)
-  OPENAI_API_KEY: z.string().optional().default(''),
-  CHATBOT_MODEL: z.string().optional().default('gpt-4o-mini'),
+  // ── Chatbot AI — motor OpenRouter (compatible OpenAI) ──────────────────
+  OPENROUTER_API_KEY: z.string().optional().default(''),
+  OPENROUTER_BASE_URL: z.string().url().optional().default('https://openrouter.ai/api/v1'),
+  // Modelo respondedor (el "caro" del enrutamiento). Slug real de OpenRouter.
+  CHATBOT_MODEL: z.string().optional().default('google/gemini-2.5-flash-lite'),
+  // Modelo clasificador/triage (el "ultra-económico"). Mismo tier: Flash-Lite.
+  CHATBOT_ROUTER_MODEL: z.string().optional().default('google/gemini-2.5-flash-lite'),
   CHATBOT_MAX_TOKENS: z.string().optional().default('500').transform(Number),
   CHATBOT_TEMPERATURE: z.string().optional().default('0.7').transform(Number),
   CHATBOT_CONTEXT_WINDOW: z.string().optional().default('15').transform(Number),
   CHATBOT_CONFIDENCE_THRESHOLD: z.string().optional().default('0.7').transform(Number),
   CHATBOT_ENABLED: z.string().optional().default('false'),
   CHATBOT_ADMIN_PHONE: z.string().optional().default('+573124183002'),
+  // Kill-switch del flujo de compra automatizado (boletas + comprobante).
+  // En 'false': el bot solo informa eventos/precios y redirige a CHATBOT_SALES_PHONE.
+  CHATBOT_PURCHASE_ENABLED: z.string().optional().default('false'),
+  CHATBOT_SALES_PHONE: z.string().optional().default('+573132891788'),
+
+  // OpenAI — SOLO para visión (lectura de comprobantes con GPT-4o). Opcional.
+  OPENAI_API_KEY: z.string().optional().default(''),
+
+  // ── Economía de Tokens (CT(x)=c·x+k/x → x*=√(k/c)) ─────────────────────
+  // Precios por 1M tokens (tómalos de la página del modelo en OpenRouter).
+  TOKENECON_RESPONDER_COST_PER_MTOK: z.string().optional().default('0.10').transform(Number),      // c (entrada)
+  TOKENECON_RESPONDER_OUT_COST_PER_MTOK: z.string().optional().default('0.40').transform(Number),  // salida
+  TOKENECON_ROUTER_COST_PER_MTOK: z.string().optional().default('0.10').transform(Number),
+  TOKENECON_ROUTER_OUT_COST_PER_MTOK: z.string().optional().default('0.40').transform(Number),
+  // Parámetros de negocio para k = p_ref · x_ref · C_error.
+  TOKENECON_ERROR_RATE: z.string().optional().default('0.15').transform(Number),                   // p_ref
+  TOKENECON_REF_CONTEXT_TOKENS: z.string().optional().default('900').transform(Number),            // x_ref
+  TOKENECON_ERROR_COST_USD: z.string().optional().default('0.50').transform(Number),               // C_error
+  // Recorte del óptimo (protege el margen).
+  TOKENECON_MIN_TOKENS: z.string().optional().default('300').transform(Number),
+  TOKENECON_MAX_TOKENS: z.string().optional().default('2000').transform(Number),
+  // Interruptor del pilar de enrutamiento (triage barato + deflexión).
+  TOKENECON_ROUTER_ENABLED: z.string().optional().default('true'),
 
   // Frontend URL (for QR generation and CORS)
   FRONTEND_URL: z.string().url().optional().default('https://pachanga-website.vercel.app'),

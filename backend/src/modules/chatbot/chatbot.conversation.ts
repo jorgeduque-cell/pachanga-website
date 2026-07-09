@@ -1,4 +1,5 @@
 import { prisma } from '../../lib/prisma.js';
+import { Prisma } from '@prisma/client';
 import { env } from '../../config/env.js';
 import { logger } from '../../lib/logger.js';
 import type { ChatConversation, ChatMessage } from '@prisma/client';
@@ -84,6 +85,8 @@ export class ChatbotConversationService {
         intent?: string;
         confidence?: number;
         waMessageId?: string;
+        /** Contabilidad de tokens/costo por turno (economía de tokens). */
+        metadata?: Prisma.InputJsonValue;
     }): Promise<ChatMessage> {
         const message = await prisma.chatMessage.create({ data });
 

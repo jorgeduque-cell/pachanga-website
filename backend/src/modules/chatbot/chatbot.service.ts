@@ -2,6 +2,8 @@ import { prisma } from '../../lib/prisma.js';
 import { env } from '../../config/env.js';
 import { logger } from '../../lib/logger.js';
 import { chatbotAiEngine } from './chatbot.ai-engine.js';
+import { chatbotRouter } from './chatbot.router.js';
+import { tokenEconomy } from './chatbot.token-economy.js';
 import { chatbotKnowledgeService } from './chatbot.knowledge.js';
 import { chatbotConversationService } from './chatbot.conversation.js';
 import { purchaseFlowService } from './chatbot.purchase-flow.js';
@@ -41,8 +43,8 @@ export class ChatbotService {
         }
 
         // Guard: must have API key
-        if (!env.OPENAI_API_KEY) {
-            logger.warn('[Chatbot] OPENAI_API_KEY not set — skipping');
+        if (!env.OPENROUTER_API_KEY) {
+            logger.warn('[Chatbot] OPENROUTER_API_KEY not set — skipping');
             return;
         }
 
@@ -73,28 +75,60 @@ export class ChatbotService {
             }
 
             // 5. CHECK FOR ACTIVE PURCHASE FLOW (before AI)
-            const flowState = await purchaseFlowService.getFlowState(conversation.id);
-            if (flowState) {
-                const flowResponse = await this.handlePurchaseFlowStep(
-                    conversation.id, customer.id, flowState.state, text,
-                );
-                if (flowResponse) {
-                    await chatbotConversationService.saveMessage({
-                        conversationId: conversation.id,
-                        role: 'BOT',
-                        content: flowResponse,
-                        intent: 'PURCHASE',
-                        confidence: 1.0,
-                    });
-                    await whatsappService.sendFreeformMessage(phone, flowResponse);
-                    return;
+            // Kill-switch: con CHATBOT_PURCHASE_ENABLED=false el flujo de compra
+            // automatizado queda desactivado; el bot solo informa y redirige a ventas.
+            if (env.CHATBOT_PURCHASE_ENABLED === 'true') {
+                const flowState = await purchaseFlowService.getFlowState(conversation.id);
+                if (flowState) {
+                    const flowResponse = await this.handlePurchaseFlowStep(
+                        conversation.id, customer.id, flowState.state, text,
+                    );
+                    if (flowResponse) {
+                        await chatbotConversationService.saveMessage({
+                            conversationId: conversation.id,
+                            role: 'BOT',
+                            content: flowResponse,
+                            intent: 'PURCHASE',
+                            confidence: 1.0,
+                        });
+                        await whatsappService.sendFreeformMessage(phone, flowResponse);
+                        return;
+                    }
                 }
             }
 
-            // 6. Build AI context
+            // 5.5. ROUTER — triage barato (pilar 1: enrutamiento de modelos).
+            // Deflecta saludos/agradecimientos/spam con plantilla, SIN invocar
+            // al respondedor ni inyectar la base de conocimiento.
+            const triage = await chatbotRouter.triage(text);
+            if (triage.decision !== 'ESCALATE' && triage.reply) {
+                await chatbotConversationService.saveMessage({
+                    conversationId: conversation.id,
+                    role: 'BOT',
+                    content: triage.reply,
+                    intent: triage.decision === 'DISMISS' ? 'UNKNOWN' : 'GREETING',
+                    confidence: 1.0,
+                    metadata: {
+                        tier: 'router',
+                        category: triage.category,
+                        costUsd: triage.costUsd,
+                        promptTokens: triage.usage.promptTokens,
+                        completionTokens: triage.usage.completionTokens,
+                    },
+                });
+                await whatsappService.sendFreeformMessage(phone, triage.reply);
+                logger.info({ phone, category: triage.category, costUsd: triage.costUsd }, '[Chatbot] Deflected by router');
+                return;
+            }
+
+            // 6. Presupuesto de memoria dinámico:  x* = √(k/c)  →  # de mensajes.
+            const budget = tokenEconomy.currentBudget();
+            const historyLimit = tokenEconomy.tokensToMessages(budget.budgetTokens);
+
+            // 6b. Build AI context (historial recortado al presupuesto)
             const [knowledgeContext, conversationHistory] = await Promise.all([
                 chatbotKnowledgeService.buildSystemPromptContext(),
-                chatbotConversationService.getConversationContext(conversation.id),
+                chatbotConversationService.getConversationContext(conversation.id, historyLimit),
             ]);
 
             // 7. Generate AI response
@@ -108,6 +142,10 @@ export class ChatbotService {
                 phone,
                 intent: aiResponse.intent,
                 confidence: aiResponse.confidence,
+                budgetTokens: budget.budgetTokens,
+                historyLimit,
+                routerCostUsd: triage.costUsd,
+                responderCostUsd: aiResponse.usage?.costUsd,
             }, '[Chatbot] AI response generated');
 
             // 8. Check confidence threshold
@@ -116,8 +154,8 @@ export class ChatbotService {
                 return;
             }
 
-            // 9. CHECK IF AI DETECTED PURCHASE INTENT → start flow
-            if (aiResponse.actions?.includes('START_PURCHASE_FLOW')) {
+            // 9. CHECK IF AI DETECTED PURCHASE INTENT → start flow (solo si el flujo está activo)
+            if (env.CHATBOT_PURCHASE_ENABLED === 'true' && aiResponse.actions?.includes('START_PURCHASE_FLOW')) {
                 const purchaseResponse = await purchaseFlowService.startPurchaseFlow(conversation.id);
                 await chatbotConversationService.saveMessage({
                     conversationId: conversation.id,
@@ -136,6 +174,17 @@ export class ChatbotService {
                 content: aiResponse.reply,
                 intent: aiResponse.intent,
                 confidence: aiResponse.confidence,
+                metadata: {
+                    tier: 'responder',
+                    budgetTokens: budget.budgetTokens,
+                    optimalTokens: Math.round(budget.optimalTokens),
+                    clamped: budget.clamped,
+                    promptTokens: aiResponse.usage?.promptTokens ?? 0,
+                    completionTokens: aiResponse.usage?.completionTokens ?? 0,
+                    responderCostUsd: aiResponse.usage?.costUsd ?? 0,
+                    routerCostUsd: triage.costUsd,
+                    totalCostUsd: triage.costUsd + (aiResponse.usage?.costUsd ?? 0),
+                },
             });
 
             // 10. Check if AI detected a customer name

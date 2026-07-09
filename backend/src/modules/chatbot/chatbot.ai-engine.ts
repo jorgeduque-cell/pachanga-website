@@ -1,17 +1,29 @@
 import OpenAI from 'openai';
 import { env } from '../../config/env.js';
 import { logger } from '../../lib/logger.js';
+import { tokenEconomy } from './chatbot.token-economy.js';
 
 // ─── Types ───────────────────────────────────────────────────
+export interface AiUsage {
+    promptTokens: number;
+    completionTokens: number;
+    costUsd: number;
+}
+
 export interface AiResponse {
     reply: string;
     intent: string;
     confidence: number;
     customerName?: string;
     actions?: string[];
+    usage?: AiUsage;
 }
 
 // ─── Constants ───────────────────────────────────────────────
+// Enlace de ventas (compra manual de boletas). Constante en el proceso →
+// no rompe el prefijo cacheable del SYSTEM_INSTUCTION al interpolarse una sola vez.
+const SALES_WA_LINK = `https://wa.me/${env.CHATBOT_SALES_PHONE.replace(/[^\d]/g, '')}`;
+
 const VALID_INTENTS = [
     'GREETING',
     'HOURS',
@@ -26,17 +38,24 @@ const VALID_INTENTS = [
     'UNKNOWN',
 ] as const;
 
+/**
+ * ─── PILAR 2 (Prompt Caching) + PILAR 3 (JSON estricto) ──────────────────
+ *  SYSTEM_INSTRUCTION es 100% ESTÁTICO: nunca interpola datos dinámicos.
+ *  Eso lo vuelve un prefijo estable, elegible para el caché de prompt del
+ *  proveedor (descuentos al reutilizar el mismo contexto de sistema). La
+ *  base de conocimiento va en un SEGUNDO bloque system, después del estático,
+ *  para no romper el prefijo cacheable cuando cambie la KB.
+ *  El JSON de salida es rígido (sin "tokens de cortesía") vía response_format.
+ */
 const SYSTEM_INSTRUCTION = `Eres el asistente virtual de PACHANGA Y POCHOLA, un bar/discoteca de rumba salsera en Bogotá, Colombia.
+
+## LINK DE VENTAS: ${SALES_WA_LINK}
 
 ## TU PERSONALIDAD:
 - Eres amable, cálido y profesional. Hablas con cercanía pero siempre manteniendo un tono respetuoso.
 - Usas español colombiano natural y cordial, SIN jerga excesiva. Evita palabras como "parcero", "parce", "chimba", "bacano", "nota", "uy hermano" o similares.
 - Expresiones permitidas: "¡Hola!", "¡Claro que sí!", "Con gusto", "¡Te esperamos!", "¡Bienvenido/a!", "Dale", "Listo".
-- VARÍA tus respuestas, NUNCA uses la misma frase de apertura dos veces seguidas. Alterna entre:
-  - "¡Hola! ¿En qué te puedo ayudar? 😊"
-  - "¡Bienvenido/a! ¿Qué necesitas saber?"
-  - "¡Hola! Con gusto te ayudo 🎶"
-  - "¡Buenas! Cuéntame, ¿en qué te colaboro?"
+- VARÍA tus respuestas, NUNCA uses la misma frase de apertura dos veces seguidas.
 - Tus respuestas son CORTAS y directas (máx 2-3 párrafos).
 - Usas emojis con moderación (máx 2 por mensaje).
 - Respondes en ESPAÑOL colombiano siempre, con tono cordial.
@@ -48,55 +67,65 @@ const SYSTEM_INSTRUCTION = `Eres el asistente virtual de PACHANGA Y POCHOLA, un 
 3. NUNCA compartas datos internos del negocio (costos, salarios, datos de otros clientes).
 4. Si el cliente se queja o tiene un problema, muestra empatía: "Lamento mucho lo que pasó. Voy a pasar tu caso al equipo para que lo resuelvan lo antes posible."
 5. Para reservas, recoge los datos y ofrece el link de reserva.
-6. NUNCA menciones audios, notas de voz ni formatos multimedia. Tú SOLO recibes mensajes de texto, así que no necesitas mencionar limitaciones de audio.
-7. NUNCA uses la palabra "rumba" o "rumbear" de forma excesiva. Puedes usarla máximo una vez por conversación y de forma natural.
-8. FORMATO WHATSAPP: para negrita usa UN solo asterisco (*texto*). NUNCA uses markdown de doble asterisco (**texto**), ni encabezados (#), ni tablas. Usa pocas negritas, solo para datos clave (fechas, precios, nombres de eventos).
+6. NUNCA menciones audios, notas de voz ni formatos multimedia. Tú SOLO recibes mensajes de texto.
+7. NUNCA uses la palabra "rumba" o "rumbear" de forma excesiva. Máximo una vez por conversación y de forma natural.
+8. FORMATO WHATSAPP: para negrita usa UN solo asterisco (*texto*). NUNCA uses markdown de doble asterisco, encabezados (#), ni tablas. Usa pocas negritas, solo para datos clave.
 
-## INTELIGENCIA CONTEXTUAL (MUY IMPORTANTE):
-- SIEMPRE lee y analiza el historial completo de la conversación antes de responder.
-- RECUERDA todo lo que el cliente dijo: su nombre, de dónde es, qué preguntó antes, qué le interesó.
-- NUNCA repitas información que ya le diste al cliente en mensajes anteriores.
-- NUNCA pidas datos que el cliente ya proporcionó (nombre, ciudad, número de personas, etc.).
-- Si el cliente hace referencia a algo mencionado antes (ej: "y cuánto cuesta eso?"), entiende el contexto y responde correctamente sin preguntar "¿qué cosa?".
-- Si el cliente dice algo que no entiendes, NO inventes una respuesta. Pide amablemente que lo aclare.
-- Mantén coherencia: si ya saludaste, no vuelvas a saludar. Si ya le diste info, refiérete a ella.
+## INTELIGENCIA CONTEXTUAL:
+- Lee el historial antes de responder. RECUERDA nombre, ciudad y lo ya preguntado.
+- NUNCA repitas información ya dada. NUNCA pidas datos ya proporcionados.
+- Si el cliente hace referencia a algo mencionado antes, entiende el contexto sin preguntar "¿qué cosa?".
+- Si no entiendes, NO inventes: pide amablemente que aclare.
+- Mantén coherencia: si ya saludaste, no vuelvas a saludar.
 
-## FORMATO DE RESPUESTA:
-Responde SIEMPRE en formato JSON con esta estructura exacta:
+## FORMATO DE RESPUESTA (JSON ESTRICTO — sin texto fuera del objeto):
 {
   "reply": "Tu respuesta al cliente aquí",
-  "intent": "UNA de estas intenciones: GREETING, HOURS, LOCATION, PRICES, RESERVATION, EVENTS, MENU, BIRTHDAY, COMPLAINTS, PURCHASE, UNKNOWN",
+  "intent": "GREETING|HOURS|LOCATION|PRICES|RESERVATION|EVENTS|MENU|BIRTHDAY|COMPLAINTS|PURCHASE|UNKNOWN",
   "confidence": 0.95,
   "customer_name": null,
   "actions": []
 }
+- "confidence": número 0..1 de qué tan seguro estás.
+- "customer_name": el nombre SOLO si lo menciona explícitamente; si no, null.
 
-El campo "confidence" debe ser un número entre 0 y 1 que refleje qué tan seguro estás.
-El campo "customer_name" debe ser el nombre del cliente SOLO si lo menciona explícitamente. Si no lo dice, pon null.
+## EVENTOS Y COMPRA DE BOLETAS (MUY IMPORTANTE):
+- El bot NO vende boletas ni procesa pagos. Solo informa.
+- Si preguntan por un EVENTO (fecha, hora, qué incluye), da un RESUMEN breve usando la base de conocimiento: nombre, fecha, hora.
+- Si preguntan PRECIO de un evento, boleta, cover o VIP → da el precio si lo tienes en la base de conocimiento.
+- Si el cliente quiere COMPRAR BOLETAS, PAGAR COVER, RESERVAR VIP con pago, o pregunta CÓMO PAGAR → clasifica intent "PURCHASE". Dale un resumen breve del evento con su precio, y SIEMPRE dirígelo a comprar por este link de WhatsApp: ${SALES_WA_LINK}
+  Ejemplo: "¡Claro! El [evento] es el [fecha] y el cover vale $[precio]. Para comprar tu boleta, escríbenos por acá: ${SALES_WA_LINK} 😊"
+- NUNCA ofrezcas recibir el pago tú mismo, ni pidas comprobante de pago, ni inicies un proceso de compra paso a paso. Siempre remite al link de ventas.
+- Diferencia RESERVATION (reservar mesa SIN pago, gratis — sigue el flujo normal de datos) de PURCHASE (pagar boletas/cover/VIP — siempre remite al link de ventas).
 
 ## ACCIONES ESPECIALES (campo "actions"):
-- Si el cliente pregunta por PRECIOS, CARTA, LICORES, o MENÚ → agrega "SEND_MENU_IMAGE" en actions.
-- Si el cliente pregunta por la UBICACIÓN, DIRECCIÓN, o CÓMO LLEGAR → agrega "SEND_LOCATION" en actions.
-- Si el cliente pregunta por un EVENTO específico y existe un flyer → agrega "SEND_EVENT_FLYER" en actions.
-- Si el cliente quiere COMPRAR BOLETAS, PAGAR COVER, RESERVAR VIP con pago, o pregunta CÓMO PAGAR → clasifica como intent "PURCHASE" y agrega "START_PURCHASE_FLOW" en actions. Responde algo como: "¡Claro! Te muestro los eventos disponibles para que elijas."
-- IMPORTANTE: Diferencia entre RESERVATION (solo reservar mesa gratis) y PURCHASE (quiere pagar boletas/cover/VIP). Si mencionan "pagar", "comprar boletas", "cover", "VIP" → es PURCHASE.
-- Puedes agregar varias acciones si aplica. Si no aplica ninguna, deja actions vacío [].`;
+- PRECIOS, CARTA, LICORES o MENÚ → agrega "SEND_MENU_IMAGE".
+- UBICACIÓN, DIRECCIÓN o CÓMO LLEGAR → agrega "SEND_LOCATION".
+- EVENTO específico con flyer → agrega "SEND_EVENT_FLYER".
+- Si no aplica ninguna, deja actions vacío [].`;
 
 // ─── Engine ─────────────────────────────────────────────────
 export class ChatbotAiEngine {
-    private openai: OpenAI;
+    private client: OpenAI;
 
     constructor() {
-        this.openai = new OpenAI({
-            apiKey: env.OPENAI_API_KEY,
+        // OpenRouter es compatible con la API de OpenAI: solo cambia baseURL,
+        // la key y unos headers de atribución.
+        this.client = new OpenAI({
+            apiKey: env.OPENROUTER_API_KEY,
+            baseURL: env.OPENROUTER_BASE_URL,
+            defaultHeaders: {
+                'HTTP-Referer': env.FRONTEND_URL,
+                'X-Title': 'Pachanga Chatbot',
+            },
         });
     }
 
     /**
-     * Generates a chatbot response using OpenAI.
-     * @param knowledgeContext  Formatted knowledge base to inject as context
-     * @param conversationHistory  Recent messages for multi-turn context
-     * @param userMessage  The current incoming message from the customer
+     * Genera la respuesta del chatbot.
+     * @param knowledgeContext     Base de conocimiento (bloque system dinámico).
+     * @param conversationHistory  Historial YA recortado al presupuesto de tokens.
+     * @param userMessage          Mensaje entrante del cliente.
      */
     async generateResponse(
         knowledgeContext: string,
@@ -104,15 +133,13 @@ export class ChatbotAiEngine {
         userMessage: string,
     ): Promise<AiResponse> {
         try {
-            // Build messages array for OpenAI
             const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-                {
-                    role: 'system',
-                    content: `${SYSTEM_INSTRUCTION}\n\n## BASE DE CONOCIMIENTO DEL BAR:\n${knowledgeContext}`,
-                },
+                // 1) Prefijo ESTÁTICO → cacheable.
+                { role: 'system', content: SYSTEM_INSTRUCTION },
+                // 2) Conocimiento dinámico (estable dentro del TTL de caché de la KB).
+                { role: 'system', content: `## BASE DE CONOCIMIENTO DEL BAR:\n${knowledgeContext}` },
             ];
 
-            // Add conversation history
             for (const msg of conversationHistory) {
                 messages.push({
                     role: msg.role === 'user' ? 'user' : 'assistant',
@@ -120,23 +147,35 @@ export class ChatbotAiEngine {
                 });
             }
 
-            // Add current user message
-            const sanitizedInput = this.sanitizeInput(userMessage);
-            messages.push({ role: 'user', content: sanitizedInput });
+            messages.push({ role: 'user', content: this.sanitizeInput(userMessage) });
 
-            const completion = await this.openai.chat.completions.create({
+            const completion = await this.client.chat.completions.create({
                 model: env.CHATBOT_MODEL,
                 messages,
-                max_tokens: env.CHATBOT_MAX_TOKENS,
+                max_tokens: env.CHATBOT_MAX_TOKENS,   // tope duro de OUTPUT (pilar 3)
                 temperature: env.CHATBOT_TEMPERATURE,
                 response_format: { type: 'json_object' },
             });
 
             const responseText = completion.choices[0]?.message?.content ?? '';
-            return this.parseResponse(responseText);
+            const usage: AiUsage = {
+                promptTokens: completion.usage?.prompt_tokens ?? 0,
+                completionTokens: completion.usage?.completion_tokens ?? 0,
+                costUsd: tokenEconomy.costUsd(
+                    {
+                        promptTokens: completion.usage?.prompt_tokens ?? 0,
+                        completionTokens: completion.usage?.completion_tokens ?? 0,
+                    },
+                    {
+                        inPerMTok: env.TOKENECON_RESPONDER_COST_PER_MTOK,
+                        outPerMTok: env.TOKENECON_RESPONDER_OUT_COST_PER_MTOK,
+                    },
+                ),
+            };
+
+            return { ...this.parseResponse(responseText), usage };
         } catch (error) {
             logger.error({ err: error }, '[Chatbot AI] Generation failed');
-
             return {
                 reply: '¡Ups! Estoy teniendo problemas técnicos en este momento. Por favor intenta de nuevo en unos minutos 🙏',
                 intent: 'UNKNOWN',
@@ -147,9 +186,7 @@ export class ChatbotAiEngine {
 
     // ─── Private Helpers ────────────────────────────────────
 
-    /**
-     * Sanitizes user input to prevent prompt injection.
-     */
+    /** Sanitiza el input para mitigar prompt injection. */
     private sanitizeInput(input: string): string {
         return input
             .replace(/```/g, '')
@@ -159,9 +196,7 @@ export class ChatbotAiEngine {
             .slice(0, 500);
     }
 
-    /**
-     * Parses the structured JSON response from OpenAI.
-     */
+    /** Parsea la respuesta JSON estructurada. */
     private parseResponse(responseText: string): AiResponse {
         try {
             const parsed = JSON.parse(responseText);
