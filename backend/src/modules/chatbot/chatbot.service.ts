@@ -1,7 +1,8 @@
 import { prisma } from '../../lib/prisma.js';
+import { Prisma } from '@prisma/client';
 import { env } from '../../config/env.js';
 import { logger } from '../../lib/logger.js';
-import { chatbotAiEngine } from './chatbot.ai-engine.js';
+import { chatbotAiEngine, type AiReservation } from './chatbot.ai-engine.js';
 import { chatbotRouter } from './chatbot.router.js';
 import { tokenEconomy } from './chatbot.token-economy.js';
 import { chatbotKnowledgeService } from './chatbot.knowledge.js';
@@ -194,6 +195,11 @@ export class ChatbotService {
 
             // 11. Send response via WhatsApp
             await whatsappService.sendFreeformMessage(phone, aiResponse.reply);
+
+            // 11.5. Reserva de mesa completa → avisar al equipo de ventas (una sola vez)
+            if (aiResponse.intent === 'RESERVATION' && aiResponse.actions?.includes('NOTIFY_RESERVATION')) {
+                await this.notifyReservation(conversation.id, customer.name, phone, aiResponse.reservation);
+            }
 
             // 12. Execute AI-triggered actions (non-blocking)
             if (aiResponse.actions?.length) {
@@ -503,6 +509,41 @@ export class ChatbotService {
             confidence: aiResponse.confidence,
             conversationId,
         }, '[Chatbot] Conversation escalated');
+    }
+
+    /** Envía al equipo de ventas la alerta de una reserva de mesa (una sola vez). */
+    private async notifyReservation(
+        conversationId: string,
+        customerName: string,
+        phone: string,
+        reservation?: AiReservation,
+    ): Promise<void> {
+        // Guarda anti-duplicados: una alerta por conversación. Se marca ANTES
+        // de enviar para que dos mensajes casi simultáneos no dupliquen la alerta.
+        const conv = await prisma.chatConversation.findUnique({
+            where: { id: conversationId },
+            select: { metadata: true },
+        });
+        const metadata = (conv?.metadata as Record<string, unknown> | null) ?? {};
+        if (metadata.reservationNotified) return;
+
+        await prisma.chatConversation.update({
+            where: { id: conversationId },
+            data: { metadata: { ...metadata, reservationNotified: true } as Prisma.InputJsonValue },
+        });
+
+        const alert = `📅 *NUEVA RESERVA — Chatbot*\n\n` +
+            `👤 Cliente: ${customerName}\n` +
+            `📱 Tel: ${phone}\n` +
+            `🗓️ Fecha: ${reservation?.date ?? 'por confirmar'}\n` +
+            `🕐 Hora: ${reservation?.time ?? 'por confirmar'}\n` +
+            `👥 Personas: ${reservation?.partySize ?? 'por confirmar'}\n\n` +
+            `📋 Contáctalo para confirmar la mesa.`;
+
+        await whatsappService.sendFreeformMessage(env.CHATBOT_SALES_PHONE, alert).catch((err) => {
+            logger.error({ err }, '[Chatbot] Failed to send reservation alert');
+        });
+        logger.info({ conversationId, phone }, '[Chatbot] Reservation alert sent to sales team');
     }
 
     private isRateLimited(phone: string): boolean {

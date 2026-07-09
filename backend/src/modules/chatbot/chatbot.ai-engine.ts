@@ -10,12 +10,19 @@ export interface AiUsage {
     costUsd: number;
 }
 
+export interface AiReservation {
+    date?: string;
+    time?: string;
+    partySize?: number;
+}
+
 export interface AiResponse {
     reply: string;
     intent: string;
     confidence: number;
     customerName?: string;
     actions?: string[];
+    reservation?: AiReservation;
     usage?: AiUsage;
 }
 
@@ -84,10 +91,12 @@ const SYSTEM_INSTRUCTION = `Eres el asistente virtual de PACHANGA Y POCHOLA, un 
   "intent": "GREETING|HOURS|LOCATION|PRICES|RESERVATION|EVENTS|MENU|BIRTHDAY|COMPLAINTS|PURCHASE|UNKNOWN",
   "confidence": 0.95,
   "customer_name": null,
-  "actions": []
+  "actions": [],
+  "reservation": null
 }
 - "confidence": número 0..1 de qué tan seguro estás.
 - "customer_name": el nombre SOLO si lo menciona explícitamente; si no, null.
+- "reservation": SOLO para reservar una MESA NORMAL (sin costo). Cuando ya tengas los TRES datos (fecha, hora y número de personas), ponlo así: {"date":"sábado 12 de julio","time":"9:00 pm","party_size":6} y agrega "NOTIFY_RESERVATION" en actions. Si te falta algún dato, deja "reservation": null y sigue preguntando amablemente SOLO por lo que falte. NUNCA lo uses para cumpleaños/eventos (esos van al link de ventas).
 
 ## EVENTOS Y COMPRA DE BOLETAS (MUY IMPORTANTE):
 - El bot NO vende boletas ni procesa pagos. Solo informa.
@@ -107,6 +116,7 @@ const SYSTEM_INSTRUCTION = `Eres el asistente virtual de PACHANGA Y POCHOLA, un 
 - PRECIOS, CARTA, LICORES o MENÚ → agrega "SEND_MENU_IMAGE".
 - UBICACIÓN, DIRECCIÓN o CÓMO LLEGAR → agrega "SEND_LOCATION".
 - EVENTO específico con flyer → agrega "SEND_EVENT_FLYER".
+- RESERVA de mesa normal con los 3 datos completos → agrega "NOTIFY_RESERVATION" (y llena "reservation"). Confirma al cliente que su reserva quedó registrada y que el equipo la confirmará pronto.
 - Si no aplica ninguna, deja actions vacío [].`;
 
 // ─── Engine ─────────────────────────────────────────────────
@@ -226,7 +236,9 @@ export class ChatbotAiEngine {
                 ? parsed.actions.filter((a: unknown) => typeof a === 'string')
                 : [];
 
-            return { reply, intent, confidence, customerName, actions };
+            const reservation = this.parseReservation(parsed.reservation);
+
+            return { reply, intent, confidence, customerName, actions, reservation };
         } catch {
             logger.warn({ responseText }, '[Chatbot AI] Failed to parse JSON response');
             return {
@@ -235,6 +247,21 @@ export class ChatbotAiEngine {
                 confidence: 0.3,
             };
         }
+    }
+
+    /** Extrae y valida el objeto de reserva (acepta party_size o partySize). */
+    private parseReservation(raw: unknown): AiReservation | undefined {
+        if (!raw || typeof raw !== 'object') return undefined;
+        const r = raw as Record<string, unknown>;
+        const date = typeof r.date === 'string' ? r.date.slice(0, 60) : undefined;
+        const time = typeof r.time === 'string' ? r.time.slice(0, 30) : undefined;
+        const sizeRaw = r.party_size ?? r.partySize;
+        const partySize = typeof sizeRaw === 'number' && sizeRaw > 0
+            ? Math.min(50, Math.round(sizeRaw))
+            : undefined;
+
+        if (!date && !time && partySize === undefined) return undefined;
+        return { date, time, partySize };
     }
 }
 
