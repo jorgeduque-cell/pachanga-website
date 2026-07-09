@@ -11,6 +11,7 @@ import { purchaseFlowService } from './chatbot.purchase-flow.js';
 import { chatbotVisionService } from './chatbot.vision.js';
 import { chatbotPaymentService } from './chatbot.payment.js';
 import { whatsappService } from '../whatsapp/whatsapp.service.js';
+import { notifyAdminTelegram } from '../telegram/telegram.bot.js';
 import { uploadPaymentReceipt } from '../../lib/storage.js';
 
 // ─── Rate Limit Map ─────────────────────────────────────────
@@ -463,6 +464,13 @@ export class ChatbotService {
                             events[0].flyerUrl,
                             `🎉 ${events[0].name}`,
                         );
+                    } else {
+                        // La IA prometió un flyer pero no hay ninguno en BD: no dejar al
+                        // cliente esperando una imagen que nunca llega.
+                        await whatsappService.sendFreeformMessage(
+                            phone,
+                            'Por ahora no tengo el flyer a la mano 🙏 pero cuéntame qué evento te interesa y con gusto te paso la info.',
+                        );
                     }
                     break;
                 }
@@ -532,18 +540,25 @@ export class ChatbotService {
             data: { metadata: { ...metadata, reservationNotified: true } as Prisma.InputJsonValue },
         });
 
+        // Nombre saneado para no romper el Markdown de Telegram.
+        const safeName = customerName.replace(/[*_`[\]]/g, '');
         const alert = `📅 *NUEVA RESERVA — Chatbot*\n\n` +
-            `👤 Cliente: ${customerName}\n` +
+            `👤 Cliente: ${safeName}\n` +
             `📱 Tel: ${phone}\n` +
             `🗓️ Fecha: ${reservation?.date ?? 'por confirmar'}\n` +
             `🕐 Hora: ${reservation?.time ?? 'por confirmar'}\n` +
             `👥 Personas: ${reservation?.partySize ?? 'por confirmar'}\n\n` +
-            `📋 Contáctalo para confirmar la mesa.`;
+            `📋 Contáctenlo para confirmar la mesa.`;
 
+        // Canal PRINCIPAL: Telegram — sin la ventana de 24h de WhatsApp, siempre llega.
+        await notifyAdminTelegram(alert);
+
+        // Best-effort: WhatsApp a ventas (SOLO llega si ese número le escribió al
+        // bot en las últimas 24h; si no, WhatsApp lo rechaza y queda en logs).
         await whatsappService.sendFreeformMessage(env.CHATBOT_SALES_PHONE, alert).catch((err) => {
-            logger.error({ err }, '[Chatbot] Failed to send reservation alert');
+            logger.error({ err }, '[Chatbot] WhatsApp reservation alert failed (ventana 24h?)');
         });
-        logger.info({ conversationId, phone }, '[Chatbot] Reservation alert sent to sales team');
+        logger.info({ conversationId, phone }, '[Chatbot] Reservation alert dispatched (telegram + whatsapp best-effort)');
     }
 
     private isRateLimited(phone: string): boolean {
