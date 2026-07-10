@@ -87,6 +87,18 @@ export function useUploadBanner() {
   });
 }
 
+export function useUploadMap() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, file }: { id: string; file: File }) =>
+      eventsService.uploadMap(id, file),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: EVENTS_KEYS.detail(id) });
+      queryClient.invalidateQueries({ queryKey: EVENTS_KEYS.all });
+    },
+  });
+}
+
 export function useUpdateEventTables() {
   const queryClient = useQueryClient();
   return useMutation({

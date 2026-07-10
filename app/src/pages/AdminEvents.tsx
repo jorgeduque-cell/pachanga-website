@@ -14,6 +14,7 @@ import {
   Users,
   Clock,
   Star,
+  Map as MapIcon,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -43,6 +44,7 @@ import {
   useUpdateEvent,
   useUploadFlyer,
   useUploadBanner,
+  useUploadMap,
   useDeleteEvent,
   useSetFeaturedEvent,
 } from '@/hooks/useEvents';
@@ -226,9 +228,11 @@ export function AdminEvents() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isFlyerOpen, setIsFlyerOpen] = useState(false);
   const [isBannerOpen, setIsBannerOpen] = useState(false);
+  const [isMapOpen, setIsMapOpen] = useState(false);
   const [isTablesOpen, setIsTablesOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
+  const mapInputRef = useRef<HTMLInputElement>(null);
 
   // Form state
   const [form, setForm] = useState<CreateEventDTO>({
@@ -254,6 +258,7 @@ export function AdminEvents() {
   const updateMutation = useUpdateEvent();
   const uploadFlyerMutation = useUploadFlyer();
   const uploadBannerMutation = useUploadBanner();
+  const uploadMapMutation = useUploadMap();
   const deleteMutation = useDeleteEvent();
   const featuredMutation = useSetFeaturedEvent();
 
@@ -317,6 +322,19 @@ export function AdminEvents() {
     }
   };
 
+  // Mapa de mesas del concierto: el admin sube una foto nueva cada semana con
+  // las mesas ya separadas/vendidas marcadas; simplemente reemplaza la anterior.
+  const handleMapUpload = async (file: File) => {
+    if (!selectedEvent) return;
+    try {
+      await uploadMapMutation.mutateAsync({ id: selectedEvent.id, file });
+      toast.success('Mapa del evento actualizado');
+      setIsMapOpen(false);
+    } catch {
+      toast.error('Error al subir el mapa');
+    }
+  };
+
   // Guarda los cupos totales; "vendidas" no se edita aquí, la descuenta el
   // sistema automáticamente al confirmar pagos.
   const handleInventoryUpdate = async () => {
@@ -377,6 +395,11 @@ export function AdminEvents() {
   const openBannerUpload = (event: Event) => {
     setSelectedEvent(event);
     setIsBannerOpen(true);
+  };
+
+  const openMapUpload = (event: Event) => {
+    setSelectedEvent(event);
+    setIsMapOpen(true);
   };
 
   // Filter by search
@@ -494,6 +517,11 @@ export function AdminEvents() {
                       <DropdownMenuItem onClick={() => openBannerUpload(event)} className="text-white focus:text-white focus:bg-[#0a0a0a]">
                         <Upload className="mr-2" size={16} /> Subir Banner (app)
                       </DropdownMenuItem>
+                      {event.eventType === 'CONCERT' && (
+                        <DropdownMenuItem onClick={() => openMapUpload(event)} className="text-white focus:text-white focus:bg-[#0a0a0a]">
+                          <MapIcon className="mr-2" size={16} /> {event.mapUrl ? 'Actualizar Mapa del Evento' : 'Subir Mapa del Evento'}
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem onClick={() => openInventory(event)} className="text-white focus:text-white focus:bg-[#0a0a0a]">
                         <Users className="mr-2" size={16} /> Gestionar Cupos
                       </DropdownMenuItem>
@@ -545,6 +573,11 @@ export function AdminEvents() {
                     <span className={`text-xs px-2 py-0.5 rounded-full ${event.eventType === 'CONCERT' ? 'bg-purple-500/20 text-purple-400' : 'bg-blue-500/20 text-blue-400'}`}>
                       {EVENT_TYPE_LABELS[event.eventType] || '🎉 Evento'}
                     </span>
+                    {event.eventType === 'CONCERT' && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${event.mapUrl ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                        <MapIcon size={11} /> {event.mapUrl ? 'Mapa cargado' : 'Sin mapa'}
+                      </span>
+                    )}
                   </div>
                 </div>
                 {/* Inventory summary: disponibles/total por ubicación */}
@@ -908,6 +941,47 @@ export function AdminEvents() {
                 <span className="flex items-center gap-2"><Spinner className="w-4 h-4" /> Subiendo...</span>
               ) : (
                 <span className="flex items-center gap-2"><Upload size={20} /> Seleccionar banner (JPG, PNG, WebP — máx 5MB)</span>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── MAP UPLOAD MODAL (mesas del concierto, se reemplaza semana a semana) ── */}
+      <Dialog open={isMapOpen} onOpenChange={setIsMapOpen}>
+        <DialogContent className="bg-[#1a1a1a] border-[#333] text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-heading uppercase text-white">Mapa del Evento</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <p className="text-xs text-white/50">
+              Sube una foto del mapa de mesas marcando cuáles ya están separadas o vendidas. Reemplázala cada semana conforme avancen las ventas — subir una nueva simplemente sustituye la anterior.
+            </p>
+            {selectedEvent?.mapUrl && (
+              <div className="rounded-lg overflow-hidden">
+                <img src={selectedEvent.mapUrl} alt="Mapa actual" className="w-full" />
+                <p className="text-xs text-white/40 mt-2 text-center">Mapa actual</p>
+              </div>
+            )}
+            <input
+              ref={mapInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleMapUpload(file);
+              }}
+            />
+            <Button
+              onClick={() => mapInputRef.current?.click()}
+              disabled={uploadMapMutation.isPending}
+              className="w-full btn-primary py-6"
+            >
+              {uploadMapMutation.isPending ? (
+                <span className="flex items-center gap-2"><Spinner className="w-4 h-4" /> Subiendo...</span>
+              ) : (
+                <span className="flex items-center gap-2"><MapIcon size={20} /> {selectedEvent?.mapUrl ? 'Reemplazar mapa' : 'Seleccionar mapa'} (JPG, PNG, WebP — máx 5MB)</span>
               )}
             </Button>
           </div>

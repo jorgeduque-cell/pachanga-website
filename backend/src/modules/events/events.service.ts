@@ -1,6 +1,6 @@
 import { EventStatus, EventType, TableZone, Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
-import { uploadToStorage, uploadEventBanner, deleteFromStorage } from '../../lib/storage.js';
+import { uploadToStorage, uploadEventBanner, uploadEventMap, deleteFromStorage } from '../../lib/storage.js';
 import { logger } from '../../lib/logger.js';
 import { broadcastToClubPyP } from '../../lib/clubpyp-push.js';
 
@@ -295,6 +295,32 @@ export class EventsService {
         });
 
         logger.info({ eventId: id, bannerUrl }, '[Events] Banner uploaded');
+        return event;
+    }
+
+    /**
+     * Upload/replace the seating map (mesas vendidas/disponibles) for a concert.
+     * The admin re-uploads this weekly as tables sell; it just overwrites the
+     * previous map, no versioning needed.
+     */
+    async uploadMap(id: string, buffer: Buffer, fileName: string, contentType: string) {
+        const existing = await prisma.event.findUnique({ where: { id } });
+        if (!existing) throw new Error('Event not found');
+
+        if (existing.mapUrl) {
+            await deleteFromStorage(existing.mapUrl);
+        }
+
+        const mapUrl = await uploadEventMap(buffer, fileName, contentType);
+        if (!mapUrl) throw new Error('Upload failed');
+
+        const event = await prisma.event.update({
+            where: { id },
+            data: { mapUrl },
+            include: { tables: true, ticketInventory: true },
+        });
+
+        logger.info({ eventId: id, mapUrl }, '[Events] Map uploaded');
         return event;
     }
 

@@ -46,6 +46,18 @@ export const eventsService = {
     return response.data;
   },
 
+  // Mapa de mesas del concierto: se reemplaza cada semana conforme se venden
+  uploadMap: async (id: string, file: File): Promise<Event> => {
+    const buffer = await file.arrayBuffer();
+    const response = await apiClient.post<Event>(`/events/${id}/map`, buffer, {
+      headers: {
+        'Content-Type': file.type,
+        'X-Filename': file.name,
+      },
+    });
+    return response.data;
+  },
+
   updateTables: (id: string, tables: UpdateTablesDTO[]) =>
     apiClient.put<Event>(`/events/${id}/tables`, tables).then((r) => r.data),
 

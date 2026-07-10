@@ -95,6 +95,38 @@ export async function uploadEventBanner(
 }
 
 /**
+ * Uploads an event seating map (mesas vendidas/disponibles) to Supabase Storage.
+ * The admin replaces this image week to week as tables sell; upsert keeps it simple.
+ */
+export async function uploadEventMap(
+    buffer: Buffer,
+    fileName: string,
+    contentType: string,
+): Promise<string | null> {
+    const client = getClient();
+    if (!client) {
+        logger.warn('[Storage] Supabase not configured, skipping map upload');
+        return null;
+    }
+
+    const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100);
+    const path = `maps/${Date.now()}-${safeName}`;
+
+    const { error } = await client.storage
+        .from(BUCKET)
+        .upload(path, buffer, { contentType, upsert: true });
+
+    if (error) {
+        logger.error({ err: error }, '[Storage] Map upload failed');
+        return null;
+    }
+
+    const { data } = client.storage.from(BUCKET).getPublicUrl(path);
+    logger.info({ path, url: data.publicUrl }, '[Storage] Map uploaded');
+    return data.publicUrl;
+}
+
+/**
  * Uploads a ticket QR image to Supabase Storage.
  * Path is keyed by payment reference so re-sending overwrites the same file.
  */
