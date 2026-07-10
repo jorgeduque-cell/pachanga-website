@@ -2,6 +2,7 @@ import { prisma } from '../../lib/prisma.js';
 import { Prisma } from '@prisma/client';
 import { env } from '../../config/env.js';
 import { logger } from '../../lib/logger.js';
+import { isCannedReply } from './chatbot.router.js';
 import type { ChatConversation, ChatMessage } from '@prisma/client';
 
 // ─── Constants ───────────────────────────────────────────────
@@ -68,8 +69,18 @@ export class ChatbotConversationService {
             take: contextWindow,
         });
 
+        // Excluir del contexto las plantillas canned del router (y sus ecos):
+        // no aportan información y el modelo tiende a imitarlas ante mensajes
+        // cortos, respondiendo rechazos genéricos a consultas válidas.
+        const clean = messages.filter((msg: ChatMessage) => {
+            if (msg.role === 'CUSTOMER') return true;
+            const meta = msg.metadata as Record<string, unknown> | null;
+            if (meta?.tier === 'router') return false;
+            return !isCannedReply(msg.content);
+        });
+
         // Reverse to chronological order and map to Gemini format
-        return messages.reverse().map((msg: ChatMessage) => ({
+        return clean.reverse().map((msg: ChatMessage) => ({
             role: msg.role === 'CUSTOMER' ? 'user' as const : 'model' as const,
             content: msg.content,
         }));

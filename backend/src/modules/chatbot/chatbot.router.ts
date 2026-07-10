@@ -91,6 +91,18 @@ function pick(list: string[]): string {
     return list[Math.floor(Math.random() * list.length)];
 }
 
+// Todas las plantillas canned, para poder EXCLUIRLAS del historial que se le
+// pasa al respondedor: si quedan en contexto, el modelo tiende a repetirlas
+// como loro ante mensajes cortos ("dejame ver el flyer" → rechazo genérico).
+const ALL_TEMPLATES = new Set(Object.values(TEMPLATES).flat());
+
+/** ¿Este contenido es (o copia) una plantilla canned del router? */
+export function isCannedReply(content: string): boolean {
+    return ALL_TEMPLATES.has(content)
+        || content.startsWith('Por aquí solo te ayudo con temas del bar')
+        || content.startsWith('Solo puedo ayudarte con información del bar');
+}
+
 export class ChatbotRouter {
     private client: OpenAI;
 
