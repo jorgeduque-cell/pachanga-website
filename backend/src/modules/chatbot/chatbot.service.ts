@@ -457,23 +457,40 @@ export class ChatbotService {
                     break;
 
                 case 'SEND_EVENT_FLYER': {
-                    // Si la IA identificó el evento, buscar SU flyer por nombre
-                    // (palabra más significativa → tolera "Viche Fest" vs "Viche Fest 4.0").
-                    const searchKey = eventName
-                        ? (eventName.split(/\s+/).find(w => w.length >= 4) ?? eventName)
-                        : undefined;
-
-                    const event = await prisma.event.findFirst({
+                    // La tabla de eventos es pequeña: se trae completa y el match se
+                    // hace en memoria, insensible a ACENTOS y mayúsculas ("Bárbaro"
+                    // del modelo debe encontrar "BARBARO" de la BD — Postgres contains
+                    // no ignora tildes). Gana el evento con más palabras coincidentes.
+                    const events = await prisma.event.findMany({
                         where: {
                             isActive: true,
                             status: 'ACTIVE',
                             flyerUrl: { not: null },
-                            ...(searchKey
-                                ? { name: { contains: searchKey, mode: 'insensitive' } }
-                                : { eventDate: { gte: new Date() } }),
                         },
                         orderBy: { eventDate: 'asc' },
                     });
+
+                    const normalize = (s: string): string =>
+                        s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+                    let event: typeof events[number] | undefined;
+                    if (eventName) {
+                        const words = normalize(eventName).split(/\s+/).filter(w => w.length >= 4);
+                        let bestScore = 0;
+                        for (const e of events) {
+                            const n = normalize(e.name);
+                            const score = words.filter(w => n.includes(w)).length;
+                            if (score > bestScore) {
+                                bestScore = score;
+                                event = e;
+                            }
+                        }
+                    } else {
+                        // Sin evento específico → el próximo del calendario.
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        event = events.find(e => e.eventDate >= today) ?? events[0];
+                    }
 
                     if (event?.flyerUrl) {
                         await whatsappService.sendImageMessage(
