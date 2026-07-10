@@ -26,6 +26,8 @@ export interface AiResponse {
     customerName?: string;
     actions?: string[];
     booking?: AiBooking;
+    /** Evento al que se refiere el cliente (para enviar el flyer correcto). */
+    eventName?: string;
     usage?: AiUsage;
 }
 
@@ -89,12 +91,14 @@ const SYSTEM_INSTRUCTION = `Eres el asistente virtual de PACHANGA Y POCHOLA, un 
   "confidence": 0.95,
   "customer_name": null,
   "actions": [],
-  "booking": null
+  "booking": null,
+  "event_name": null
 }
 - "confidence": número 0..1 de qué tan seguro estás.
 - "customer_name": el nombre SOLO si lo menciona explícitamente; si no, null.
 - "booking": SOLO cuando los datos de una reserva/compra están COMPLETOS (ver sección de reservas). Estructura: {"kind":"mesa"|"cumpleanos"|"boletas","date":"sábado 12 de julio","time":"9:00 pm","party_size":6,"event":null}. Si falta algún dato, deja null y sigue preguntando SOLO lo que falte.
 - "booking.event": si el cliente mencionó un EVENTO o CONCIERTO específico (Viche Fest, un concierto, etc.), llena SIEMPRE "event" con su nombre exacto de la base de conocimiento — sin importar el kind.
+- "event_name": SIEMPRE que el mensaje del cliente se refiera a un evento específico (pedir flyer, info, precios de ese evento), llena "event_name" con el nombre exacto del evento según la base de conocimiento. Si habla de las clases de salsa, usa el nombre de las clases. Si no hay evento específico, null.
 
 ## EVENTOS Y COMPRA DE BOLETAS (MUY IMPORTANTE):
 - REGLA DE ORO: asistir a un EVENTO o CONCIERTO del calendario es una COMPRA, no una reserva. Aunque el cliente diga "quiero hacer una reserva para el [evento]" → intent "PURCHASE" con kind "boletas". NUNCA lo trates como mesa ni como cumpleaños.
@@ -115,7 +119,7 @@ const SYSTEM_INSTRUCTION = `Eres el asistente virtual de PACHANGA Y POCHOLA, un 
 ## ACCIONES ESPECIALES (campo "actions"):
 - Si piden ver/enviar la CARTA, LICORES o MENÚ (o preguntan PRECIOS de la carta) → responde afirmativo (ej: "¡Claro! Te comparto la carta 👇") y agrega "SEND_MENU_IMAGE". NUNCA digas que no puedes.
 - UBICACIÓN, DIRECCIÓN o CÓMO LLEGAR → agrega "SEND_LOCATION".
-- Si piden ver/enviar el FLYER, la imagen o la foto de un evento (o de las clases) → responde afirmativo (ej: "¡Claro! Aquí te comparto el flyer 👇") y agrega "SEND_EVENT_FLYER". NUNCA digas que no tienes acceso a flyers o imágenes.
+- Si piden ver/enviar el FLYER, la imagen o la foto de un evento (o de las clases) → responde afirmativo (ej: "¡Claro! Aquí te comparto el flyer 👇"), agrega "SEND_EVENT_FLYER" y llena "event_name" con el nombre del evento pedido. NUNCA digas que no tienes acceso a flyers o imágenes.
 - IMPORTANTE: el texto de "reply" y las "actions" deben ser COHERENTES. Si agregas una acción que envía una imagen, tu texto debe anunciarla en positivo, jamás disculparte por no poder enviarla.
 - Si no aplica ninguna, deja actions vacío [].`;
 
@@ -238,7 +242,11 @@ export class ChatbotAiEngine {
 
             const booking = this.parseBooking(parsed.booking);
 
-            return { reply, intent, confidence, customerName, actions, booking };
+            const eventName = typeof parsed.event_name === 'string' && parsed.event_name.length > 1
+                ? parsed.event_name.slice(0, 80)
+                : undefined;
+
+            return { reply, intent, confidence, customerName, actions, booking, eventName };
         } catch {
             logger.warn({ responseText }, '[Chatbot AI] Failed to parse JSON response');
             return {

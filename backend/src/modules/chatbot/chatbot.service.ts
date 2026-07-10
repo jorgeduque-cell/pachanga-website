@@ -104,30 +104,6 @@ export class ChatbotService {
                 }
             }
 
-            // 5.5. ROUTER — triage barato (pilar 1: enrutamiento de modelos).
-            // Deflecta saludos/agradecimientos/spam con plantilla, SIN invocar
-            // al respondedor ni inyectar la base de conocimiento.
-            const triage = await chatbotRouter.triage(text);
-            if (triage.decision !== 'ESCALATE' && triage.reply) {
-                await chatbotConversationService.saveMessage({
-                    conversationId: conversation.id,
-                    role: 'BOT',
-                    content: triage.reply,
-                    intent: triage.decision === 'DISMISS' ? 'UNKNOWN' : 'GREETING',
-                    confidence: 1.0,
-                    metadata: {
-                        tier: 'router',
-                        category: triage.category,
-                        costUsd: triage.costUsd,
-                        promptTokens: triage.usage.promptTokens,
-                        completionTokens: triage.usage.completionTokens,
-                    },
-                });
-                await whatsappService.sendFreeformMessage(phone, triage.reply);
-                logger.info({ phone, category: triage.category, costUsd: triage.costUsd }, '[Chatbot] Deflected by router');
-                return;
-            }
-
             // 6. Presupuesto de memoria dinámico:  x* = √(k/c)  →  # de mensajes.
             const budget = tokenEconomy.currentBudget();
             const historyLimit = tokenEconomy.tokensToMessages(budget.budgetTokens);
@@ -137,6 +113,35 @@ export class ChatbotService {
                 chatbotKnowledgeService.buildSystemPromptContext(),
                 chatbotConversationService.getConversationContext(conversation.id, historyLimit),
             ]);
+
+            // 6c. ROUTER — triage barato SOLO en el PRIMER mensaje de la conversación.
+            // El router clasifica sin historial: a mitad de conversación una respuesta
+            // corta ("6", "a las 9pm") parecería OFF_TOPIC y rompería la recolección
+            // de datos. En seguimientos, todo va directo al respondedor con contexto.
+            let routerCostUsd = 0;
+            if (conversationHistory.length <= 1) {
+                const triage = await chatbotRouter.triage(text);
+                routerCostUsd = triage.costUsd;
+                if (triage.decision !== 'ESCALATE' && triage.reply) {
+                    await chatbotConversationService.saveMessage({
+                        conversationId: conversation.id,
+                        role: 'BOT',
+                        content: triage.reply,
+                        intent: triage.decision === 'DISMISS' ? 'UNKNOWN' : 'GREETING',
+                        confidence: 1.0,
+                        metadata: {
+                            tier: 'router',
+                            category: triage.category,
+                            costUsd: triage.costUsd,
+                            promptTokens: triage.usage.promptTokens,
+                            completionTokens: triage.usage.completionTokens,
+                        },
+                    });
+                    await whatsappService.sendFreeformMessage(phone, triage.reply);
+                    logger.info({ phone, category: triage.category, costUsd: triage.costUsd }, '[Chatbot] Deflected by router');
+                    return;
+                }
+            }
 
             // 7. Generate AI response
             const aiResponse = await chatbotAiEngine.generateResponse(
@@ -151,7 +156,7 @@ export class ChatbotService {
                 confidence: aiResponse.confidence,
                 budgetTokens: budget.budgetTokens,
                 historyLimit,
-                routerCostUsd: triage.costUsd,
+                routerCostUsd,
                 responderCostUsd: aiResponse.usage?.costUsd,
             }, '[Chatbot] AI response generated');
 
@@ -193,8 +198,8 @@ export class ChatbotService {
                     promptTokens: aiResponse.usage?.promptTokens ?? 0,
                     completionTokens: aiResponse.usage?.completionTokens ?? 0,
                     responderCostUsd: aiResponse.usage?.costUsd ?? 0,
-                    routerCostUsd: triage.costUsd,
-                    totalCostUsd: triage.costUsd + (aiResponse.usage?.costUsd ?? 0),
+                    routerCostUsd,
+                    totalCostUsd: routerCostUsd + (aiResponse.usage?.costUsd ?? 0),
                 },
             });
 
@@ -208,7 +213,7 @@ export class ChatbotService {
 
             // 12. Execute AI-triggered actions (non-blocking)
             if (aiResponse.actions?.length) {
-                this.executeActions(phone, aiResponse.actions).catch((err) => {
+                this.executeActions(phone, aiResponse.actions, aiResponse.eventName).catch((err) => {
                     logger.error({ err, phone }, '[Chatbot] Action execution failed');
                 });
             }
@@ -430,7 +435,7 @@ export class ChatbotService {
         logger.info({ customerId, name }, '[Chatbot] Customer name updated from AI detection');
     }
 
-    private async executeActions(phone: string, actions: string[]): Promise<void> {
+    private async executeActions(phone: string, actions: string[], eventName?: string): Promise<void> {
         for (const action of actions) {
             switch (action) {
                 case 'SEND_MENU_IMAGE':
@@ -452,28 +457,37 @@ export class ChatbotService {
                     break;
 
                 case 'SEND_EVENT_FLYER': {
-                    const events = await prisma.event.findMany({
+                    // Si la IA identificó el evento, buscar SU flyer por nombre
+                    // (palabra más significativa → tolera "Viche Fest" vs "Viche Fest 4.0").
+                    const searchKey = eventName
+                        ? (eventName.split(/\s+/).find(w => w.length >= 4) ?? eventName)
+                        : undefined;
+
+                    const event = await prisma.event.findFirst({
                         where: {
                             isActive: true,
                             status: 'ACTIVE',
                             flyerUrl: { not: null },
-                            eventDate: { gte: new Date() },
+                            ...(searchKey
+                                ? { name: { contains: searchKey, mode: 'insensitive' } }
+                                : { eventDate: { gte: new Date() } }),
                         },
                         orderBy: { eventDate: 'asc' },
-                        take: 1,
                     });
-                    if (events[0]?.flyerUrl) {
+
+                    if (event?.flyerUrl) {
                         await whatsappService.sendImageMessage(
                             phone,
-                            events[0].flyerUrl,
-                            `🎉 ${events[0].name}`,
+                            event.flyerUrl,
+                            `🎉 ${event.name}`,
                         );
                     } else {
-                        // La IA prometió un flyer pero no hay ninguno en BD: no dejar al
-                        // cliente esperando una imagen que nunca llega.
+                        // NUNCA enviar el flyer de otro evento: mejor decirlo honesto.
                         await whatsappService.sendFreeformMessage(
                             phone,
-                            'Por ahora no tengo el flyer a la mano 🙏 pero cuéntame qué evento te interesa y con gusto te paso la info.',
+                            eventName
+                                ? `Por ahora no tengo a la mano el flyer de *${eventName}* 🙏 pero pregúntame lo que quieras del evento y te cuento.`
+                                : 'Por ahora no tengo el flyer a la mano 🙏 pero cuéntame qué evento te interesa y con gusto te paso la info.',
                         );
                     }
                     break;
@@ -550,26 +564,27 @@ export class ChatbotService {
             : (ai.customerName ?? '');
 
         // IMPORTANTE: el link DEBE ser wa.me — es el único que WhatsApp abre
-        // dentro de la app (un dominio propio/acortador lo manda al navegador y
-        // genera fricción). Para acortarlo, el mensaje es COMPACTO y sin emojis
-        // (cada emoji codificado pesa ~12 caracteres en la URL).
+        // dentro de la app (un dominio propio/acortador lo manda al navegador,
+        // genera fricción y corrompe los emojis). Con wa.me directo los emojis
+        // llegan intactos y el vendedor lee la solicitud de un vistazo.
         // Si el cliente mencionó un evento específico, el mensaje SIEMPRE lo
         // integra — sin importar cómo haya clasificado el modelo.
         let prefill: string;
         switch (booking.kind) {
             case 'mesa':
                 prefill = booking.event
-                    ? `Hola! Quiero reservar para *${booking.event}*: ${booking.date}, ${booking.time}, ${booking.partySize} personas.`
-                    : `Hola! Quiero reservar una mesa: ${booking.date}, ${booking.time}, ${booking.partySize} personas.`;
+                    ? `Hola 👋 Quiero reservar para *${booking.event}*.\n📅 Fecha: ${booking.date}\n🕐 Hora: ${booking.time}\n👥 Personas: ${booking.partySize}`
+                    : `Hola 👋 Quiero reservar una mesa en Pachanga y Pochola.\n📅 Fecha: ${booking.date}\n🕐 Hora: ${booking.time}\n👥 Personas: ${booking.partySize}`;
                 break;
             case 'cumpleanos':
-                prefill = `Hola! Quiero celebrar un cumpleaños${booking.event ? ` en *${booking.event}*` : ''}: ${booking.date}${booking.time ? `, ${booking.time}` : ''}, ${booking.partySize} personas.`;
+                prefill = `Hola 🎉 Quiero celebrar un cumpleaños en Pachanga y Pochola${booking.event ? ` durante *${booking.event}*` : ''}.\n📅 Fecha: ${booking.date}\n👥 Personas: ${booking.partySize}`
+                    + (booking.time ? `\n🕐 Hora: ${booking.time}` : '');
                 break;
             case 'boletas':
-                prefill = `Hola! Quiero comprar boletas para *${booking.event}*${booking.date ? ` (${booking.date})` : ''}: ${booking.partySize} personas.`;
+                prefill = `Hola 👋 Quiero comprar boletas para *${booking.event}*${booking.date ? ` (${booking.date})` : ''}.\n👥 Personas: ${booking.partySize}`;
                 break;
         }
-        if (name) prefill += ` Soy ${name}.`;
+        if (name) prefill += `\nMi nombre es ${name}.`;
 
         const phoneDigits = env.CHATBOT_SALES_PHONE.replace(/[^\d]/g, '');
         const link = `https://wa.me/${phoneDigits}?text=${encodeURIComponent(prefill)}`;
