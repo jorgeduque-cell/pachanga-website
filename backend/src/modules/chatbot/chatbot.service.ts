@@ -1,7 +1,7 @@
 import { prisma } from '../../lib/prisma.js';
 import { env } from '../../config/env.js';
 import { logger } from '../../lib/logger.js';
-import { chatbotAiEngine } from './chatbot.ai-engine.js';
+import { chatbotAiEngine, type AiResponse } from './chatbot.ai-engine.js';
 import { chatbotRouter } from './chatbot.router.js';
 import { tokenEconomy } from './chatbot.token-economy.js';
 import { chatbotKnowledgeService } from './chatbot.knowledge.js';
@@ -175,9 +175,9 @@ export class ChatbotService {
                 return;
             }
 
-            // 9.5. Reservas y cumpleaños → mensaje preestablecido que delega al
-            // WhatsApp de ventas (se guarda y envía este texto, no el del modelo).
-            aiResponse.reply = this.applyBookingRedirect(aiResponse.intent, aiResponse.reply);
+            // 9.5. Reservas/cumpleaños/boletas con datos completos → link PRE-LLENADO
+            // al WhatsApp de ventas (el cliente solo toca el enlace y da "enviar").
+            aiResponse.reply = this.buildBookingReply(aiResponse, customer.name);
 
             await chatbotConversationService.saveMessage({
                 conversationId: conversation.id,
@@ -524,21 +524,66 @@ export class ChatbotService {
     }
 
     /**
-     * Delega al humano: para reservas y cumpleaños, reemplaza la respuesta por un
-     * mensaje preestablecido que remite al WhatsApp de ventas. (Meta impide alertar
-     * al equipo fuera de la ventana de 24h, así que el cliente escribe directo.)
-     * PURCHASE conserva la respuesta del modelo (que ya lleva precio + link).
+     * Delega al humano con un link PRE-LLENADO (wa.me/…?text=…): el bot recoge
+     * los datos y el cliente solo toca el enlace y da "enviar" — su solicitud ya
+     * va redactada al chat del vendedor. Así el mensajero es el propio cliente
+     * y no aplica la ventana de 24h de Meta.
+     * Si los datos aún están incompletos, se conserva la respuesta del modelo
+     * (que sigue preguntando lo que falta).
      */
-    private applyBookingRedirect(intent: string, fallback: string): string {
-        const link = `https://wa.me/${env.CHATBOT_SALES_PHONE.replace(/[^\d]/g, '')}`;
-        switch (intent) {
-            case 'RESERVATION':
-                return `¡Con gusto te ayudamos con tu reserva! 🍾 Para confirmar tu mesa y la disponibilidad, escríbenos directamente por aquí 👉 ${link}`;
-            case 'BIRTHDAY':
-                return `¡Qué chévere que quieras celebrar tu cumpleaños con nosotros! 🎉 Para armar tu plan y reservar, escríbenos por aquí 👉 ${link}`;
-            default:
-                return fallback;
+    private buildBookingReply(ai: AiResponse, customerName: string): string {
+        const { booking, intent } = ai;
+
+        const isComplete = booking !== undefined && (
+            (booking.kind === 'mesa' && !!booking.date && !!booking.time && booking.partySize !== undefined) ||
+            (booking.kind === 'cumpleanos' && !!booking.date && booking.partySize !== undefined) ||
+            booking.kind === 'boletas'
+        );
+
+        // PURCHASE sin booking estructurado → link genérico de boletas igualmente.
+        const effective = isComplete && booking
+            ? booking
+            : (intent === 'PURCHASE' ? { kind: 'boletas' as const } : undefined);
+        if (!effective) return ai.reply;
+
+        // Nombre real (no el placeholder de WhatsApp) para el mensaje pre-llenado.
+        const name = !customerName.startsWith('Cliente WhatsApp')
+            ? customerName
+            : (ai.customerName ?? '');
+
+        let prefill: string;
+        switch (effective.kind) {
+            case 'mesa':
+                prefill = `Hola 👋 Quiero reservar una mesa en Pachanga y Pochola.\n📅 Fecha: ${effective.date}\n🕐 Hora: ${effective.time}\n👥 Personas: ${effective.partySize}`;
+                break;
+            case 'cumpleanos':
+                prefill = `Hola 🎉 Quiero celebrar un cumpleaños en Pachanga y Pochola.\n📅 Fecha: ${effective.date}\n👥 Personas: ${effective.partySize}`
+                    + (effective.time ? `\n🕐 Hora: ${effective.time}` : '');
+                break;
+            case 'boletas':
+                prefill = effective.event
+                    ? `Hola 👋 Quiero comprar boletas para ${effective.event}.`
+                    : 'Hola 👋 Quiero comprar boletas para un evento.';
+                break;
         }
+        if (name) prefill += `\nMi nombre es ${name}.`;
+
+        const phoneDigits = env.CHATBOT_SALES_PHONE.replace(/[^\d]/g, '');
+        const link = `https://wa.me/${phoneDigits}?text=${encodeURIComponent(prefill)}`;
+
+        // Boletas: se conserva la respuesta del modelo (trae resumen + precio).
+        // Mesa/cumpleaños: confirmación fija corta (coherencia garantizada).
+        const lead = effective.kind === 'boletas'
+            ? ai.reply
+            : (effective.kind === 'mesa'
+                ? '¡Perfecto! Ya tengo los datos de tu reserva ✅'
+                : '¡Qué chévere! Ya tengo los datos para tu celebración 🎉');
+
+        const cta = effective.kind === 'boletas'
+            ? `Para comprar, toca este enlace y solo dale *enviar* 👉 ${link}`
+            : `Toca este enlace y solo dale *enviar* para que nuestro equipo te la confirme 👉 ${link}`;
+
+        return `${lead}\n\n${cta}`;
     }
 
     private isRateLimited(phone: string): boolean {
