@@ -42,8 +42,7 @@ const envSchema = z.object({
   // Kill-switch del flujo de compra automatizado (boletas + comprobante).
   // En 'false': el bot solo informa eventos/precios y redirige a CHATBOT_SALES_PHONE.
   CHATBOT_PURCHASE_ENABLED: z.string().optional().default('false'),
-  // Número de ventas: recibe compras, cumpleaños y ahora también las alertas
-  // de reservas de mesa que toma el bot.
+  // Número de ventas: el bot remite aquí las reservas, cumpleaños y compras de boletas.
   CHATBOT_SALES_PHONE: z.string().optional().default('+573132891788'),
 
   // OpenAI — SOLO para visión (lectura de comprobantes con GPT-4o). Opcional.

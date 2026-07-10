@@ -22,6 +22,7 @@ const WebhookStatusSchema = z.object({
 });
 
 const WebhookMessageSchema = z.object({
+  id: z.string(), // wamid del mensaje entrante (para marcar leído + typing)
   from: z.string(),
   type: z.string(),
   text: z.object({ body: z.string() }).optional(),
@@ -147,7 +148,7 @@ export class WhatsAppController {
 
       // 2. Forward to chatbot for AI response (async, non-blocking)
       if (msg.type === 'text' && textBody) {
-        chatbotService.processIncomingMessage(phone, textBody, profileName).catch((err) => {
+        chatbotService.processIncomingMessage(phone, textBody, profileName, msg.id).catch((err) => {
           logger.error({ err, phone }, '[Webhook] Chatbot processing failed (non-blocking)');
         });
       } else if (msg.type === 'image' && msg.image?.id) {

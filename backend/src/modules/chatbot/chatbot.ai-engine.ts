@@ -10,19 +10,12 @@ export interface AiUsage {
     costUsd: number;
 }
 
-export interface AiReservation {
-    date?: string;
-    time?: string;
-    partySize?: number;
-}
-
 export interface AiResponse {
     reply: string;
     intent: string;
     confidence: number;
     customerName?: string;
     actions?: string[];
-    reservation?: AiReservation;
     usage?: AiUsage;
 }
 
@@ -73,7 +66,7 @@ const SYSTEM_INSTRUCTION = `Eres el asistente virtual de PACHANGA Y POCHOLA, un 
 2. NUNCA inventes información. Si no tienes el dato, di: "No tengo ese dato disponible en este momento. Te recomiendo escribirle directamente al administrador."
 3. NUNCA compartas datos internos del negocio (costos, salarios, datos de otros clientes).
 4. Si el cliente se queja o tiene un problema, muestra empatía: "Lamento mucho lo que pasó. Voy a pasar tu caso al equipo para que lo resuelvan lo antes posible."
-5. Para reservar una mesa normal (sin costo) recoge fecha, cantidad de personas y hora por este chat. Pero si la reserva es para un CUMPLEAÑOS o celebración especial, remítela SIEMPRE al WhatsApp de ventas (ver sección de cumpleaños), no la tomes tú.
+5. NO tomes reservas tú mismo. TODA reserva (mesa normal, cumpleaños o evento con boletas) se atiende por el WhatsApp de ventas. Solo clasifica bien la intención (RESERVATION, BIRTHDAY o PURCHASE); el sistema enviará el mensaje con el link.
 6. Si te mandan un AUDIO o nota de voz, pide amablemente que te escriban por texto. PERO tú SÍ puedes COMPARTIR imágenes cuando el sistema las tiene: el flyer de un evento y la carta de licores. NUNCA digas que "no tienes acceso a imágenes o flyers", ni que "solo recibes texto", cuando te pidan ver un flyer, una foto o la carta: en esos casos responde afirmativo y deja que el sistema la envíe.
 7. NUNCA uses la palabra "rumba" o "rumbear" de forma excesiva. Máximo una vez por conversación y de forma natural.
 8. FORMATO WHATSAPP: para negrita usa UN solo asterisco (*texto*). NUNCA uses markdown de doble asterisco, encabezados (#), ni tablas. Usa pocas negritas, solo para datos clave.
@@ -91,12 +84,10 @@ const SYSTEM_INSTRUCTION = `Eres el asistente virtual de PACHANGA Y POCHOLA, un 
   "intent": "GREETING|HOURS|LOCATION|PRICES|RESERVATION|EVENTS|MENU|BIRTHDAY|COMPLAINTS|PURCHASE|UNKNOWN",
   "confidence": 0.95,
   "customer_name": null,
-  "actions": [],
-  "reservation": null
+  "actions": []
 }
 - "confidence": número 0..1 de qué tan seguro estás.
 - "customer_name": el nombre SOLO si lo menciona explícitamente; si no, null.
-- "reservation": SOLO para reservar una MESA NORMAL (sin costo). Cuando ya tengas los TRES datos (fecha, hora y número de personas), ponlo así: {"date":"sábado 12 de julio","time":"9:00 pm","party_size":6} y agrega "NOTIFY_RESERVATION" en actions. Si te falta algún dato, deja "reservation": null y sigue preguntando amablemente SOLO por lo que falte. NUNCA lo uses para cumpleaños/eventos (esos van al link de ventas).
 
 ## EVENTOS Y COMPRA DE BOLETAS (MUY IMPORTANTE):
 - El bot NO vende boletas ni procesa pagos. Solo informa.
@@ -105,19 +96,18 @@ const SYSTEM_INSTRUCTION = `Eres el asistente virtual de PACHANGA Y POCHOLA, un 
 - Si el cliente quiere COMPRAR BOLETAS, PAGAR COVER, RESERVAR VIP con pago, o pregunta CÓMO PAGAR → clasifica intent "PURCHASE". Dale un resumen breve del evento con su precio, y SIEMPRE dirígelo a comprar por este link de WhatsApp: ${SALES_WA_LINK}
   Ejemplo: "¡Claro! El [evento] es el [fecha] y el cover vale $[precio]. Para comprar tu boleta, escríbenos por acá: ${SALES_WA_LINK} 😊"
 - NUNCA ofrezcas recibir el pago tú mismo, ni pidas comprobante de pago, ni inicies un proceso de compra paso a paso. Siempre remite al link de ventas.
-- Diferencia RESERVATION (reservar mesa normal SIN costo — recoge fecha, personas y hora por este chat) de PURCHASE (pagar boletas/cover/VIP — remite al link de ventas).
+- Diferencia RESERVATION (reservar mesa normal SIN costo) de PURCHASE (pagar boletas/cover/VIP). En ambos casos NO tomes datos: el sistema remite al link de ventas.
 
-## RESERVAS DE CUMPLEAÑOS Y CELEBRACIONES (MUY IMPORTANTE):
-- Si el cliente quiere reservar/celebrar un CUMPLEAÑOS, aniversario o celebración especial (aunque NO sea un evento con boletas) → clasifica intent "BIRTHDAY" y SIEMPRE remítelo al WhatsApp de ventas: ${SALES_WA_LINK}
-- Responde cálido y breve, SIN recoger tú los datos del plan ni cotizar paquetes. Ejemplo: "¡Qué chévere que quieras celebrar tu cumpleaños con nosotros! 🎉 Para armar tu plan y reservar, escríbenos por este WhatsApp: ${SALES_WA_LINK}"
-- NUNCA tomes la reserva de cumpleaños tú mismo ni pidas los datos paso a paso; ese equipo la gestiona.
+## RESERVAS Y CUMPLEAÑOS:
+- Reserva de mesa normal → clasifica intent "RESERVATION".
+- Cumpleaños, aniversario o celebración especial (aunque NO sea evento con boletas) → clasifica intent "BIRTHDAY".
+- En ambos, el sistema responde con un mensaje que remite al WhatsApp de ventas. NO cotices ni pidas datos paso a paso.
 
 ## ACCIONES ESPECIALES (campo "actions"):
 - Si piden ver/enviar la CARTA, LICORES o MENÚ (o preguntan PRECIOS de la carta) → responde afirmativo (ej: "¡Claro! Te comparto la carta 👇") y agrega "SEND_MENU_IMAGE". NUNCA digas que no puedes.
 - UBICACIÓN, DIRECCIÓN o CÓMO LLEGAR → agrega "SEND_LOCATION".
 - Si piden ver/enviar el FLYER, la imagen o la foto de un evento (o de las clases) → responde afirmativo (ej: "¡Claro! Aquí te comparto el flyer 👇") y agrega "SEND_EVENT_FLYER". NUNCA digas que no tienes acceso a flyers o imágenes.
 - IMPORTANTE: el texto de "reply" y las "actions" deben ser COHERENTES. Si agregas una acción que envía una imagen, tu texto debe anunciarla en positivo, jamás disculparte por no poder enviarla.
-- RESERVA de mesa normal con los 3 datos completos → agrega "NOTIFY_RESERVATION" (y llena "reservation"). Confirma al cliente que su reserva quedó registrada y que el equipo la confirmará pronto.
 - Si no aplica ninguna, deja actions vacío [].`;
 
 // ─── Engine ─────────────────────────────────────────────────
@@ -237,9 +227,7 @@ export class ChatbotAiEngine {
                 ? parsed.actions.filter((a: unknown) => typeof a === 'string')
                 : [];
 
-            const reservation = this.parseReservation(parsed.reservation);
-
-            return { reply, intent, confidence, customerName, actions, reservation };
+            return { reply, intent, confidence, customerName, actions };
         } catch {
             logger.warn({ responseText }, '[Chatbot AI] Failed to parse JSON response');
             return {
@@ -250,20 +238,6 @@ export class ChatbotAiEngine {
         }
     }
 
-    /** Extrae y valida el objeto de reserva (acepta party_size o partySize). */
-    private parseReservation(raw: unknown): AiReservation | undefined {
-        if (!raw || typeof raw !== 'object') return undefined;
-        const r = raw as Record<string, unknown>;
-        const date = typeof r.date === 'string' ? r.date.slice(0, 60) : undefined;
-        const time = typeof r.time === 'string' ? r.time.slice(0, 30) : undefined;
-        const sizeRaw = r.party_size ?? r.partySize;
-        const partySize = typeof sizeRaw === 'number' && sizeRaw > 0
-            ? Math.min(50, Math.round(sizeRaw))
-            : undefined;
-
-        if (!date && !time && partySize === undefined) return undefined;
-        return { date, time, partySize };
-    }
 }
 
 export const chatbotAiEngine = new ChatbotAiEngine();

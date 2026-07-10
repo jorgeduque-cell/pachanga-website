@@ -1,8 +1,7 @@
 import { prisma } from '../../lib/prisma.js';
-import { Prisma } from '@prisma/client';
 import { env } from '../../config/env.js';
 import { logger } from '../../lib/logger.js';
-import { chatbotAiEngine, type AiReservation } from './chatbot.ai-engine.js';
+import { chatbotAiEngine } from './chatbot.ai-engine.js';
 import { chatbotRouter } from './chatbot.router.js';
 import { tokenEconomy } from './chatbot.token-economy.js';
 import { chatbotKnowledgeService } from './chatbot.knowledge.js';
@@ -11,7 +10,6 @@ import { purchaseFlowService } from './chatbot.purchase-flow.js';
 import { chatbotVisionService } from './chatbot.vision.js';
 import { chatbotPaymentService } from './chatbot.payment.js';
 import { whatsappService } from '../whatsapp/whatsapp.service.js';
-import { notifyAdminTelegram } from '../telegram/telegram.bot.js';
 import { uploadPaymentReceipt } from '../../lib/storage.js';
 
 // ─── Rate Limit Map ─────────────────────────────────────────
@@ -37,6 +35,7 @@ export class ChatbotService {
         phone: string,
         text: string,
         profileName?: string,
+        waMessageId?: string,
     ): Promise<void> {
         // Guard: chatbot must be enabled
         if (env.CHATBOT_ENABLED !== 'true') {
@@ -74,6 +73,12 @@ export class ChatbotService {
             if (conversation.status === 'ESCALATED') {
                 logger.info({ phone, conversationId: conversation.id }, '[Chatbot] Conversation escalated — skipping AI');
                 return;
+            }
+
+            // 4.5. Marcar leído + "escribiendo..." mientras se genera la respuesta
+            // (fire-and-forget: cosmético, no debe retrasar ni romper el flujo).
+            if (waMessageId) {
+                void whatsappService.sendTypingIndicator(waMessageId);
             }
 
             // 5. CHECK FOR ACTIVE PURCHASE FLOW (before AI)
@@ -170,6 +175,10 @@ export class ChatbotService {
                 return;
             }
 
+            // 9.5. Reservas y cumpleaños → mensaje preestablecido que delega al
+            // WhatsApp de ventas (se guarda y envía este texto, no el del modelo).
+            aiResponse.reply = this.applyBookingRedirect(aiResponse.intent, aiResponse.reply);
+
             await chatbotConversationService.saveMessage({
                 conversationId: conversation.id,
                 role: 'BOT',
@@ -196,11 +205,6 @@ export class ChatbotService {
 
             // 11. Send response via WhatsApp
             await whatsappService.sendFreeformMessage(phone, aiResponse.reply);
-
-            // 11.5. Reserva de mesa completa → avisar al equipo de ventas (una sola vez)
-            if (aiResponse.intent === 'RESERVATION' && aiResponse.actions?.includes('NOTIFY_RESERVATION')) {
-                await this.notifyReservation(conversation.id, customer.name, phone, aiResponse.reservation);
-            }
 
             // 12. Execute AI-triggered actions (non-blocking)
             if (aiResponse.actions?.length) {
@@ -519,46 +523,22 @@ export class ChatbotService {
         }, '[Chatbot] Conversation escalated');
     }
 
-    /** Envía al equipo de ventas la alerta de una reserva de mesa (una sola vez). */
-    private async notifyReservation(
-        conversationId: string,
-        customerName: string,
-        phone: string,
-        reservation?: AiReservation,
-    ): Promise<void> {
-        // Guarda anti-duplicados: una alerta por conversación. Se marca ANTES
-        // de enviar para que dos mensajes casi simultáneos no dupliquen la alerta.
-        const conv = await prisma.chatConversation.findUnique({
-            where: { id: conversationId },
-            select: { metadata: true },
-        });
-        const metadata = (conv?.metadata as Record<string, unknown> | null) ?? {};
-        if (metadata.reservationNotified) return;
-
-        await prisma.chatConversation.update({
-            where: { id: conversationId },
-            data: { metadata: { ...metadata, reservationNotified: true } as Prisma.InputJsonValue },
-        });
-
-        // Nombre saneado para no romper el Markdown de Telegram.
-        const safeName = customerName.replace(/[*_`[\]]/g, '');
-        const alert = `📅 *NUEVA RESERVA — Chatbot*\n\n` +
-            `👤 Cliente: ${safeName}\n` +
-            `📱 Tel: ${phone}\n` +
-            `🗓️ Fecha: ${reservation?.date ?? 'por confirmar'}\n` +
-            `🕐 Hora: ${reservation?.time ?? 'por confirmar'}\n` +
-            `👥 Personas: ${reservation?.partySize ?? 'por confirmar'}\n\n` +
-            `📋 Contáctenlo para confirmar la mesa.`;
-
-        // Canal PRINCIPAL: Telegram — sin la ventana de 24h de WhatsApp, siempre llega.
-        await notifyAdminTelegram(alert);
-
-        // Best-effort: WhatsApp a ventas (SOLO llega si ese número le escribió al
-        // bot en las últimas 24h; si no, WhatsApp lo rechaza y queda en logs).
-        await whatsappService.sendFreeformMessage(env.CHATBOT_SALES_PHONE, alert).catch((err) => {
-            logger.error({ err }, '[Chatbot] WhatsApp reservation alert failed (ventana 24h?)');
-        });
-        logger.info({ conversationId, phone }, '[Chatbot] Reservation alert dispatched (telegram + whatsapp best-effort)');
+    /**
+     * Delega al humano: para reservas y cumpleaños, reemplaza la respuesta por un
+     * mensaje preestablecido que remite al WhatsApp de ventas. (Meta impide alertar
+     * al equipo fuera de la ventana de 24h, así que el cliente escribe directo.)
+     * PURCHASE conserva la respuesta del modelo (que ya lleva precio + link).
+     */
+    private applyBookingRedirect(intent: string, fallback: string): string {
+        const link = `https://wa.me/${env.CHATBOT_SALES_PHONE.replace(/[^\d]/g, '')}`;
+        switch (intent) {
+            case 'RESERVATION':
+                return `¡Con gusto te ayudamos con tu reserva! 🍾 Para confirmar tu mesa y la disponibilidad, escríbenos directamente por aquí 👉 ${link}`;
+            case 'BIRTHDAY':
+                return `¡Qué chévere que quieras celebrar tu cumpleaños con nosotros! 🎉 Para armar tu plan y reservar, escríbenos por aquí 👉 ${link}`;
+            default:
+                return fallback;
+        }
     }
 
     private isRateLimited(phone: string): boolean {

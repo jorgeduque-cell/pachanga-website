@@ -267,6 +267,43 @@ export class WhatsAppService {
     }
 
     /**
+     * Marca el mensaje entrante como leído (chulos azules) y muestra el
+     * indicador "escribiendo..." en el chat del cliente. El indicador dura
+     * hasta ~25s o se descarta al enviar la respuesta. Best-effort: nunca
+     * lanza — es cosmético y no debe romper el flujo de respuesta.
+     */
+    async sendTypingIndicator(incomingMessageId: string): Promise<void> {
+        if (this.isDryRun) {
+            logger.info({ incomingMessageId }, '[DRY-RUN] Typing indicator simulated');
+            return;
+        }
+
+        try {
+            await axios.post(
+                `${GRAPH_API_URL}/${this.apiVersion}/${this.phoneNumberId}/messages`,
+                {
+                    messaging_product: 'whatsapp',
+                    status: 'read',
+                    message_id: incomingMessageId,
+                    typing_indicator: { type: 'text' },
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${this.token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    timeout: 10000,
+                },
+            );
+        } catch (error) {
+            const errorDetails = axios.isAxiosError(error)
+                ? error.response?.data?.error?.message ?? error.message
+                : (error instanceof Error ? error.message : 'Unknown error');
+            logger.warn({ incomingMessageId, errorDetails }, '[WhatsApp] Typing indicator failed');
+        }
+    }
+
+    /**
      * Sends a free-text message (not a template) via WhatsApp Cloud API.
      * Used by the chatbot for AI-generated responses within the 24h session window.
      */
