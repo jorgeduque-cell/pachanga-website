@@ -532,19 +532,17 @@ export class ChatbotService {
      * (que sigue preguntando lo que falta).
      */
     private buildBookingReply(ai: AiResponse, customerName: string): string {
-        const { booking, intent } = ai;
+        const { booking } = ai;
 
+        // Completo: mesa = fecha+hora+personas · cumpleaños = fecha+personas ·
+        // boletas (eventos) = evento+personas (la fecha/hora las fija el evento).
         const isComplete = booking !== undefined && (
             (booking.kind === 'mesa' && !!booking.date && !!booking.time && booking.partySize !== undefined) ||
             (booking.kind === 'cumpleanos' && !!booking.date && booking.partySize !== undefined) ||
-            booking.kind === 'boletas'
+            (booking.kind === 'boletas' && !!booking.event && booking.partySize !== undefined)
         );
-
-        // PURCHASE sin booking estructurado → link genérico de boletas igualmente.
-        const effective = isComplete && booking
-            ? booking
-            : (intent === 'PURCHASE' ? { kind: 'boletas' as const } : undefined);
-        if (!effective) return ai.reply;
+        // Incompleto → se conserva la respuesta del modelo (sigue preguntando).
+        if (!isComplete || !booking) return ai.reply;
 
         // Nombre real (no el placeholder de WhatsApp) para el mensaje pre-llenado.
         const name = !customerName.startsWith('Cliente WhatsApp')
@@ -552,18 +550,16 @@ export class ChatbotService {
             : (ai.customerName ?? '');
 
         let prefill: string;
-        switch (effective.kind) {
+        switch (booking.kind) {
             case 'mesa':
-                prefill = `Hola 👋 Quiero reservar una mesa en Pachanga y Pochola.\n📅 Fecha: ${effective.date}\n🕐 Hora: ${effective.time}\n👥 Personas: ${effective.partySize}`;
+                prefill = `Hola 👋 Quiero reservar una mesa en Pachanga y Pochola.\n📅 Fecha: ${booking.date}\n🕐 Hora: ${booking.time}\n👥 Personas: ${booking.partySize}`;
                 break;
             case 'cumpleanos':
-                prefill = `Hola 🎉 Quiero celebrar un cumpleaños en Pachanga y Pochola.\n📅 Fecha: ${effective.date}\n👥 Personas: ${effective.partySize}`
-                    + (effective.time ? `\n🕐 Hora: ${effective.time}` : '');
+                prefill = `Hola 🎉 Quiero celebrar un cumpleaños en Pachanga y Pochola.\n📅 Fecha: ${booking.date}\n👥 Personas: ${booking.partySize}`
+                    + (booking.time ? `\n🕐 Hora: ${booking.time}` : '');
                 break;
             case 'boletas':
-                prefill = effective.event
-                    ? `Hola 👋 Quiero comprar boletas para ${effective.event}.`
-                    : 'Hola 👋 Quiero comprar boletas para un evento.';
+                prefill = `Hola 👋 Quiero comprar boletas para ${booking.event}${booking.date ? ` (${booking.date})` : ''}.\n👥 Personas: ${booking.partySize}`;
                 break;
         }
         if (name) prefill += `\nMi nombre es ${name}.`;
@@ -571,16 +567,16 @@ export class ChatbotService {
         const phoneDigits = env.CHATBOT_SALES_PHONE.replace(/[^\d]/g, '');
         const link = `https://wa.me/${phoneDigits}?text=${encodeURIComponent(prefill)}`;
 
-        // Boletas: se conserva la respuesta del modelo (trae resumen + precio).
-        // Mesa/cumpleaños: confirmación fija corta (coherencia garantizada).
-        const lead = effective.kind === 'boletas'
-            ? ai.reply
-            : (effective.kind === 'mesa'
+        // Confirmación fija por caso (coherencia garantizada: el texto lo pone el
+        // código, no el modelo, para que nunca contradiga al link adjunto).
+        const lead = booking.kind === 'boletas'
+            ? `¡Listo! Ya tengo tu solicitud de boletas para *${booking.event}* ✅`
+            : (booking.kind === 'mesa'
                 ? '¡Perfecto! Ya tengo los datos de tu reserva ✅'
                 : '¡Qué chévere! Ya tengo los datos para tu celebración 🎉');
 
-        const cta = effective.kind === 'boletas'
-            ? `Para comprar, toca este enlace y solo dale *enviar* 👉 ${link}`
+        const cta = booking.kind === 'boletas'
+            ? `Para comprar tus boletas, toca este enlace y solo dale *enviar* 👉 ${link}`
             : `Toca este enlace y solo dale *enviar* para que nuestro equipo te la confirme 👉 ${link}`;
 
         return `${lead}\n\n${cta}`;
