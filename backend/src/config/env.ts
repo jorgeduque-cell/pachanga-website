@@ -67,9 +67,6 @@ const envSchema = z.object({
   // Frontend URL (for QR generation and CORS)
   FRONTEND_URL: z.string().url().optional().default('https://pachanga-website.vercel.app'),
 
-  // URL pública de ESTE backend (para armar los links cortos /r/:code)
-  PUBLIC_BASE_URL: z.string().url().optional().default('https://pachanga-api.onrender.com'),
-
   // Supabase Storage (for flyer uploads)
   SUPABASE_URL: z.string().url().optional().default(''),
   SUPABASE_SERVICE_KEY: z.string().optional().default(''),

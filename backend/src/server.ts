@@ -103,20 +103,6 @@ app.get('/api/health/live', (_req, res) => {
 
 
 
-// ─── Link corto → redirect al WhatsApp de ventas con mensaje pre-llenado ───
-import { resolveShortLink } from './lib/shortlink.js';
-const SHORTLINK_FALLBACK = `https://wa.me/${env.CHATBOT_SALES_PHONE.replace(/[^\d]/g, '')}`;
-
-app.get('/r/:code', async (req, res) => {
-  try {
-    const target = await resolveShortLink(req.params.code);
-    res.redirect(302, target ?? SHORTLINK_FALLBACK);
-  } catch (error) {
-    logger.warn({ err: error, code: req.params.code }, '[Shortlink] Resolve failed');
-    res.redirect(302, SHORTLINK_FALLBACK);
-  }
-});
-
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/tables', tableRoutes);

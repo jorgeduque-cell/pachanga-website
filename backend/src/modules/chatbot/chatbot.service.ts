@@ -11,7 +11,6 @@ import { chatbotVisionService } from './chatbot.vision.js';
 import { chatbotPaymentService } from './chatbot.payment.js';
 import { whatsappService } from '../whatsapp/whatsapp.service.js';
 import { uploadPaymentReceipt } from '../../lib/storage.js';
-import { createShortLink } from '../../lib/shortlink.js';
 
 // ─── Rate Limit Map ─────────────────────────────────────────
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -178,7 +177,7 @@ export class ChatbotService {
 
             // 9.5. Reservas/cumpleaños/boletas con datos completos → link PRE-LLENADO
             // al WhatsApp de ventas (el cliente solo toca el enlace y da "enviar").
-            aiResponse.reply = await this.buildBookingReply(aiResponse, customer.name);
+            aiResponse.reply = this.buildBookingReply(aiResponse, customer.name);
 
             await chatbotConversationService.saveMessage({
                 conversationId: conversation.id,
@@ -532,7 +531,7 @@ export class ChatbotService {
      * Si los datos aún están incompletos, se conserva la respuesta del modelo
      * (que sigue preguntando lo que falta).
      */
-    private async buildBookingReply(ai: AiResponse, customerName: string): Promise<string> {
+    private buildBookingReply(ai: AiResponse, customerName: string): string {
         const { booking } = ai;
 
         // Completo: mesa = fecha+hora+personas · cumpleaños = fecha+personas ·
@@ -550,35 +549,30 @@ export class ChatbotService {
             ? customerName
             : (ai.customerName ?? '');
 
+        // IMPORTANTE: el link DEBE ser wa.me — es el único que WhatsApp abre
+        // dentro de la app (un dominio propio/acortador lo manda al navegador y
+        // genera fricción). Para acortarlo, el mensaje es COMPACTO y sin emojis
+        // (cada emoji codificado pesa ~12 caracteres en la URL).
         // Si el cliente mencionó un evento específico, el mensaje SIEMPRE lo
-        // integra — sin importar cómo haya clasificado el modelo (mesa/cumple/boletas).
+        // integra — sin importar cómo haya clasificado el modelo.
         let prefill: string;
         switch (booking.kind) {
             case 'mesa':
                 prefill = booking.event
-                    ? `Hola 👋 Quiero reservar para *${booking.event}*.\n📅 Fecha: ${booking.date}\n🕐 Hora: ${booking.time}\n👥 Personas: ${booking.partySize}`
-                    : `Hola 👋 Quiero reservar una mesa en Pachanga y Pochola.\n📅 Fecha: ${booking.date}\n🕐 Hora: ${booking.time}\n👥 Personas: ${booking.partySize}`;
+                    ? `Hola! Quiero reservar para *${booking.event}*: ${booking.date}, ${booking.time}, ${booking.partySize} personas.`
+                    : `Hola! Quiero reservar una mesa: ${booking.date}, ${booking.time}, ${booking.partySize} personas.`;
                 break;
             case 'cumpleanos':
-                prefill = `Hola 🎉 Quiero celebrar un cumpleaños en Pachanga y Pochola${booking.event ? ` durante *${booking.event}*` : ''}.\n📅 Fecha: ${booking.date}\n👥 Personas: ${booking.partySize}`
-                    + (booking.time ? `\n🕐 Hora: ${booking.time}` : '');
+                prefill = `Hola! Quiero celebrar un cumpleaños${booking.event ? ` en *${booking.event}*` : ''}: ${booking.date}${booking.time ? `, ${booking.time}` : ''}, ${booking.partySize} personas.`;
                 break;
             case 'boletas':
-                prefill = `Hola 👋 Quiero comprar boletas para *${booking.event}*${booking.date ? ` (${booking.date})` : ''}.\n👥 Personas: ${booking.partySize}`;
+                prefill = `Hola! Quiero comprar boletas para *${booking.event}*${booking.date ? ` (${booking.date})` : ''}: ${booking.partySize} personas.`;
                 break;
         }
-        if (name) prefill += `\nMi nombre es ${name}.`;
+        if (name) prefill += ` Soy ${name}.`;
 
         const phoneDigits = env.CHATBOT_SALES_PHONE.replace(/[^\d]/g, '');
-        const fullLink = `https://wa.me/${phoneDigits}?text=${encodeURIComponent(prefill)}`;
-
-        // Link corto propio (/r/:code) — más elegante en el chat. Fallback: link largo.
-        let link = fullLink;
-        try {
-            link = await createShortLink(fullLink);
-        } catch (error) {
-            logger.warn({ err: error }, '[Chatbot] Shortlink failed — using full link');
-        }
+        const link = `https://wa.me/${phoneDigits}?text=${encodeURIComponent(prefill)}`;
 
         // Confirmación fija por caso (coherencia garantizada: el texto lo pone el
         // código, no el modelo, para que nunca contradiga al link adjunto).
